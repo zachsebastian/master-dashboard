@@ -997,81 +997,27 @@ applyTheme();
 async function initAuth() {
   renderLoading('Connecting…');
   const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    _currentUser = session.user;
-    await loadFromSupabase();
-  } else {
-    renderAuthScreen();
-  }
+  if (!session?.user) { window.location.href = '/'; return; }
 
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      _currentUser = session.user;
-      await loadFromSupabase();
-    } else if (event === 'SIGNED_OUT') {
-      _currentUser = null;
-      _appReady = false;
-      renderAuthScreen();
-    }
+  _currentUser = session.user;
+
+  // Apply account theme
+  const { data: prefs } = await sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle();
+  const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
+  localStorage.setItem('theme', theme);
+  state.darkMode = theme === 'dark';
+  applyTheme();
+
+  await loadFromSupabase();
+
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') window.location.href = '/';
   });
-}
-
-async function signIn() {
-  const email = document.getElementById('auth-email')?.value?.trim();
-  const password = document.getElementById('auth-password')?.value;
-  const errEl = document.getElementById('auth-error');
-  if (!email || !password) {
-    if (errEl) errEl.textContent = 'Please enter your email and password.';
-    return;
-  }
-  const btn = document.getElementById('auth-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) {
-    if (errEl) errEl.textContent = error.message;
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
-  }
 }
 
 async function signOut() {
   await sb.auth.signOut();
-}
-
-function renderAuthScreen() {
-  document.getElementById('app').innerHTML = `
-    <div class="auth-screen">
-      <div class="auth-card">
-        <div class="auth-title">Metrics Dashboard</div>
-        <div class="auth-subtitle">Sign in to access your data</div>
-        <div id="auth-error" class="auth-error" style="display:none"></div>
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input class="form-input" id="auth-email" type="email" placeholder="you@example.com"
-                 onkeydown="if(event.key==='Enter')signIn()">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input class="form-input" id="auth-password" type="password" placeholder="••••••••"
-                 onkeydown="if(event.key==='Enter')signIn()">
-        </div>
-        <button class="btn btn-primary" id="auth-btn" onclick="signIn()" style="width:100%;justify-content:center;padding:10px">
-          Sign in
-        </button>
-        <div style="font-size:12px;color:var(--text-3);margin-top:16px;text-align:center">
-          Forgot password? Reset it in your Supabase dashboard.
-        </div>
-      </div>
-    </div>
-  `;
-  // Show error element only when there's an error
-  document.getElementById('auth-error').style.display = 'none';
-  const origSignIn = signIn;
-  window.signIn = async function() {
-    const errEl = document.getElementById('auth-error');
-    if (errEl) errEl.style.display = 'none';
-    await origSignIn();
-    if (errEl && errEl.textContent) errEl.style.display = 'block';
-  };
+  window.location.href = '/';
 }
 
 function renderLoading(msg) {
@@ -1092,6 +1038,7 @@ async function loadFromSupabase() {
     const { data, error } = await sb
       .from('metrics')
       .select('*')
+      .eq('user_id', _currentUser.id)
       .order('created_at', { ascending: true })
       .limit(1)
       .single();
@@ -1132,7 +1079,7 @@ async function _doSave() {
     if (_supabaseRowId) {
       result = await sb.from('metrics').update(payload).eq('id', _supabaseRowId).select().single();
     } else {
-      result = await sb.from('metrics').insert(payload).select().single();
+      result = await sb.from('metrics').insert({ ...payload, user_id: _currentUser.id }).select().single();
     }
     if (result.error) throw result.error;
     if (!_supabaseRowId && result.data) _supabaseRowId = result.data.id;
@@ -1284,11 +1231,15 @@ function copyDataModal() {
 // ── Theme ──
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
+  localStorage.setItem('theme', state.darkMode ? 'dark' : 'light');
 }
 
-function toggleTheme() {
+async function toggleTheme() {
   state.darkMode = !state.darkMode;
   applyTheme();
+  if (_currentUser) {
+    await sb.from('user_preferences').upsert({ user_id: _currentUser.id, theme: state.darkMode ? 'dark' : 'light', updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  }
   save();
   render();
 }

@@ -64,13 +64,12 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
-/* ── Auth screen ── */
+/* ── Auth ── */
 .auth-screen {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
 }
 .auth-card {
   background: var(--surface);
@@ -122,7 +121,7 @@ body {
 .btn-primary:hover { opacity: 0.88; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Loading screen ── */
+/* ── Loading ── */
 .loading-screen {
   min-height: 100vh;
   display: flex;
@@ -139,9 +138,6 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── App ── */
-.app { display: none; }
-.app.visible { display: block; }
-
 .topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border-md);
@@ -156,8 +152,6 @@ body {
 .topbar-left { display: flex; align-items: center; gap: 16px; }
 .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 .brand-name span { opacity: 0.35; font-weight: 400; }
-.user-email { font-size: 12px; color: var(--text-3); }
-
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 .theme-toggle {
   display: flex; align-items: center; gap: 7px;
@@ -176,7 +170,7 @@ body {
   transition: left 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .theme-track.on .theme-thumb { left: 16px; }
-.btn-signout {
+.btn-sm {
   padding: 6px 12px;
   border: 1px solid var(--border-md);
   border-radius: var(--r-sm);
@@ -186,14 +180,11 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: background 0.1s;
+  white-space: nowrap;
 }
-.btn-signout:hover { background: var(--surface-3); }
+.btn-sm:hover { background: var(--surface-3); }
 
-.main {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 48px 20px 80px;
-}
+.main { max-width: 860px; margin: 0 auto; padding: 48px 20px 80px; }
 .page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
 .page-subtitle { font-size: 14px; color: var(--text-2); margin-bottom: 36px; }
 
@@ -201,6 +192,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
+  margin-bottom: 48px;
 }
 .module-card {
   background: var(--surface);
@@ -225,16 +217,57 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 .module-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
 .module-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
 .module-arrow { margin-top: auto; padding-top: 12px; font-size: 12px; color: var(--text-3); }
+
+/* ── Admin panel ── */
+.section-title {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--text-3);
+  margin-bottom: 14px;
+}
+.admin-table {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.admin-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.admin-row:last-child { border-bottom: none; }
+.admin-row-header { background: var(--surface-2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-3); }
+.admin-email { font-size: 13px; }
+.module-toggles { display: flex; gap: 8px; }
+.module-badge {
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text-3);
+  transition: all 0.15s;
+  user-select: none;
+}
+.module-badge.on { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+.admin-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--text-3);
+  background: var(--surface-3);
+  border-radius: 4px; padding: 2px 6px;
+}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
-<div class="loading-screen" id="loading-screen">
-  <div class="spinner"></div>
-</div>
+<div class="loading-screen" id="loading-screen"><div class="spinner"></div></div>
 
-<!-- Auth -->
 <div class="auth-screen" id="auth-screen" style="display:none">
   <div class="auth-card">
     <div class="auth-title">Dashboard Suite</div>
@@ -250,38 +283,35 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   </div>
 </div>
 
-<!-- App -->
-<div class="app" id="app">
+<div id="app" style="display:none">
   <div class="topbar">
     <div class="topbar-left">
       <div class="brand-name">Dashboard <span>Suite</span></div>
-      <div class="user-email" id="user-email"></div>
     </div>
     <div class="topbar-right">
       <div class="theme-toggle" onclick="toggleTheme()">
         <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
         <span id="theme-label">Light</span>
       </div>
-      <button class="btn-signout" onclick="signOut()">Sign out</button>
+      <button class="btn-sm" onclick="signOut()">Sign out</button>
     </div>
   </div>
 
   <div class="main">
     <div class="page-title">Your tools</div>
     <div class="page-subtitle">Select a module to open it.</div>
-    <div class="module-grid">
-      <a class="module-card" href="/projects/">
-        <div class="module-icon">📋</div>
-        <div class="module-name">Project Tracker</div>
-        <div class="module-desc">Track projects, log updates, manage tasks, and monitor progress across all your initiatives.</div>
-        <div class="module-arrow">Open →</div>
-      </a>
-      <a class="module-card" href="/metrics/">
-        <div class="module-icon">📊</div>
-        <div class="module-name">Metrics Dashboard</div>
-        <div class="module-desc">Monitor your key business metrics, track rocks, and visualize trends over time.</div>
-        <div class="module-arrow">Open →</div>
-      </a>
+    <div class="module-grid" id="module-grid"></div>
+
+    <div id="admin-section" style="display:none">
+      <div class="section-title">Admin — User Access</div>
+      <div class="admin-table">
+        <div class="admin-row admin-row-header">
+          <div>User</div>
+          <div>Modules</div>
+          <div></div>
+        </div>
+        <div id="admin-user-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -292,32 +322,108 @@ const SUPABASE_ANON_KEY = 'sb_publishable_oauR1DwB9y9bldVhSDpFHQ_rRDNO0FX';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function showEl(id, display) { document.getElementById(id).style.display = display || 'block'; }
-function hideEl(id) { document.getElementById(id).style.display = 'none'; }
+const ALL_MODULES = [
+  { id: 'projects', name: 'Project Tracker', icon: '📋', desc: 'Track projects, log updates, manage tasks, and monitor progress across all your initiatives.', href: '/projects/' },
+  { id: 'metrics',  name: 'Metrics Dashboard', icon: '📊', desc: 'Monitor your key business metrics, track rocks, and visualize trends over time.', href: '/metrics/' },
+];
+
+let currentUser = null;
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
-  hideEl('loading-screen');
+  document.getElementById('loading-screen').style.display = 'none';
   if (session) {
-    showApp(session.user);
+    await onSignedIn(session.user);
   } else {
-    showEl('auth-screen', 'flex');
+    document.getElementById('auth-screen').style.display = 'flex';
   }
-  sb.auth.onAuthStateChange((_event, session) => {
+  sb.auth.onAuthStateChange(async (_event, session) => {
     if (session) {
-      hideEl('auth-screen');
-      showApp(session.user);
+      document.getElementById('auth-screen').style.display = 'none';
+      await onSignedIn(session.user);
     } else {
-      hideEl('app');
-      showEl('auth-screen', 'flex');
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
     }
   });
 }
 
-function showApp(user) {
-  showEl('app');
-  document.getElementById('user-email').textContent = user.email;
-  updateThemeUI(localStorage.getItem('theme') || 'light');
+async function onSignedIn(user) {
+  currentUser = user;
+
+  // Upsert profile
+  await sb.from('profiles').upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id' });
+
+  // Load + apply theme
+  const { data: prefs } = await sb.from('user_preferences').select('theme').eq('user_id', user.id).maybeSingle();
+  const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
+  applyTheme(theme);
+  if (!prefs) await sb.from('user_preferences').upsert({ user_id: user.id, theme }, { onConflict: 'user_id' });
+
+  // Load allowed modules
+  const { data: modRows } = await sb.from('user_modules').select('module').eq('user_id', user.id);
+  const allowed = new Set((modRows || []).map(r => r.module));
+  renderModules(allowed);
+
+  // Admin panel
+  if (user.app_metadata?.is_admin) await renderAdminPanel();
+
+  document.getElementById('app').style.display = 'block';
+}
+
+function renderModules(allowed) {
+  const grid = document.getElementById('module-grid');
+  grid.innerHTML = ALL_MODULES
+    .filter(m => allowed.has(m.id))
+    .map(m => `
+      <a class="module-card" href="${m.href}">
+        <div class="module-icon">${m.icon}</div>
+        <div class="module-name">${m.name}</div>
+        <div class="module-desc">${m.desc}</div>
+        <div class="module-arrow">Open →</div>
+      </a>`).join('');
+  if (grid.innerHTML === '') {
+    grid.innerHTML = '<p style="color:var(--text-3);font-size:13px">No modules assigned. Contact your administrator.</p>';
+  }
+}
+
+async function renderAdminPanel() {
+  document.getElementById('admin-section').style.display = 'block';
+
+  // Fetch all profiles + their module access
+  const { data: profiles } = await sb.from('profiles').select('user_id, email').order('email');
+  const { data: allMods } = await sb.from('user_modules').select('user_id, module');
+
+  const modsByUser = {};
+  (allMods || []).forEach(r => {
+    if (!modsByUser[r.user_id]) modsByUser[r.user_id] = new Set();
+    modsByUser[r.user_id].add(r.module);
+  });
+
+  const list = document.getElementById('admin-user-list');
+  list.innerHTML = (profiles || []).map(p => {
+    const isAdmin = p.user_id === currentUser.id;
+    const badges = ALL_MODULES.map(m => {
+      const on = modsByUser[p.user_id]?.has(m.id);
+      return `<span class="module-badge ${on ? 'on' : ''}" onclick="toggleModule('${p.user_id}','${m.id}',this)">${m.name}</span>`;
+    }).join('');
+    return `<div class="admin-row">
+      <div class="admin-email">${p.email}</div>
+      <div class="module-toggles">${badges}</div>
+      <div>${isAdmin ? '<span class="admin-tag">Admin</span>' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleModule(userId, moduleId, el) {
+  const isOn = el.classList.contains('on');
+  if (isOn) {
+    await sb.from('user_modules').delete().eq('user_id', userId).eq('module', moduleId);
+    el.classList.remove('on');
+  } else {
+    await sb.from('user_modules').insert({ user_id: userId, module: moduleId });
+    el.classList.add('on');
+  }
 }
 
 async function signIn() {
@@ -326,14 +432,12 @@ async function signIn() {
   const btn = document.getElementById('signin-btn');
   const err = document.getElementById('auth-error');
   err.classList.remove('visible');
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
+  btn.disabled = true; btn.textContent = 'Signing in…';
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
     err.textContent = error.message;
     err.classList.add('visible');
-    btn.disabled = false;
-    btn.textContent = 'Sign in';
+    btn.disabled = false; btn.textContent = 'Sign in';
   }
 }
 
@@ -341,15 +445,18 @@ async function signOut() {
   await sb.auth.signOut();
 }
 
-function toggleTheme() {
+async function toggleTheme() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = dark ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  updateThemeUI(next);
+  applyTheme(next);
+  if (currentUser) {
+    await sb.from('user_preferences').upsert({ user_id: currentUser.id, theme: next, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  }
 }
 
-function updateThemeUI(theme) {
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
   const dark = theme === 'dark';
   const track = document.getElementById('theme-track');
   const label = document.getElementById('theme-label');
@@ -359,6 +466,5 @@ function updateThemeUI(theme) {
 
 init();
 </script>
-
 </body>
 </html>
