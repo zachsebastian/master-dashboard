@@ -292,30 +292,30 @@ const SUPABASE_ANON_KEY = 'sb_publishable_oauR1DwB9y9bldVhSDpFHQ_rRDNO0FX';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function show(id) { document.getElementById(id).style.display = ''; }
-function hide(id) { document.getElementById(id).style.display = 'none'; }
+function showEl(id, display) { document.getElementById(id).style.display = display || 'block'; }
+function hideEl(id) { document.getElementById(id).style.display = 'none'; }
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
-  hide('loading-screen');
+  hideEl('loading-screen');
   if (session) {
     showApp(session.user);
   } else {
-    show('auth-screen');
+    showEl('auth-screen', 'flex');
   }
   sb.auth.onAuthStateChange((_event, session) => {
     if (session) {
-      hide('auth-screen');
+      hideEl('auth-screen');
       showApp(session.user);
     } else {
-      hide('app');
-      show('auth-screen');
+      hideEl('app');
+      showEl('auth-screen', 'flex');
     }
   });
 }
 
 function showApp(user) {
-  document.getElementById('app').classList.add('visible');
+  showEl('app');
   document.getElementById('user-email').textContent = user.email;
   updateThemeUI(localStorage.getItem('theme') || 'light');
 }
