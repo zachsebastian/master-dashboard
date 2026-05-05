@@ -363,6 +363,7 @@ const ALL_MODULES = [
 
 let currentUser = null;
 let _returningToAdmin = false;
+let _impersonating = false;
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -373,6 +374,7 @@ async function init() {
     document.getElementById('auth-screen').style.display = 'flex';
   }
   sb.auth.onAuthStateChange(async (_event, session) => {
+    if (_impersonating) return;
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
       await onSignedIn(session.user);
@@ -386,6 +388,10 @@ async function init() {
 
 async function onSignedIn(user) {
   currentUser = user;
+
+  // Always reset conditional sections before re-rendering
+  document.getElementById('admin-section').style.display = 'none';
+  document.getElementById('impersonation-banner').style.display = 'none';
 
   // Upsert profile
   await sb.from('profiles').upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id' });
@@ -533,11 +539,18 @@ async function impersonate(userId, email) {
     return;
   }
 
-  const { error } = await sb.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' });
+  _impersonating = true;
+  const { data: otpData, error } = await sb.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' });
+  _impersonating = false;
+
   if (error) {
     alert('Sign-in failed: ' + error.message);
     sessionStorage.removeItem('adminSession');
+    return;
   }
+
+  // Explicitly re-render as the target user (don't rely on onAuthStateChange)
+  await onSignedIn(otpData.user);
 }
 
 async function returnToAdmin() {
