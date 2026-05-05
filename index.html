@@ -370,6 +370,7 @@ async function init() {
   document.getElementById('loading-screen').style.display = 'none';
   if (session) {
     await onSignedIn(session.user);
+    if (sessionStorage.getItem('adminSession')) showImpersonationBanner(session.user.email);
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
@@ -378,6 +379,7 @@ async function init() {
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
       await onSignedIn(session.user);
+      if (sessionStorage.getItem('adminSession')) showImpersonationBanner(session.user.email);
     } else if (!_returningToAdmin) {
       document.getElementById('app').style.display = 'none';
       document.getElementById('impersonation-banner').style.display = 'none';
@@ -411,10 +413,6 @@ async function onSignedIn(user) {
   if (user.app_metadata?.is_admin) await renderAdminPanel();
 
   document.getElementById('app').style.display = 'block';
-
-  if (sessionStorage.getItem('adminSession')) {
-    showImpersonationBanner(user.email);
-  }
 }
 
 function renderModules(allowed) {
@@ -543,14 +541,15 @@ async function impersonate(userId, email) {
   const { data: otpData, error } = await sb.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' });
   _impersonating = false;
 
-  if (error) {
-    alert('Sign-in failed: ' + error.message);
+  if (error || !otpData?.user) {
+    alert('Sign-in failed: ' + (error?.message || 'No user returned from verifyOtp'));
     sessionStorage.removeItem('adminSession');
     return;
   }
 
-  // Explicitly re-render as the target user (don't rely on onAuthStateChange)
+  // Explicitly re-render as the target user, then show banner
   await onSignedIn(otpData.user);
+  showImpersonationBanner(otpData.user.email);
 }
 
 async function returnToAdmin() {
