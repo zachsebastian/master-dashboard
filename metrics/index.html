@@ -1,0 +1,2876 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>Metrics Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Light mode tokens ── */
+:root {
+  --bg: #f4f4f1;
+  --surface: #ffffff;
+  --surface-2: #f0f0ed;
+  --surface-3: #e4e4e0;
+  --border: rgba(0,0,0,0.08);
+  --border-md: rgba(0,0,0,0.13);
+  --text: #111111;
+  --text-2: #555555;
+  --text-3: #999999;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.14), 0 4px 8px rgba(0,0,0,0.06);
+  --blue: #1d6fa8;
+  --blue-bg: #e9f1fb;
+  --green: #2a7d46;
+  --green-bg: #e6f3ec;
+  --red: #c0392b;
+  --red-bg: #fbeae8;
+  --r-sm: 6px;
+  --r-lg: 14px;
+}
+
+/* ── Dark mode tokens ── */
+html[data-theme="dark"] {
+  --bg: #111111;
+  --surface: #1a1a1a;
+  --surface-2: #222222;
+  --surface-3: #2c2c2c;
+  --border: rgba(255,255,255,0.07);
+  --border-md: rgba(255,255,255,0.12);
+  --text: #e8e8e8;
+  --text-2: #888888;
+  --text-3: #505050;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.7), 0 4px 8px rgba(0,0,0,0.4);
+  --blue: #4a9fd4;
+  --blue-bg: rgba(74,159,212,0.12);
+  --green: #4caf73;
+  --green-bg: rgba(76,175,115,0.12);
+  --red: #e05c4b;
+  --red-bg: rgba(224,92,75,0.12);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── Auth screen ── */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  width: 380px;
+  max-width: 94vw;
+}
+.auth-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+.auth-subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
+.auth-error {
+  background: var(--red-bg);
+  border: 1px solid rgba(224,92,75,0.3);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--red);
+  margin-bottom: 14px;
+}
+
+/* ── Loading screen ── */
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2.5px solid var(--border-md);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.app { display: grid; grid-template-rows: 56px 1fr; min-height: 100vh; }
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-md);
+  box-shadow: var(--shadow-sm);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+.brand-name span { opacity: 0.35; font-weight: 400; }
+.sidebar-toggle-btn {
+  display: block; margin-top: 1px;
+  font-size: 10.5px; font-weight: 500; color: var(--text-3);
+  background: none; border: none; cursor: pointer;
+  padding: 0; text-align: left;
+  transition: color 0.1s;
+  white-space: nowrap;
+}
+.sidebar-toggle-btn:hover { color: var(--text-2); }
+.save-wrap {
+  display: flex; align-items: center; gap: 5px;
+  opacity: 0; transition: opacity 0.4s;
+}
+.save-wrap.visible { opacity: 1; }
+.save-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.save-label {
+  font-size: 11px; font-weight: 500; color: var(--text-2);
+  white-space: nowrap;
+}
+.topbar-right { display: flex; gap: 8px; align-items: center; }
+.dropdown-wrap { position: relative; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 160px;
+  overflow: hidden;
+  z-index: 50;
+  animation: fade-in 0.1s ease;
+}
+.dropdown-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.dropdown-item:hover { background: var(--surface-2); }
+.dropdown-item-icon { font-size: 14px; width: 16px; text-align: center; flex-shrink: 0; }
+.dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ── Dark mode toggle ── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  transition: background 0.1s;
+  user-select: none;
+}
+.theme-toggle:hover { background: var(--surface-3); }
+.theme-track {
+  width: 28px; height: 16px;
+  border-radius: 8px;
+  background: var(--surface-3);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.theme-track.on { background: #1a1a1a; }
+html[data-theme="dark"] .theme-track { background: #4a9fd4; }
+.theme-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: white;
+  transition: left 0.18s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.theme-track.on .theme-thumb { left: 14px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s, opacity 0.1s;
+  white-space: nowrap; line-height: 1.2;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: var(--shadow-sm); }
+.btn-primary:hover { opacity: 0.85; background: var(--text); }
+.btn-sm { font-size: 12px; padding: 4px 10px; }
+.btn-danger { color: var(--red); border-color: rgba(224,92,75,0.3); }
+.btn-danger:hover { background: var(--red-bg); }
+
+/* ── View tabs ── */
+.view-tabs {
+  display: flex; gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  padding: 3px;
+}
+.view-tab {
+  font-size: 13px; font-weight: 500;
+  padding: 5px 16px;
+  border-radius: 4px; border: none;
+  background: transparent; color: var(--text-2);
+  cursor: pointer; transition: all 0.12s;
+}
+.view-tab.active {
+  background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Layout ── */
+.main {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 252px;
+  min-width: 160px;
+  max-width: 480px;
+  background: var(--surface);
+  border-right: 1px solid var(--border-md);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0; right: -3px;
+  width: 6px; height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.15s;
+}
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.dragging { background: var(--blue); opacity: 0.5; border-radius: 3px; }
+.sidebar-main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-inner { flex: 1; overflow-y: auto; padding: 16px 10px 8px; }
+.sidebar-label {
+  font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--text-3); padding: 0 8px; margin-bottom: 8px;
+}
+.metric-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+  margin-bottom: 2px;
+  position: relative; user-select: none;
+}
+.metric-item:hover { background: var(--surface-2); }
+.metric-item.active { background: var(--surface-2); }
+.metric-item.active::before {
+  content: ''; position: absolute;
+  left: 0; top: 5px; bottom: 5px;
+  width: 3px; background: var(--item-color, #aaa);
+  border-radius: 0 2px 2px 0;
+}
+.m-reorder {
+  display: flex; flex-direction: column; gap: 1px;
+  flex-shrink: 0; align-self: flex-start; margin-top: 1px;
+}
+.m-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; align-self: flex-start; }
+.m-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.m-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.metric-item.active .m-name { font-weight: 600; }
+.metric-status-select { flex-shrink: 0; align-self: flex-start; }
+.toggle { flex-shrink: 0; align-self: flex-start; margin-top: 1px; }
+.metric-status-select {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 20px 2px 8px;
+  border-radius: 10px; border: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M1 1l2.5 2L6 1' stroke='%23888' stroke-width='1.1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.metric-status-select:focus { outline: none; }
+.metric-status-select.ongoing     { background-color: var(--green-bg);   color: var(--green); }
+.metric-status-select.in-progress { background-color: var(--blue-bg);    color: var(--blue); }
+.metric-status-select.on-hold     { background-color: var(--red-bg);     color: var(--red); }
+.metric-status-select.complete    { background-color: var(--green-bg);   color: var(--green); }
+
+.toggle {
+  width: 30px; height: 17px; border-radius: 9px;
+  border: none; cursor: pointer; flex-shrink: 0;
+  transition: background 0.2s; position: relative;
+}
+.toggle::after {
+  content: ''; position: absolute;
+  top: 2.5px; left: 2.5px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: white; transition: left 0.16s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle.on { background: #4a9fd4; }
+html:not([data-theme="dark"]) .toggle.on { background: #1a1a1a; }
+.toggle.on::after { left: 15.5px; }
+.toggle.off { background: var(--surface-3); }
+
+.sidebar-footer {
+  padding: 12px 10px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-hint { font-size: 11px; color: var(--text-3); padding: 0 4px; margin-bottom: 8px; }
+.sidebar-footer-btns { display: flex; gap: 6px; }
+
+/* ── Content ── */
+.content { padding: 28px 32px; overflow-y: auto; }
+
+/* ── Page header ── */
+.page-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; margin-bottom: 24px;
+}
+.page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+.page-subtitle { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.page-header-right { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+/* ── Metric Summary Panel ── */
+.metric-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+}
+.metric-panel:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.18);
+}
+html:not([data-theme="dark"]) .metric-panel:hover { border-color: rgba(0,0,0,0.2); }
+.metric-panel-stripe { height: 3px; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.metric-panel-header {
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.metric-panel-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
+}
+.metric-panel-title .metric-status-select {
+  font-size: 10px;
+  padding-top: 3px; padding-bottom: 3px;
+  align-self: center;
+  position: relative; top: 0;
+  line-height: 1;
+}
+.metric-panel-meta { display: flex; align-items: center; gap: 10px; }
+.metric-panel-body { padding: 16px 20px; }
+
+.period-tag {
+  font-size: 11.5px; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px;
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border-md);
+}
+
+/* ── Stat cards ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.stat-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 13px 15px;
+}
+.stat-label { font-size: 11.5px; color: var(--text-2); font-weight: 500; margin-bottom: 8px; }
+.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.1; }
+.stat-meta { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+.stat-delta { font-size: 12px; font-weight: 500; margin-top: 4px; }
+.delta-up { color: var(--green); }
+.delta-down { color: var(--red); }
+.delta-flat { color: var(--text-3); }
+.stat-progress {
+  margin-top: 9px; height: 4px;
+  background: var(--surface-3); border-radius: 2px; overflow: hidden;
+}
+.stat-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+/* ── Detail panels ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.panel-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-2);
+}
+.panel-title {
+  font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3);
+}
+.panel-body { padding: 20px; }
+
+/* ── Fields grid ── */
+.fields-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.field-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+}
+.field-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.field-card-name { font-size: 12px; color: var(--text-2); font-weight: 600; flex: 1; }
+.field-type-chip {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+}
+.chip-input { background: var(--green-bg); color: var(--green); }
+.chip-derived { background: var(--blue-bg); color: var(--blue); }
+.field-card-formula { font-size: 11.5px; color: var(--text-3); font-family: 'SF Mono', 'Fira Code', monospace; word-break: break-all; }
+
+/* ── Entries table ── */
+.table-wrap { overflow-x: auto; }
+.entries-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.entries-table th {
+  text-align: left; padding: 9px 16px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-3); border-bottom: 1px solid var(--border-md);
+  background: var(--surface-2); white-space: nowrap;
+}
+.entries-table td {
+  padding: 11px 16px; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.entries-table tr:last-child td { border-bottom: none; }
+.entries-table tbody tr:hover td { background: var(--surface-2); }
+.td-period { font-weight: 600; }
+.td-derived { color: var(--blue); font-weight: 600; }
+.td-actions { text-align: right; white-space: nowrap; }
+.reorder-btn {
+  display: block; background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 8px; line-height: 1; padding: 1px 3px;
+  border-radius: 2px; transition: color 0.1s, background 0.1s;
+}
+.reorder-btn:hover:not(:disabled) { color: var(--text); background: var(--surface-3); }
+.reorder-btn:disabled { opacity: 0.2; cursor: default; }
+
+.empty-state { text-align: center; padding: 52px 24px; color: var(--text-3); }
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.25; }
+.empty-text { font-size: 14px; font-weight: 500; color: var(--text-2); }
+.empty-hint { font-size: 12px; margin-top: 4px; }
+
+/* ── Modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; animation: fade-in 0.12s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  width: 540px; max-width: 96vw; max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-md);
+  animation: slide-up 0.15s ease;
+}
+@keyframes slide-up { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+}
+.modal-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.modal-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 22px; line-height: 1;
+  padding: 2px 5px; border-radius: 4px;
+}
+.modal-close:hover { color: var(--text); background: var(--surface-2); }
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 14px 24px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-2); position: sticky; bottom: 0;
+}
+.modal-footer-left { display: flex; gap: 8px; }
+.modal-footer-right { display: flex; gap: 8px; }
+
+/* ── Form ── */
+.form-group { margin-bottom: 18px; }
+.form-label { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: block; }
+.form-sublabel { font-size: 11.5px; font-weight: 500; color: var(--text-3); margin-bottom: 4px; display: block; }
+.form-input {
+  font-size: 14px; padding: 8px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text);
+  width: 100%; transition: border-color 0.12s, box-shadow 0.12s;
+  -webkit-appearance: none;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(74,159,212,0.15);
+}
+html:not([data-theme="dark"]) .form-input:focus {
+  border-color: rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+}
+.form-hint { font-size: 12px; color: var(--text-3); margin-top: 5px; line-height: 1.4; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+/* ── Date picker wrapper ── */
+.date-input-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.date-input-wrap .form-input {
+  padding-right: 36px;
+  cursor: pointer;
+}
+.date-input-wrap .form-input::-webkit-calendar-picker-indicator {
+  opacity: 0; position: absolute; right: 0; width: 36px; height: 100%; cursor: pointer;
+}
+.date-cal-btn {
+  position: absolute; right: 2px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); padding: 6px 8px;
+  border-radius: 4px; line-height: 1;
+  font-size: 15px; pointer-events: none;
+  transition: color 0.1s;
+}
+.date-input-wrap:hover .date-cal-btn { color: var(--text-2); }
+
+/* ── Color picker ── */
+.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-swatch {
+  width: 26px; height: 26px; border-radius: 50%;
+  cursor: pointer; border: 2.5px solid transparent;
+  transition: transform 0.1s; outline: 2px solid transparent; outline-offset: 2px;
+}
+.color-swatch:hover { transform: scale(1.12); }
+.color-swatch.selected { outline-color: var(--text); }
+
+/* ── Fields builder ── */
+.fields-builder { border: 1px solid var(--border-md); border-radius: var(--r-sm); overflow: hidden; }
+.fb-row {
+  display: grid; grid-template-columns: 1fr 90px 28px;
+  gap: 8px; padding: 10px 12px;
+  border-bottom: 1px solid var(--border); align-items: start;
+}
+.fb-row-extra { padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
+.fb-row-add { padding: 10px 12px; display: flex; gap: 8px; background: var(--surface-2); }
+.fb-type {
+  font-size: 10px; font-weight: 700;
+  padding: 4px 9px; border-radius: 5px;
+  text-align: center; align-self: start; margin-top: 2px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.fb-delete {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 18px; line-height: 1;
+  padding: 3px; border-radius: 4px;
+  align-self: start; margin-top: 2px;
+  transition: color 0.1s, background 0.1s;
+}
+.fb-delete:hover { color: var(--red); background: var(--red-bg); }
+
+/* ── Derived preview box ── */
+.derived-preview {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px; margin-top: 4px;
+}
+.derived-preview-label {
+  font-size: 10.5px; font-weight: 700; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px;
+}
+.derived-preview-row {
+  display: flex; justify-content: space-between;
+  font-size: 13px; margin-bottom: 5px;
+}
+.derived-preview-row:last-child { margin-bottom: 0; }
+
+/* ── Rock dropdown on metric panels ── */
+.metric-panel-rock {
+  padding: 10px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.rock-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-3); white-space: nowrap; flex-shrink: 0;
+}
+.rock-select {
+  font-size: 12.5px; font-weight: 500;
+  padding: 4px 28px 4px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  max-width: 260px; min-width: 120px;
+  transition: border-color 0.12s;
+}
+.rock-select:focus { outline: none; border-color: var(--blue); }
+
+/* ── Period dropdown on metric panels ── */
+.period-select {
+  font-size: 12px; font-weight: 500;
+  padding: 3px 22px 3px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  max-width: 180px;
+  transition: border-color 0.12s;
+}
+.period-select:focus { outline: none; border-color: var(--blue); }
+
+/* ── 90-day chart ── */
+.metric-chart-wrap {
+  padding: 4px 20px 16px;
+  box-sizing: border-box;
+}
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.chart-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-3);
+}
+.chart-legend {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+}
+.chart-legend-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10.5px; color: var(--text-2);
+}
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.chart-svg-wrap { width: 100%; }
+svg.metric-chart { width: 100%; height: 160px; display: block; overflow: hidden; }
+
+/* ── Rocks management modal ── */
+.rocks-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.rock-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 9px 12px;
+}
+.rock-row-name { flex: 1; font-size: 13.5px; font-weight: 500; }
+.rock-row-meta { font-size: 11px; color: var(--text-3); }
+
+/* ── Task metric ── */
+.task-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 10px; }
+.task-progress-bar {
+  margin: 14px 20px 16px;
+  height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden;
+}
+.task-progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+.task-list { padding: 0; }
+.task-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.task-row:last-child { border-bottom: none; }
+.task-row:hover { background: var(--surface-2); }
+.task-name { flex: 1; font-size: 13.5px; font-weight: 500; }
+.task-name.done { text-decoration: line-through; color: var(--text-3); }
+.task-status-select {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 22px 3px 10px;
+  border-radius: 20px; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  letter-spacing: 0.02em; text-transform: uppercase;
+  appearance: none; -webkit-appearance: none;
+  border: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: opacity 0.1s;
+}
+.task-status-select:focus { outline: none; }
+.task-status-select:hover { opacity: 0.85; }
+.task-status-select.not-started { background-color: var(--surface-3); color: var(--text-3); }
+.task-status-select.in-progress { background-color: var(--blue-bg); color: var(--blue); }
+.task-status-select.complete { background-color: var(--green-bg); color: var(--green); }
+.task-del-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 16px; line-height: 1; padding: 2px 4px;
+  border-radius: 4px; flex-shrink: 0; transition: color 0.1s, background 0.1s;
+}
+.task-del-btn:hover { color: var(--red); background: var(--red-bg); }
+.task-add-row {
+  padding: 12px 20px;
+  display: flex; gap: 8px; align-items: center;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.task-add-input {
+  flex: 1; font-size: 13px; padding: 7px 11px;
+  border: 1px solid var(--border-md); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text);
+  transition: border-color 0.12s;
+}
+.task-add-input:focus { outline: none; border-color: var(--blue); }
+.task-drag-handle {
+  cursor: grab; color: var(--text-3); font-size: 14px;
+  padding: 0 4px; flex-shrink: 0; line-height: 1;
+  user-select: none;
+}
+.task-drag-handle:active { cursor: grabbing; }
+.task-row.dragging { opacity: 0.4; }
+.task-row.drag-over { border-top: 2px solid var(--blue); }
+.entry-drag-handle {
+  cursor: grab; color: var(--text-3); font-size: 14px;
+  padding: 0 2px; line-height: 1; user-select: none; display: block;
+}
+.entry-drag-handle:active { cursor: grabbing; }
+.entry-row.dragging td { opacity: 0.4; }
+.entry-row.drag-over td { border-top: 2px solid var(--blue); }
+.task-edit-input {
+  flex: 1; font-size: 13.5px; font-weight: 500;
+  padding: 3px 8px; border: 1px solid var(--blue);
+  border-radius: var(--r-sm); background: var(--surface);
+  color: var(--text); min-width: 0;
+}
+.task-edit-input:focus { outline: none; }
+.task-edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; padding: 3px 7px;
+  border-radius: var(--r-sm); transition: background 0.1s;
+  flex-shrink: 0; color: var(--text-2);
+}
+.task-edit-btn:hover { background: var(--surface-3); }
+.task-edit-btn.save { color: var(--green); }
+.task-edit-btn.cancel { color: var(--text-3); }
+
+/* ── Narrative fields ── */
+.narrative-textarea {
+  width: 100%; min-height: 80px; resize: vertical;
+  font-family: inherit; font-size: 13px; line-height: 1.6;
+}
+.narrative-section {
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.narrative-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.narrative-label {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 5px;
+}
+.narrative-text {
+  font-size: 13px; line-height: 1.65; color: var(--text-2);
+  white-space: pre-wrap; word-break: break-word;
+}
+.narrative-empty { font-size: 12px; color: var(--text-3); font-style: italic; }
+.narrative-block {
+  margin-top: 12px; padding: 14px 16px;
+  background: var(--surface-2); border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
+/* ── Presentation ── */
+.present-wrap { min-height: 100vh; background: var(--surface); padding: 52px 64px; }
+.present-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 48px; padding-bottom: 28px;
+  border-bottom: 1.5px solid var(--border-md);
+}
+.present-title { font-size: 26px; font-weight: 700; letter-spacing: -0.6px; }
+.present-date { font-size: 14px; color: var(--text-2); margin-top: 6px; }
+.present-metric {
+  margin-bottom: 0;
+  padding-bottom: 48px;
+  border-bottom: 1.5px solid var(--border-md);
+  margin-top: 48px;
+}
+.present-metric:first-of-type { margin-top: 0; }
+.present-metric-name {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 19px; font-weight: 700; margin-bottom: 20px; letter-spacing: -0.3px;
+}
+.pm-bar { width: 5px; height: 24px; border-radius: 3px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─────────────────────────────────────────────
+// SUPABASE CONFIGURATION
+// Replace these with your actual values from Supabase → Project Settings → API
+// ─────────────────────────────────────────────
+const SUPABASE_URL = 'https://hnyktamkpgazfgafogmj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ohorWUNtrJE7wWp30AtOaw_bY25BZIc';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Constants ──
+const COLORS = ['#e8e8e8','#4a9fd4','#4caf73','#d4893a','#d46a8a','#8b6f5c','#3ab89a','#9b7dd4'];
+const COLORS_LIGHT = ['#1a1a1a','#1d6fa8','#2a7d46','#854f0b','#993556','#533c1d','#0f6e56','#533ab7'];
+const COLOR_LABELS = ['Slate','Blue','Green','Amber','Rose','Brown','Teal','Purple'];
+
+const SAMPLE_METRICS = [
+  {
+    id: 'm1', name: 'Support Tickets', color: '#4a9fd4', visible: true,
+    fields: [
+      { id: 'f1', name: 'Total Escalations', type: 'input' },
+      { id: 'f2', name: 'Required Dev', type: 'input' },
+      { id: 'f3', name: 'You Resolved', type: 'input' },
+      { id: 'f4', name: 'CX Solvable', type: 'derived', formula: 'f1 - f2' },
+      { id: 'f5', name: '% Resolved', type: 'derived', formula: 'round(f3/(f1-f2)*100)' }
+    ],
+    entries: [
+      { id: 'e2', period: 'Mar 25 – Apr 24', periodStart: '2025-03-25', periodEnd: '2025-04-24', values: { f1: 83, f2: 42, f3: 32 } },
+      { id: 'e1', period: 'Feb 23 – Mar 24', periodStart: '2025-02-23', periodEnd: '2025-03-24', values: { f1: 49, f2: 6, f3: 36 } }
+    ]
+  },
+  {
+    id: 'm2', name: 'Onboarding Videos', color: '#4caf73', visible: true,
+    fields: [
+      { id: 'f1', name: 'Videos Completed', type: 'input' },
+      { id: 'f2', name: 'Total Videos', type: 'input' },
+      { id: 'f3', name: '% Complete', type: 'derived', formula: 'round(f1/f2*100)' },
+      { id: 'f4', name: 'Remaining', type: 'derived', formula: 'f2 - f1' }
+    ],
+    entries: [
+      { id: 'e2', period: 'Mar 25 – Apr 24', periodStart: '2025-03-25', periodEnd: '2025-04-24', values: { f1: 14, f2: 14 } },
+      { id: 'e1', period: 'Feb 23 – Mar 24', periodStart: '2025-02-23', periodEnd: '2025-03-24', values: { f1: 10, f2: 14 } }
+    ]
+  },
+  {
+    id: 'm3', name: 'AI Renewal Engine', color: '#9b7dd4', visible: true,
+    type: 'task',
+    fields: [],
+    entries: [],
+    tasks: []
+  }
+];
+
+// ── Formula evaluator ──
+function evalFormula(formula, values) {
+  try {
+    let expr = formula;
+    Object.entries(values).forEach(([k, v]) => {
+      expr = expr.replace(new RegExp('\\b' + k + '\\b', 'g'), String(parseFloat(v) || 0));
+    });
+    expr = expr.replace(/\bround\b/g, 'Math.round');
+    const result = eval(expr);
+    if (isNaN(result) || !isFinite(result)) return '—';
+    return String(Math.round(result * 100) / 100);
+  } catch { return '—'; }
+}
+
+// ── Date helpers ──
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function periodFromDates(s, e) {
+  if (s && e) return `${fmtDate(s)} – ${fmtDate(e)}`;
+  if (s) return `From ${fmtDate(s)}`;
+  if (e) return `Until ${fmtDate(e)}`;
+  return '';
+}
+function rolling30() {
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 30);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+// ── State ──
+const SAMPLE_ROCKS = [
+  { id: 'r1', name: 'Reduce support escalation rate' },
+  { id: 'r2', name: 'Complete onboarding overhaul' },
+  { id: 'r3', name: 'Improve team resolution speed' },
+];
+const initialState = {
+  metrics: SAMPLE_METRICS,
+  rocks: SAMPLE_ROCKS,
+  metricRocks: {},
+  metricEntryIndex: {},
+  metricStatus: {},
+  summarySidebarVisible: true,
+  activeMetric: 'm1',
+  view: 'summary',
+  modal: null,
+  presentationMode: false,
+  darkMode: false
+};
+
+let state = { ...initialState };
+let modalData = {};
+let _saveTimer = null;
+let _unsaved = false;
+let _saveStatus = 'saved';
+let _currentUser = null;
+let _appReady = false;
+let _supabaseRowId = null; // The single row ID we upsert into
+
+// Apply dark mode
+applyTheme();
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+async function initAuth() {
+  renderLoading('Connecting…');
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    _currentUser = session.user;
+    await loadFromSupabase();
+  } else {
+    renderAuthScreen();
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      _currentUser = session.user;
+      await loadFromSupabase();
+    } else if (event === 'SIGNED_OUT') {
+      _currentUser = null;
+      _appReady = false;
+      renderAuthScreen();
+    }
+  });
+}
+
+async function signIn() {
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const password = document.getElementById('auth-password')?.value;
+  const errEl = document.getElementById('auth-error');
+  if (!email || !password) {
+    if (errEl) errEl.textContent = 'Please enter your email and password.';
+    return;
+  }
+  const btn = document.getElementById('auth-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (errEl) errEl.textContent = error.message;
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+  }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+}
+
+function renderAuthScreen() {
+  document.getElementById('app').innerHTML = `
+    <div class="auth-screen">
+      <div class="auth-card">
+        <div class="auth-title">Metrics Dashboard</div>
+        <div class="auth-subtitle">Sign in to access your data</div>
+        <div id="auth-error" class="auth-error" style="display:none"></div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="auth-email" type="email" placeholder="you@example.com"
+                 onkeydown="if(event.key==='Enter')signIn()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="auth-password" type="password" placeholder="••••••••"
+                 onkeydown="if(event.key==='Enter')signIn()">
+        </div>
+        <button class="btn btn-primary" id="auth-btn" onclick="signIn()" style="width:100%;justify-content:center;padding:10px">
+          Sign in
+        </button>
+        <div style="font-size:12px;color:var(--text-3);margin-top:16px;text-align:center">
+          Forgot password? Reset it in your Supabase dashboard.
+        </div>
+      </div>
+    </div>
+  `;
+  // Show error element only when there's an error
+  document.getElementById('auth-error').style.display = 'none';
+  const origSignIn = signIn;
+  window.signIn = async function() {
+    const errEl = document.getElementById('auth-error');
+    if (errEl) errEl.style.display = 'none';
+    await origSignIn();
+    if (errEl && errEl.textContent) errEl.style.display = 'block';
+  };
+}
+
+function renderLoading(msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="loading-screen">
+      <div class="spinner"></div>
+      <div>${msg || 'Loading…'}</div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+// SUPABASE DATA LAYER
+// ─────────────────────────────────────────────
+async function loadFromSupabase() {
+  renderLoading('Loading your dashboard…');
+  try {
+    const { data, error } = await sb
+      .from('metrics')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows found, that's OK for first-time users
+      throw error;
+    }
+
+    if (data) {
+      _supabaseRowId = data.id;
+      state = { ...initialState, ...data.data };
+    } else {
+      // First time — start with sample data
+      state = { ...initialState };
+    }
+    applyTheme();
+    _appReady = true;
+    render();
+  } catch (e) {
+    document.getElementById('app').innerHTML = `
+      <div class="loading-screen">
+        <div style="color:var(--red);font-size:15px">⚠ Could not load data</div>
+        <div style="font-size:13px;color:var(--text-3);max-width:360px;text-align:center">${e.message}</div>
+        <button class="btn" onclick="loadFromSupabase()">Retry</button>
+      </div>
+    `;
+  }
+}
+
+async function _doSave() {
+  if (!_currentUser) return;
+  _saveStatus = 'saving';
+  updateSaveIndicator();
+  try {
+    const payload = { data: state };
+    let result;
+    if (_supabaseRowId) {
+      result = await sb.from('metrics').update(payload).eq('id', _supabaseRowId).select().single();
+    } else {
+      result = await sb.from('metrics').insert(payload).select().single();
+    }
+    if (result.error) throw result.error;
+    if (!_supabaseRowId && result.data) _supabaseRowId = result.data.id;
+    _unsaved = false;
+    _saveStatus = 'saved';
+    updateSaveIndicator();
+    flashSaved();
+  } catch (e) {
+    _saveStatus = 'error';
+    updateSaveIndicator();
+    console.error('Save error:', e);
+  }
+}
+
+// ── Persistence ──
+function save() {
+  _unsaved = true;
+  _saveStatus = 'saving';
+  updateSaveIndicator();
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 600);
+}
+
+function updateSaveIndicator() {
+  const dot = document.getElementById('save-dot');
+  const lbl = document.getElementById('save-label');
+  if (!dot) return;
+  if (_saveStatus === 'saved') {
+    dot.style.background = 'var(--green)';
+    if (lbl) lbl.textContent = 'Saved';
+  } else if (_saveStatus === 'saving') {
+    dot.style.background = 'var(--blue)';
+    if (lbl) lbl.textContent = 'Saving…';
+  } else {
+    dot.style.background = 'var(--red)';
+    if (lbl) lbl.textContent = 'Save failed';
+  }
+}
+
+function flashSaved() {
+  const wrap = document.getElementById('save-wrap');
+  if (!wrap) return;
+  wrap.classList.add('visible');
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(() => wrap.classList.remove('visible'), 2200);
+}
+
+function toggleDatasetMenu() {
+  const menu = document.getElementById('dataset-menu');
+  if (!menu) return;
+  const isOpen = menu.style.display === 'block';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    setTimeout(() => {
+      document.addEventListener('click', function _close(e) {
+        if (!menu.contains(e.target)) {
+          menu.style.display = 'none';
+          document.removeEventListener('click', _close);
+        }
+      });
+    }, 0);
+  }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `metrics-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.metrics) throw new Error('Invalid file');
+        state = { ...initialState, ...data };
+        applyTheme();
+        save();
+        render();
+      } catch {
+        alert('Could not read file. Make sure it is a valid Metrics Dashboard export.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function copyDataModal() {
+  const json = JSON.stringify(state, null, 2);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);z-index:999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);border:1px solid var(--border-md);width:min(700px,94vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;animation:slide-up 0.15s ease;">
+      <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;">Export Data</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;line-height:1.4;">Click <strong style="color:var(--text-2)">Copy all</strong>, paste into a text editor, and save as <code style="background:var(--surface-2);padding:1px 5px;border-radius:3px;font-size:11px;">.json</code></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;margin-left:16px;">
+          <button id="cdm-copy-btn" onclick="
+            const ta = document.getElementById('cdm-textarea');
+            ta.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('cdm-copy-btn');
+            btn.textContent = '✓ Copied!';
+            btn.style.background = 'var(--green)';
+            btn.style.borderColor = 'var(--green)';
+            setTimeout(() => { btn.textContent = 'Copy all'; btn.style.background = ''; btn.style.borderColor = ''; }, 2000);
+          " style="font-size:13px;font-weight:600;padding:7px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:var(--text);color:var(--bg);cursor:pointer;transition:background 0.15s;">Copy all</button>
+          <button onclick="this.closest('[style*=fixed]').remove()" style="font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:var(--surface-2);color:var(--text);cursor:pointer;">Close</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+        <div style="background:var(--surface-2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div style="display:flex;gap:5px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57;"></div>
+            <div style="width:10px;height:10px;border-radius:50%;background:#febc2e;"></div>
+            <div style="width:10px;height:10px;border-radius:50%;background:#28c840;"></div>
+          </div>
+          <span style="font-size:11px;color:var(--text-3);font-family:monospace;">metrics-backup.json</span>
+        </div>
+        <div style="position:relative;flex:1;overflow:hidden;">
+          <textarea id="cdm-textarea" style="position:absolute;inset:0;width:100%;height:100%;margin:0;padding:16px 16px 16px 52px;font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:12px;line-height:1.6;background:var(--surface);color:var(--text);border:none;resize:none;outline:none;overflow-y:auto;box-sizing:border-box;" readonly>${json}</textarea>
+          <div style="position:absolute;top:0;left:0;bottom:0;width:36px;background:var(--surface-2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:flex-end;padding:16px 6px 16px 0;box-sizing:border-box;overflow:hidden;pointer-events:none;">
+            ${Array.from({length: Math.min(json.split('\n').length, 200)}, (_, i) =>
+              `<div style="font-size:11px;line-height:1.6;color:var(--text-3);font-family:monospace;">${i+1}</div>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  setTimeout(() => { const ta = document.getElementById('cdm-textarea'); if (ta) ta.select(); }, 50);
+}
+
+// ── Theme ──
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
+}
+
+function toggleTheme() {
+  state.darkMode = !state.darkMode;
+  applyTheme();
+  save();
+  render();
+}
+
+// ── Actions ──
+function setView(v) { state.view = v; save(); render(); }
+function toggleSummarySidebar() { state.summarySidebarVisible = !state.summarySidebarVisible; save(); render(); }
+
+function setActive(id, goDetail) {
+  state.activeMetric = id;
+  if (goDetail) state.view = 'detail';
+  save(); render();
+}
+
+function toggleVisible(id) {
+  state.metrics = state.metrics.map(m => m.id === id ? { ...m, visible: !m.visible } : m);
+  save(); render();
+}
+
+function togglePresentation() {
+  state.presentationMode = !state.presentationMode;
+  save(); render();
+}
+
+function openModal(type, extra) {
+  modalData = extra ? { ...extra } : {};
+  if (type === 'edit-metric') {
+    const m = state.metrics.find(m => m.id === state.activeMetric);
+    if (m) modalData = { name: m.name, color: m.color, fields: JSON.parse(JSON.stringify(m.fields)) };
+  }
+  if (type === 'edit-entry') {
+    const m = state.metrics.find(m => m.id === state.activeMetric);
+    const entry = m?.entries.find(e => e.id === extra.entryId);
+    if (entry) modalData = { entryId: entry.id, period: entry.period, periodStart: entry.periodStart||'', periodEnd: entry.periodEnd||'', values: { ...entry.values }, why: entry.why||'', prediction: entry.prediction||'', proposal: entry.proposal||'' };
+  }
+  if (type === 'add-entry') {
+    const r = rolling30();
+    modalData = { periodStart: r.start, periodEnd: r.end, period: periodFromDates(r.start, r.end), values: {} };
+  }
+  state.modal = type;
+  render();
+}
+
+function closeModal() { state.modal = null; modalData = {}; render(); }
+
+// ── Rocks ──
+function setMetricStatus(metricId, status) {
+  if (!state.metricStatus) state.metricStatus = {};
+  state.metricStatus[metricId] = status;
+  save(); render();
+}
+
+function setMetricRock(metricId, rockId) {
+  if (!state.metricRocks) state.metricRocks = {};
+  state.metricRocks[metricId] = rockId || null;
+  save(); render();
+}
+
+function saveRocks() {
+  const rows = document.querySelectorAll(".rock-row[data-rock-id]");
+  const rocks = [];
+  rows.forEach(row => {
+    const inp = row.querySelector(".rock-edit-input");
+    const name = inp ? inp.value.trim() : "";
+    const id = row.dataset.rockId;
+    if (name) rocks.push({ id, name });
+  });
+  const newRows = document.querySelectorAll(".rock-row[data-new]");
+  newRows.forEach(row => {
+    const inp = row.querySelector(".rock-new-input");
+    const name = inp ? inp.value.trim() : "";
+    if (name) rocks.push({ id: "r" + Date.now() + Math.floor(Math.random()*9999), name });
+  });
+  state.rocks = rocks;
+  if (state.metricRocks) {
+    const valid = new Set(rocks.map(r => r.id));
+    Object.keys(state.metricRocks).forEach(mid => { if (!valid.has(state.metricRocks[mid])) delete state.metricRocks[mid]; });
+  }
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function addRockRow() {
+  const list = document.getElementById("rocks-edit-list");
+  if (!list) return;
+  const div = document.createElement("div");
+  div.className = "rock-row";
+  div.dataset.new = "1";
+  div.innerHTML = `<input class="form-input rock-new-input" style="font-size:13px;padding:6px 10px;flex:1" placeholder="New rock name…"><button class="btn btn-sm btn-danger" style="flex-shrink:0" onclick="this.closest('.rock-row').remove()">×</button>`;
+  list.appendChild(div);
+  div.querySelector("input").focus();
+}
+
+function setEntryIndex(metricId, idx) {
+  if (!state.metricEntryIndex) state.metricEntryIndex = {};
+  state.metricEntryIndex[metricId] = parseInt(idx, 10) || 0;
+  save(); render();
+}
+
+function fmtPeriodShort(entry) {
+  const fmtMonYear = iso => {
+    if (!iso) return null;
+    const d = new Date(iso + 'T12:00:00');
+    if (isNaN(d)) return null;
+    return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  };
+  const endLabel = fmtMonYear(entry.periodEnd);
+  const startLabel = fmtMonYear(entry.periodStart);
+  if (startLabel && endLabel && startLabel !== endLabel) return startLabel + ' – ' + endLabel;
+  if (endLabel) return endLabel;
+  if (startLabel) return startLabel;
+  if (entry.period) {
+    return entry.period
+      .replace(/\b(\d{1,2})\b/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+  return '—';
+}
+
+function addField(type) {
+  if (!modalData.fields) modalData.fields = [];
+  modalData.fields.push({ id: 'f' + (modalData.fields.length + 1), name: '', type, formula: '' });
+  render();
+}
+
+function saveNewMetric() {
+  const name = (document.getElementById('md-name')?.value || '').trim();
+  if (!name) return;
+  const m = { id: 'm'+Date.now(), name, color: modalData.color || COLORS[0], visible: true, fields: (modalData.fields||[]).filter(f=>f.name.trim()), entries: [] };
+  state.metrics.push(m);
+  state.activeMetric = m.id;
+  state.view = 'detail';
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function saveEditMetric() {
+  const name = (document.getElementById('md-name')?.value || '').trim();
+  if (!name) return;
+  state.metrics = state.metrics.map(m => m.id === state.activeMetric
+    ? { ...m, name, color: modalData.color || m.color, fields: (modalData.fields||[]).filter(f=>f.name.trim()) }
+    : m
+  );
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function deleteMetric(id) {
+  if (!confirm('Delete this metric and all its entries?')) return;
+  state.metrics = state.metrics.filter(m => m.id !== id);
+  state.activeMetric = state.metrics[0]?.id || null;
+  state.view = 'summary';
+  state.modal = null;
+  save(); render();
+}
+
+function collectEntryData(metricId) {
+  const pStart = document.getElementById('e-start')?.value || modalData.periodStart || '';
+  const pEnd = document.getElementById('e-end')?.value || modalData.periodEnd || '';
+  const label = (document.getElementById('e-period')?.value || '').trim() || periodFromDates(pStart, pEnd);
+  if (!label) return null;
+  const metric = state.metrics.find(m => m.id === metricId);
+  if (!metric) return null;
+  const values = {};
+  metric.fields.filter(f => f.type === 'input').forEach(f => {
+    const el = document.getElementById('ev-' + f.id);
+    values[f.id] = el ? parseFloat(el.value) || 0 : 0;
+  });
+  const why = document.getElementById('e-why')?.value || '';
+  const prediction = document.getElementById('e-prediction')?.value || '';
+  const proposal = document.getElementById('e-proposal')?.value || '';
+  return { period: label, periodStart: pStart, periodEnd: pEnd, values, why, prediction, proposal };
+}
+
+// ── Task actions ──
+function addTask(metricId) {
+  const inp = document.getElementById('task-add-input-' + metricId);
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  const m = state.metrics.find(m => m.id === metricId);
+  if (!m) return;
+  if (!m.tasks) m.tasks = [];
+  m.tasks.push({ id: 't' + Date.now(), name, status: 'not-started' });
+  state.metrics = state.metrics.map(mx => mx.id === metricId ? m : mx);
+  inp.value = '';
+  save(); render();
+}
+
+function setTaskStatus(metricId, taskId, status) {
+  state.metrics = state.metrics.map(m => {
+    if (m.id !== metricId) return m;
+    return { ...m, tasks: (m.tasks||[]).map(t => {
+      if (t.id !== taskId) return t;
+      const completedDate = status === 'complete'
+        ? (t.completedDate || new Date().toISOString().slice(0, 10))
+        : (status !== 'complete' ? '' : t.completedDate);
+      return { ...t, status, completedDate };
+    })};
+  });
+  save(); render();
+}
+
+function setTaskCompletedDate(metricId, taskId, date) {
+  state.metrics = state.metrics.map(m => {
+    if (m.id !== metricId) return m;
+    return { ...m, tasks: (m.tasks||[]).map(t => t.id === taskId ? { ...t, completedDate: date } : t) };
+  });
+  save();
+}
+
+function deleteTask(metricId, taskId) {
+  const btn = document.querySelector(`[data-delete-task="${taskId}"]`);
+  if (btn && !btn.dataset.confirmed) {
+    btn.dataset.confirmed = '1';
+    btn.textContent = '?';
+    btn.style.color = 'var(--red)';
+    setTimeout(() => { if (btn) { delete btn.dataset.confirmed; btn.textContent = '×'; btn.style.color = ''; } }, 2000);
+    return;
+  }
+  state.metrics = state.metrics.map(m => m.id !== metricId ? m : { ...m, tasks: (m.tasks||[]).filter(t => t.id !== taskId) });
+  save(); render();
+}
+
+let _editingTaskId = null;
+
+function editTask(taskId) {
+  _editingTaskId = taskId;
+  render();
+  const inp = document.getElementById('task-edit-' + taskId);
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function saveTaskEdit(metricId, taskId) {
+  const inp = document.getElementById('task-edit-' + taskId);
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (name) {
+    state.metrics = state.metrics.map(m => m.id !== metricId ? m : {
+      ...m, tasks: (m.tasks||[]).map(t => t.id === taskId ? { ...t, name } : t)
+    });
+    save();
+  }
+  _editingTaskId = null;
+  render();
+}
+
+function cancelTaskEdit() {
+  _editingTaskId = null;
+  render();
+}
+
+function initTaskDrag(metricId) {
+  const rows = document.querySelectorAll('.task-row[data-task-id]');
+  let dragSrc = null;
+  rows.forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragSrc = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.task-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragSrc && row !== dragSrc) {
+        document.querySelectorAll('.task-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+        row.classList.add('drag-over');
+      }
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === row) return;
+      const m = state.metrics.find(m => m.id === metricId);
+      if (!m) return;
+      const tasks = [...(m.tasks||[])];
+      const fromId = dragSrc.dataset.taskId;
+      const toId = row.dataset.taskId;
+      const fromIdx = tasks.findIndex(t => t.id === fromId);
+      const toIdx = tasks.findIndex(t => t.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = tasks.splice(fromIdx, 1);
+      tasks.splice(toIdx, 0, moved);
+      state.metrics = state.metrics.map(mx => mx.id === metricId ? { ...mx, tasks } : mx);
+      const contentEl = document.querySelector('.content');
+      const scrollTop = contentEl ? contentEl.scrollTop : 0;
+      save(); render();
+      requestAnimationFrame(() => {
+        const el = document.querySelector('.content');
+        if (el) el.scrollTop = scrollTop;
+      });
+    });
+  });
+}
+
+function initEntryDrag(metricId) {
+  const rows = document.querySelectorAll('tr.entry-row[data-entry-id]');
+  let dragSrc = null;
+  rows.forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragSrc = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('tr.entry-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragSrc && row !== dragSrc) {
+        document.querySelectorAll('tr.entry-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+        row.classList.add('drag-over');
+      }
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === row) return;
+      const m = state.metrics.find(m => m.id === metricId);
+      if (!m) return;
+      const entries = [...(m.entries||[])];
+      const fromId = dragSrc.dataset.entryId;
+      const toId = row.dataset.entryId;
+      const fromIdx = entries.findIndex(en => en.id === fromId);
+      const toIdx = entries.findIndex(en => en.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = entries.splice(fromIdx, 1);
+      entries.splice(toIdx, 0, moved);
+      state.metrics = state.metrics.map(mx => mx.id === metricId ? { ...mx, entries } : mx);
+      const contentEl = document.querySelector('.content');
+      const scrollTop = contentEl ? contentEl.scrollTop : 0;
+      save(); render();
+      requestAnimationFrame(() => {
+        const el = document.querySelector('.content');
+        if (el) el.scrollTop = scrollTop;
+      });
+    });
+  });
+}
+
+function saveTaskNarrative(metricId) {
+  const why = document.getElementById('tn-why')?.value || '';
+  const prediction = document.getElementById('tn-prediction')?.value || '';
+  const proposal = document.getElementById('tn-proposal')?.value || '';
+  state.metrics = state.metrics.map(m => m.id !== metricId ? m : { ...m, why, prediction, proposal });
+  save();
+  const editPanel = document.getElementById('task-narrative-edit');
+  const readPanel = document.getElementById('task-narrative-read');
+  if (editPanel) editPanel.style.display = 'none';
+  if (readPanel) {
+    readPanel.style.display = 'block';
+    const m = state.metrics.find(m => m.id === metricId);
+    readPanel.innerHTML = renderTaskNarrativeRead(m);
+  }
+}
+
+function renderTaskNarrativeRead(m) {
+  const row = (icon, label, text) => text
+    ? `<div class="narrative-section">
+        <div class="narrative-label">${icon} ${label}</div>
+        <div class="narrative-text">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+       </div>`
+    : `<div class="narrative-section">
+        <div class="narrative-label">${icon} ${label}</div>
+        <div class="narrative-empty">Not yet entered — click Edit to add.</div>
+       </div>`;
+  return row('📊','Why it matters', m.why||'') +
+         row('🔮','Prediction', m.prediction||'') +
+         row('🎯','Proposal', m.proposal||'');
+}
+
+function taskStats(m) {
+  const tasks = m.tasks || [];
+  const total = tasks.length;
+  const complete = tasks.filter(t => t.status === 'complete').length;
+  const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+  const notStarted = tasks.filter(t => t.status === 'not-started').length;
+  const pct = total > 0 ? Math.round((complete / total) * 100) : 0;
+  return { total, complete, inProgress, notStarted, pct };
+}
+
+function moveMetric(metricId, delta) {
+  const metrics = [...state.metrics];
+  const idx = metrics.findIndex(m => m.id === metricId);
+  if (idx < 0) return;
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= metrics.length) return;
+  const tmp = metrics[idx];
+  metrics[idx] = metrics[newIdx];
+  metrics[newIdx] = tmp;
+  state.metrics = metrics;
+  save(); render();
+}
+
+function moveEntry(metricId, entryId, delta) {
+  const m = state.metrics.find(m => m.id === metricId);
+  if (!m) return;
+  const entries = [...m.entries];
+  const idx = entries.findIndex(e => e.id === entryId);
+  if (idx < 0) return;
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= entries.length) return;
+  const tmp = entries[idx];
+  entries[idx] = entries[newIdx];
+  entries[newIdx] = tmp;
+  state.metrics = state.metrics.map(m => m.id === metricId ? { ...m, entries } : m);
+  save(); render();
+}
+
+function saveEntry(metricId) {
+  const data = collectEntryData(metricId);
+  if (!data) return;
+  const entry = { id: 'e'+Date.now(), ...data };
+  state.metrics = state.metrics.map(m => m.id === metricId ? { ...m, entries: [entry, ...m.entries] } : m);
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function saveEditEntry(metricId, entryId) {
+  const data = collectEntryData(metricId);
+  if (!data) return;
+  state.metrics = state.metrics.map(m => {
+    if (m.id !== metricId) return m;
+    return { ...m, entries: m.entries.map(e => e.id === entryId ? { ...e, ...data } : e) };
+  });
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function deleteEntry(metricId, entryId) {
+  const btn = document.querySelector(`[data-delete-entry="${entryId}"]`);
+  if (btn && !btn.dataset.confirmed) {
+    btn.dataset.confirmed = '1';
+    btn.textContent = 'Sure?';
+    btn.style.background = 'var(--red)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--red)';
+    setTimeout(() => {
+      if (btn) { delete btn.dataset.confirmed; btn.textContent = 'Remove'; btn.style.cssText = ''; }
+    }, 2500);
+    return;
+  }
+  state.metrics = state.metrics.map(m => m.id === metricId
+    ? { ...m, entries: m.entries.filter(e => e.id !== entryId) }
+    : m
+  );
+  save(); render();
+}
+
+function deleteEntryModal(metricId, entryId) {
+  state.metrics = state.metrics.map(m => m.id === metricId
+    ? { ...m, entries: m.entries.filter(e => e.id !== entryId) }
+    : m
+  );
+  state.modal = null; modalData = {};
+  save(); render();
+}
+
+function updatePeriodLabel() {
+  const s = document.getElementById('e-start')?.value || '';
+  const e = document.getElementById('e-end')?.value || '';
+  const lbl = periodFromDates(s, e);
+  const el = document.getElementById('e-period');
+  if (el && lbl) el.value = lbl;
+  modalData.periodStart = s; modalData.periodEnd = e; modalData.period = lbl;
+}
+
+function clearEntryDates() {
+  const s = document.getElementById('e-start');
+  const e = document.getElementById('e-end');
+  if (s) s.value = '';
+  if (e) e.value = '';
+  modalData.periodStart = ''; modalData.periodEnd = '';
+}
+
+function setRolling30() {
+  const r = rolling30();
+  const s = document.getElementById('e-start');
+  const e = document.getElementById('e-end');
+  if (s) s.value = r.start;
+  if (e) e.value = r.end;
+  updatePeriodLabel();
+}
+
+// ── Render ──
+function render() {
+  if (!_appReady) return;
+  const app = document.getElementById('app');
+  const { metrics, activeMetric, view, modal, presentationMode, darkMode } = state;
+  const selectedMetric = metrics.find(m => m.id === activeMetric);
+
+  if (presentationMode) {
+    app.style.display = 'block';
+    app.style.minHeight = '';
+    app.innerHTML = renderPresentation(metrics.filter(m => m.visible));
+    return;
+  }
+  app.style.display = '';
+  app.style.minHeight = '';
+
+  app.innerHTML = `
+    <div class="app">
+      <div class="topbar">
+        <div class="topbar-left">
+          <a href="/" style="font-size:12px;color:var(--text-3);text-decoration:none;white-space:nowrap;transition:color 0.1s;margin-right:2px" onmouseover="this.style.color='var(--text-2)'" onmouseout="this.style.color='var(--text-3)'">← Home</a>
+          <div>
+            <div class="brand-name">Metrics <span>Dashboard</span></div>
+            ${view === 'summary' ? `
+              <button class="sidebar-toggle-btn" onclick="toggleSummarySidebar()">
+                ${state.summarySidebarVisible ? '‹ Hide sidebar' : '› Show sidebar'}
+              </button>
+            ` : ''}
+          </div>
+          <div id="save-wrap" class="save-wrap">
+            <div id="save-dot" class="save-dot"></div>
+            <span id="save-label" class="save-label">Saved</span>
+          </div>
+        </div>
+        <div class="view-tabs">
+          ${['summary','detail'].map(v =>
+            `<button class="view-tab ${view===v?'active':''}" onclick="setView('${v}')">${v==='summary'?'Summary':'Detail'}</button>`
+          ).join('')}
+        </div>
+        <div class="topbar-right">
+          <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+            <div class="theme-track ${darkMode?'on':''}"><div class="theme-thumb"></div></div>
+            <span>${darkMode ? '🌙 Dark' : '☀️ Light'}</span>
+          </div>
+          <button class="btn" onclick="openModal('manage-rocks')">🪨 Rocks</button>
+          <button class="btn" onclick="openModal('new-metric')">+ New metric</button>
+          <div class="dropdown-wrap">
+            <button class="btn" onclick="toggleDatasetMenu()">Data Set ▾</button>
+            <div id="dataset-menu" class="dropdown-menu" style="display:none">
+              <button class="dropdown-item" onclick="exportData();document.getElementById('dataset-menu').style.display='none'">
+                <span class="dropdown-item-icon">⬇</span> Export (download)
+              </button>
+              <button class="dropdown-item" onclick="importData();document.getElementById('dataset-menu').style.display='none'">
+                <span class="dropdown-item-icon">⬆</span> Import
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" onclick="copyDataModal();document.getElementById('dataset-menu').style.display='none'">
+                <span class="dropdown-item-icon">📋</span> Copy data
+              </button>
+            </div>
+          </div>
+          <button class="btn" onclick="signOut()" title="Sign out">Sign out</button>
+          <button class="btn btn-primary" onclick="togglePresentation()">Present ↗</button>
+        </div>
+      </div>
+      <div class="main">
+        ${view === 'detail' || state.summarySidebarVisible ? renderSidebar(metrics, activeMetric) : ''}
+        <div class="${view === 'detail' || state.summarySidebarVisible ? 'sidebar-main' : ''}" style="${view === 'summary' && !state.summarySidebarVisible ? 'flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;' : ''}">
+          <div class="content">
+            ${view === 'summary' ? renderSummary(metrics) : renderDetail(selectedMetric)}
+          </div>
+        </div>
+      </div>
+      ${modal ? renderModal(modal, selectedMetric) : ''}
+    </div>
+  `;
+  setTimeout(initSidebarResize, 0);
+  const _activeM = state.metrics.find(m => m.id === state.activeMetric);
+  if (_activeM && _activeM.type === 'task') {
+    setTimeout(() => initTaskDrag(_activeM.id), 0);
+  } else if (_activeM && state.view === 'detail') {
+    setTimeout(() => initEntryDrag(_activeM.id), 0);
+  }
+}
+
+function renderSidebar(metrics, activeMetric) {
+  return `
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-resize-handle" id="sidebar-resize"></div>
+      <div class="sidebar-inner">
+        <div class="sidebar-label">Metrics</div>
+        ${metrics.map((m, mIdx) => {
+          const mStatus = (state.metricStatus && state.metricStatus[m.id]) || 'ongoing';
+          return `
+          <div class="metric-item ${m.id===activeMetric?'active':''}" style="--item-color:${m.color}"
+               onclick="setActive('${m.id}', true)">
+            <div class="m-reorder" onclick="event.stopPropagation()">
+              <button class="reorder-btn" ${mIdx===0?'disabled':''} onclick="moveMetric('${m.id}',-1)" title="Move up">▲</button>
+              <button class="reorder-btn" ${mIdx===metrics.length-1?'disabled':''} onclick="moveMetric('${m.id}',1)" title="Move down">▼</button>
+            </div>
+            <div class="m-dot" style="background:${m.color}"></div>
+            <div class="m-body">
+              <span class="m-name">${m.name}</span>
+              <select class="metric-status-select ${mStatus}"
+                      onclick="event.stopPropagation()"
+                      onchange="event.stopPropagation();setMetricStatus('${m.id}',this.value)">
+                <option value="ongoing"     ${mStatus==='ongoing'?'selected':''}>Ongoing</option>
+                <option value="in-progress" ${mStatus==='in-progress'?'selected':''}>In Progress</option>
+                <option value="on-hold"     ${mStatus==='on-hold'?'selected':''}>On Hold</option>
+                <option value="complete"    ${mStatus==='complete'?'selected':''}>Complete</option>
+              </select>
+            </div>
+            <button class="toggle ${m.visible?'on':'off'}"
+                    title="${m.visible?'Shown in presentation':'Hidden'}"
+                    onclick="event.stopPropagation();toggleVisible('${m.id}')"></button>
+          </div>
+        `}).join('')}
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-hint">Toggle = visible in presentation</div>
+        <div class="sidebar-footer-btns">
+          <button class="btn btn-sm" style="flex:1;justify-content:center" onclick="openModal('new-metric')">+ Add</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSummary(metrics) {
+  const visible = metrics.filter(m => m.visible);
+  const hiddenCount = metrics.filter(m => !m.visible).length;
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">Executive Summary</div>
+        <div class="page-subtitle">${visible.length} active metric${visible.length!==1?'s':''}${hiddenCount?' · '+hiddenCount+' hidden':''}</div>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-sm" onclick="togglePresentation()">Present ↗</button>
+      </div>
+    </div>
+    ${visible.map(m => renderMetricPanel(m)).join('')}
+    ${visible.length===0 ? `
+      <div class="empty-state">
+        <div class="empty-icon">◎</div>
+        <div class="empty-text">No metrics are visible</div>
+        <div class="empty-hint">Toggle metrics on in the sidebar</div>
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderMetricPanel(m) {
+  if (m.type === 'task') return renderTaskMetricPanel(m);
+
+  const idx = (state.metricEntryIndex && state.metricEntryIndex[m.id]) || 0;
+  const entry = m.entries[idx] || null;
+  const prevEntry = m.entries[idx + 1] || null;
+  const rocks = state.rocks || [];
+  const selectedRock = (state.metricRocks && state.metricRocks[m.id]) || '';
+  const isSupport = m.id === 'm1' || m.name === 'Support Tickets';
+
+  const rockOptions = `<option value="">— No rock assigned —</option>` +
+    rocks.map(r => `<option value="${r.id}" ${selectedRock===r.id?'selected':''}>${r.name}</option>`).join('');
+
+  const periodOptions = m.entries.map((e, i) =>
+    `<option value="${i}" ${i === idx ? 'selected' : ''}>${fmtPeriodShort(e)}</option>`
+  ).join('');
+  const dateToggle = m.entries.length > 1
+    ? `<select class="period-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEntryIndex('${m.id}',this.value)">${periodOptions}</select>`
+    : (entry ? `<span class="period-tag">${fmtPeriodShort(entry)}</span>` : '');
+
+  const isOnboarding = m.id === 'm2' || m.name === 'Onboarding Videos';
+  const chartHtml = (isSupport && m.entries.length > 0)
+    ? renderSupportChart(m)
+    : (isOnboarding && m.entries.length > 0)
+      ? renderSupportChart(m, { maxPoints: 3, fieldIds: ['f1'] })
+      : '';
+
+  return `
+    <div class="metric-panel" onclick="setActive('${m.id}', true)">
+      <div class="metric-panel-stripe" style="background:${m.color}"></div>
+      <div class="metric-panel-header">
+        <div class="metric-panel-title">
+          <div class="m-dot" style="background:${m.color};width:10px;height:10px"></div>
+          ${m.name}
+          ${(()=>{ const mSt=(state.metricStatus&&state.metricStatus[m.id])||'ongoing'; return `<select class="metric-status-select ${mSt}" onclick="event.stopPropagation()" onchange="event.stopPropagation();setMetricStatus('${m.id}',this.value)"><option value="ongoing" ${mSt==='ongoing'?'selected':''}>Ongoing</option><option value="in-progress" ${mSt==='in-progress'?'selected':''}>In Progress</option><option value="on-hold" ${mSt==='on-hold'?'selected':''}>On Hold</option><option value="complete" ${mSt==='complete'?'selected':''}>Complete</option></select>`; })()}
+        </div>
+        <div class="metric-panel-meta">
+          ${dateToggle}
+          <span style="font-size:12px;color:var(--text-3)">${m.entries.length} entr${m.entries.length===1?'y':'ies'}</span>
+        </div>
+      </div>
+      <div class="metric-panel-rock" onclick="event.stopPropagation()">
+        <span class="rock-label">🪨 Rock</span>
+        <select class="rock-select" onchange="setMetricRock('${m.id}', this.value)">${rockOptions}</select>
+      </div>
+      <div class="metric-panel-body">
+        ${entry ? `
+          <div class="stat-grid">
+            ${m.fields.map(f => renderStatCard(f, entry, prevEntry, m.color)).join('')}
+          </div>
+        ` : `<div style="font-size:13px;color:var(--text-3);padding:4px 0">No entries yet — click to add one.</div>`}
+      </div>
+      ${chartHtml}
+      ${entry ? renderNarrativeBlock(entry) : ''}
+    </div>
+  `;
+}
+
+function renderSupportChart(m, opts) {
+  opts = opts || {};
+  let sorted = [...m.entries].reverse();
+  if (opts.maxPoints) sorted = sorted.slice(-opts.maxPoints);
+
+  const inputFields = opts.fieldIds
+    ? m.fields.filter(f => opts.fieldIds.includes(f.id))
+    : m.fields.filter(f => f.type === 'input').slice(0, 3);
+  if (!inputFields.length || !sorted.length) return '';
+
+  const CHART_COLORS = [m.color, '#4caf73', '#d4893a', '#d46a8a'];
+  const W = 560, H = 160;
+  const PAD = { t: 10, r: 12, b: 28, l: 34 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+  const n = sorted.length;
+
+  const xOf = i => n === 1 ? PAD.l + innerW / 2 : PAD.l + (i / (n - 1)) * innerW;
+
+  let allVals = [];
+  sorted.forEach(e => inputFields.forEach(f => {
+    const v = parseFloat(e.values[f.id]);
+    if (!isNaN(v)) allVals.push(v);
+  }));
+  const maxVal = Math.max(...allVals, 1);
+  const yOf = val => PAD.t + innerH - (val / maxVal) * innerH;
+
+  const niceMax = (() => {
+    if (maxVal <= 0) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(maxVal)));
+    return Math.ceil(maxVal / mag) * mag;
+  })();
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
+    v: Math.round(pct * niceMax),
+    y: PAD.t + innerH - pct * innerH
+  }));
+  const gridLines = yTicks.map(t =>
+    `<line x1="${PAD.l}" y1="${t.y.toFixed(1)}" x2="${W - PAD.r}" y2="${t.y.toFixed(1)}" stroke="var(--border)" stroke-width="1"/>
+     <text x="${PAD.l - 5}" y="${(t.y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-3)">${t.v}</text>`
+  ).join('');
+
+  const fmtLabel = e => {
+    if (!e.period) return '';
+    const seg = e.period.split(/\s*[\u2013\-]\s*/)[0].trim();
+    return seg.length <= 10 ? seg : seg.slice(0, 9) + '…';
+  };
+  let xLabelIdxs = n <= 4 ? sorted.map((_, i) => i) : [0, Math.round((n-1)/3), Math.round(2*(n-1)/3), n-1];
+  xLabelIdxs = [...new Set(xLabelIdxs)];
+  const xLabels = xLabelIdxs.map(i => {
+    const x = xOf(i);
+    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+    return `<text x="${x.toFixed(1)}" y="${H - 6}" text-anchor="${anchor}" font-size="9" fill="var(--text-3)">${fmtLabel(sorted[i])}</text>`;
+  }).join('');
+
+  const seriesHtml = inputFields.map((f, fi) => {
+    const color = CHART_COLORS[fi % CHART_COLORS.length];
+    const pts = sorted.map((e, i) => {
+      const v = parseFloat(e.values[f.id]);
+      if (isNaN(v)) return null;
+      return { x: xOf(i), y: yOf(v) };
+    }).filter(Boolean);
+    if (!pts.length) return '';
+
+    const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+    let areaHtml = '';
+    if (fi === 0 && pts.length > 1) {
+      const baseline = PAD.t + innerH;
+      const areaPath = `M${pts[0].x.toFixed(1)},${baseline} ` +
+        pts.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
+        ` L${pts[pts.length-1].x.toFixed(1)},${baseline} Z`;
+      areaHtml = `<defs><linearGradient id="cg${fi}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="${areaPath}" fill="url(#cg${fi})"/>`;
+    }
+
+    const dots = pts.map(p =>
+      `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="1.5"/>`
+    ).join('');
+
+    return `${areaHtml}
+      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}`;
+  }).join('');
+
+  const legend = inputFields.map((f, fi) => `
+    <div class="chart-legend-item">
+      <div class="legend-dot" style="background:${CHART_COLORS[fi % CHART_COLORS.length]}"></div>
+      ${f.name}
+    </div>
+  `).join('');
+
+  return `
+    <div class="metric-chart-wrap" onclick="event.stopPropagation()">
+      <div class="chart-header">
+        <span class="chart-title">${opts.maxPoints ? "Last " + sorted.length + " Entries" : "Trend"} — oldest → newest</span>
+        <div class="chart-legend">${legend}</div>
+      </div>
+      <div class="chart-svg-wrap">
+        <svg class="metric-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin meet">
+          ${gridLines}
+          ${seriesHtml}
+          ${xLabels}
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskMetricPanel(m) {
+  const { total, complete, inProgress, notStarted, pct } = taskStats(m);
+  const rocks = state.rocks || [];
+  const selectedRock = (state.metricRocks && state.metricRocks[m.id]) || '';
+  const rockOptions = `<option value="">— No rock assigned —</option>` +
+    rocks.map(r => `<option value="${r.id}" ${selectedRock===r.id?'selected':''}>${r.name}</option>`).join('');
+  const fillColor = pct === 100 ? 'var(--green)' : m.color;
+
+  const chartHtml = renderTaskChart(m);
+  return `
+    <div class="metric-panel" onclick="setActive('${m.id}',true)">
+      <div class="metric-panel-stripe" style="background:${m.color}"></div>
+      <div class="metric-panel-header">
+        <div class="metric-panel-title">
+          <div class="m-dot" style="background:${m.color};width:10px;height:10px"></div>
+          ${m.name}
+          ${(()=>{ const mSt=(state.metricStatus&&state.metricStatus[m.id])||'ongoing'; return `<select class="metric-status-select ${mSt}" onclick="event.stopPropagation()" onchange="event.stopPropagation();setMetricStatus('${m.id}',this.value)"><option value="ongoing" ${mSt==='ongoing'?'selected':''}>Ongoing</option><option value="in-progress" ${mSt==='in-progress'?'selected':''}>In Progress</option><option value="on-hold" ${mSt==='on-hold'?'selected':''}>On Hold</option><option value="complete" ${mSt==='complete'?'selected':''}>Complete</option></select>`; })()}
+        </div>
+        <div class="metric-panel-meta">
+          <span style="font-size:12px;color:var(--text-3)">${total} task${total!==1?'s':''}</span>
+        </div>
+      </div>
+      <div class="metric-panel-rock" onclick="event.stopPropagation()">
+        <span class="rock-label">🪨 Rock</span>
+        <select class="rock-select" onchange="setMetricRock('${m.id}',this.value)">${rockOptions}</select>
+      </div>
+      <div class="metric-panel-body">
+        <div class="task-stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Not Started</div>
+            <div class="stat-value" style="color:var(--text-3)">${notStarted}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">In Progress</div>
+            <div class="stat-value" style="color:var(--blue)">${inProgress}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Complete</div>
+            <div class="stat-value" style="color:var(--green)">${complete}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Tasks</div>
+            <div class="stat-value" style="color:${m.color}">${total}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">% Complete</div>
+            <div class="stat-value" style="color:${fillColor}">${pct}%</div>
+            <div class="stat-progress"><div class="stat-progress-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+          </div>
+        </div>
+      </div>
+      ${chartHtml}
+      ${(m.why || m.prediction || m.proposal) ? renderNarrativeBlock({ why: m.why, prediction: m.prediction, proposal: m.proposal }).replace(/class="narrative-block"/,'class="narrative-block" style="margin:0 20px 16px"') : ''}
+    </div>
+  `;
+}
+
+function renderTaskDetail(metric) {
+  const { total, complete, inProgress, notStarted, pct } = taskStats(metric);
+  const tasks = metric.tasks || [];
+  const fillColor = pct === 100 ? 'var(--green)' : metric.color;
+
+  return `
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${metric.color};flex-shrink:0;margin-top:4px"></div>
+        <div>
+          <div class="page-title">${metric.name}</div>
+          <div class="page-subtitle">${total} task${total!==1?'s':''} · ${pct}% complete</div>
+        </div>
+      </div>
+      <div class="page-header-right">
+        <button class="btn" onclick="openModal('edit-metric')">Edit metric</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-header"><span class="panel-title">Progress</span></div>
+      <div class="metric-panel-body">
+        <div class="task-stat-grid">
+          <div class="stat-card"><div class="stat-label">Not Started</div><div class="stat-value" style="color:var(--text-3)">${notStarted}</div></div>
+          <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:var(--blue)">${inProgress}</div></div>
+          <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--green)">${complete}</div></div>
+          <div class="stat-card"><div class="stat-label">Total Tasks</div><div class="stat-value" style="color:${metric.color}">${total}</div></div>
+          <div class="stat-card"><div class="stat-label">% Complete</div><div class="stat-value" style="color:${fillColor}">${pct}%</div><div class="stat-progress"><div class="stat-progress-fill" style="width:${pct}%;background:${fillColor}"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    ${renderTaskChart(metric)}
+
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-header" style="justify-content:space-between">
+        <span class="panel-title">Context &amp; Outlook</span>
+        <button class="btn btn-sm" onclick="
+          document.getElementById('task-narrative-read').style.display='none';
+          document.getElementById('task-narrative-edit').style.display='block';
+          document.getElementById('tn-why').focus();
+        ">Edit</button>
+      </div>
+      <div class="metric-panel-body">
+        <div id="task-narrative-read">
+          ${renderTaskNarrativeRead(metric)}
+        </div>
+        <div id="task-narrative-edit" style="display:none">
+          <div class="form-group">
+            <label class="form-label">📊 Why it matters</label>
+            <textarea class="form-input narrative-textarea" id="tn-why" placeholder="What does this metric mean?">${(metric.why||'').replace(/</g,'&lt;')}</textarea>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">🔮 Prediction</label>
+            <textarea class="form-input narrative-textarea" id="tn-prediction" placeholder="What do you expect to happen next?">${(metric.prediction||'').replace(/</g,'&lt;')}</textarea>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <label class="form-label">🎯 Proposal</label>
+            <textarea class="form-input narrative-textarea" id="tn-proposal" placeholder="What are you going to do about it?">${(metric.proposal||'').replace(/</g,'&lt;')}</textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn btn-primary btn-sm" onclick="saveTaskNarrative('${metric.id}')">Save</button>
+            <button class="btn btn-sm" onclick="
+              document.getElementById('task-narrative-edit').style.display='none';
+              document.getElementById('task-narrative-read').style.display='block';
+            ">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Tasks</span>
+      </div>
+      <div class="task-list">
+        ${tasks.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-icon">✅</div>
+            <div class="empty-text">No tasks yet</div>
+            <div class="empty-hint">Add your first task below</div>
+          </div>
+        ` : tasks.map(t => {
+          const isEditing = _editingTaskId === t.id;
+          return `
+          <div class="task-row" data-task-id="${t.id}" draggable="true">
+            <span class="task-drag-handle" title="Drag to reorder">⠿</span>
+            ${isEditing ? `
+              <input class="task-edit-input" id="task-edit-${t.id}" value="${t.name.replace(/"/g,'&quot;')}"
+                     onkeydown="if(event.key==='Enter')saveTaskEdit('${metric.id}','${t.id}');if(event.key==='Escape')cancelTaskEdit()">
+              <button class="task-edit-btn save" onclick="saveTaskEdit('${metric.id}','${t.id}')">Save</button>
+              <button class="task-edit-btn cancel" onclick="cancelTaskEdit()">Cancel</button>
+            ` : `
+              <span class="task-name ${t.status==='complete'?'done':''}">${t.name}</span>
+              <button class="task-edit-btn" onclick="event.stopPropagation();editTask('${t.id}')" title="Edit task">✎</button>
+              ${t.status === 'complete' ? `
+                <div class="date-input-wrap" style="flex-shrink:0;width:130px" onclick="event.stopPropagation()">
+                  <input type="date" class="form-input" style="font-size:11px;padding:3px 28px 3px 7px;height:auto"
+                    value="${t.completedDate||''}"
+                    title="Date completed"
+                    onchange="event.stopPropagation();setTaskCompletedDate('${metric.id}','${t.id}',this.value)">
+                  <span class="date-cal-btn" style="font-size:12px">📅</span>
+                </div>
+              ` : ''}
+              <select class="task-status-select ${t.status}"
+                onclick="event.stopPropagation()"
+                onchange="event.stopPropagation();setTaskStatus('${metric.id}','${t.id}',this.value)">
+                <option value="not-started" ${t.status==='not-started'?'selected':''}>Not Started</option>
+                <option value="in-progress" ${t.status==='in-progress'?'selected':''}>In Progress</option>
+                <option value="complete" ${t.status==='complete'?'selected':''}>Complete</option>
+              </select>
+              <button class="task-del-btn" data-delete-task="${t.id}" onclick="event.stopPropagation();deleteTask('${metric.id}','${t.id}')">×</button>
+            `}
+          </div>
+        `}).join('')}
+      </div>
+      <div class="task-add-row" onclick="event.stopPropagation()">
+        <input class="task-add-input" id="task-add-input-${metric.id}" placeholder="Add a task…"
+               onkeydown="if(event.key==='Enter')addTask('${metric.id}')">
+        <button class="btn btn-sm btn-primary" onclick="addTask('${metric.id}')">+ Add</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskChart(m) {
+  const allTasks = m.tasks || [];
+  const total = allTasks.length;
+  const completedWithDate = allTasks.filter(t => t.status === 'complete' && t.completedDate);
+  if (!completedWithDate.length) return '';
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 0);
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - 90);
+
+  const priorCount = completedWithDate.filter(t => new Date(t.completedDate + 'T12:00:00') < cutoff).length;
+
+  const monday = d => {
+    const dt = new Date(d + 'T12:00:00');
+    const m = new Date(dt);
+    m.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+    m.setHours(0, 0, 0, 0);
+    return m;
+  };
+
+  const buckets = {};
+  completedWithDate.forEach(t => {
+    const dt = new Date(t.completedDate + 'T12:00:00');
+    if (dt < cutoff || dt > today) return;
+    const k = monday(t.completedDate).toISOString().slice(0, 10);
+    buckets[k] = (buckets[k] || 0) + 1;
+  });
+
+  const weeks = [];
+  const cur = monday(cutoff.toISOString().slice(0, 10));
+  while (cur <= today) {
+    const k = cur.toISOString().slice(0, 10);
+    weeks.push({ key: k, date: new Date(cur), newThisWeek: buckets[k] || 0 });
+    cur.setDate(cur.getDate() + 7);
+  }
+  if (!weeks.length) return '';
+
+  let running = priorCount;
+  weeks.forEach(w => { running += w.newThisWeek; w.cumulative = running; });
+
+  const W = 560, H = 160;
+  const PAD = { t: 10, r: 12, b: 28, l: 34 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+  const n = weeks.length;
+
+  const yMax = Math.max(total, running, 1);
+  const xOf = i => n === 1 ? PAD.l + innerW / 2 : PAD.l + (i / (n - 1)) * innerW;
+  const yOf = v => PAD.t + innerH - (v / yMax) * innerH;
+
+  const tickVals = [...new Set([0, Math.round(yMax / 2), yMax])];
+  const gridLines = tickVals.map(v => {
+    const y = yOf(v);
+    return `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${W - PAD.r}" y2="${y.toFixed(1)}"
+              stroke="var(--border)" stroke-width="${v === yMax ? '1.5' : '1'}" stroke-dasharray="${v === yMax ? '3,3' : ''}"/>
+            <text x="${PAD.l - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-3)">${v}</text>`;
+  }).join('');
+
+  const fmtMon = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const labelIdxs = [...new Set(n <= 4 ? weeks.map((_, i) => i) : [0, Math.round(n/3), Math.round(2*n/3), n-1])];
+  const xLabels = labelIdxs.map(i => {
+    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+    return `<text x="${xOf(i).toFixed(1)}" y="${H - 6}" text-anchor="${anchor}" font-size="9" fill="var(--text-3)">${fmtMon(weeks[i].date)}</text>`;
+  }).join('');
+
+  const plotPts = weeks.map((w, i) => ({ x: xOf(i), y: yOf(w.cumulative), v: w.cumulative }));
+  const linePath = plotPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const baseline = PAD.t + innerH;
+  const areaPath = `M${plotPts[0].x.toFixed(1)},${baseline} ` +
+    plotPts.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
+    ` L${plotPts[plotPts.length-1].x.toFixed(1)},${baseline} Z`;
+
+  const dots = weeks.map((w, i) => {
+    if (!w.newThisWeek) return '';
+    const p = plotPts[i];
+    return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${m.color}" stroke="var(--surface)" stroke-width="1.5"/>`;
+  }).join('');
+
+  return `
+    <div class="metric-chart-wrap" onclick="event.stopPropagation()">
+      <div class="chart-header">
+        <span class="chart-title">Cumulative Tasks Completed — Last 90 Days</span>
+        <span style="font-size:11px;color:var(--text-3)">${running} of ${total} total</span>
+      </div>
+      <div class="chart-svg-wrap">
+        <svg class="metric-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMin meet">
+          <defs>
+            <linearGradient id="tcg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${m.color}" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="${m.color}" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          ${gridLines}
+          <path d="${areaPath}" fill="url(#tcg)"/>
+          <path d="${linePath}" fill="none" stroke="${m.color}" stroke-width="2"
+                stroke-linejoin="round" stroke-linecap="round"/>
+          ${dots}
+          ${xLabels}
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+function renderNarrativeBlock(entry) {
+  if (!entry) return '';
+  const has = entry.why || entry.prediction || entry.proposal;
+  if (!has) return '';
+  const row = (icon, label, text) => text ? `
+    <div class="narrative-section">
+      <div class="narrative-label">${icon} ${label}</div>
+      <div class="narrative-text">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    </div>` : '';
+  return `
+    <div class="narrative-block">
+      ${row('📊','Why it matters', entry.why)}
+      ${row('🔮','Prediction', entry.prediction)}
+      ${row('🎯','Proposal', entry.proposal)}
+    </div>`;
+}
+
+function renderStatCard(f, latest, prev, metricColor) {
+  const val = f.type==='derived'
+    ? evalFormula(f.formula||'', latest.values||{})
+    : (latest.values[f.id]??'—');
+
+  const isPercent = f.name.includes('%');
+  const numVal = parseFloat(val);
+  const displayVal = val === '—' ? '—' : (val + (isPercent ? '%' : ''));
+
+  let deltaHtml = '';
+  if (prev && val !== '—') {
+    const pv = f.type==='derived'
+      ? evalFormula(f.formula||'', prev.values||{})
+      : (prev.values[f.id]??null);
+    if (pv !== null && pv !== '—') {
+      const prevNum = parseFloat(pv);
+      const diff = Math.round((numVal - prevNum) * 100) / 100;
+      const pctChange = prevNum !== 0 ? Math.round((diff / Math.abs(prevNum)) * 1000) / 10 : null;
+      const cls = diff>0?'delta-up':diff<0?'delta-down':'delta-flat';
+      const sign = diff > 0 ? '+' : '';
+      if (isPercent) {
+        const pctStr = pctChange !== null ? `${sign}${pctChange}%` : `${sign}${diff}%`;
+        deltaHtml = `<div class="stat-delta ${cls}">${pctStr} vs prior</div>`;
+      } else {
+        const pctHtml = pctChange !== null ? ` <span style="opacity:0.65">${sign}${pctChange}%</span>` : '';
+        deltaHtml = `<div class="stat-delta ${cls}">${sign}${diff}${pctHtml} vs prior</div>`;
+      }
+    }
+  }
+
+  const color = f.type==='derived' ? 'var(--blue)' : metricColor;
+
+  let progressHtml = '';
+  if (isPercent && !isNaN(numVal)) {
+    const pct = Math.min(100, Math.max(0, numVal));
+    const fillColor = pct >= 100 ? 'var(--green)' : color;
+    progressHtml = `<div class="stat-progress"><div class="stat-progress-fill" style="width:${pct}%;background:${fillColor}"></div></div>`;
+  }
+
+  return `<div class="stat-card">
+    <div class="stat-label">${f.name}</div>
+    <div class="stat-value" style="color:${color}">${displayVal}</div>
+    ${f.type==='derived' ? '<div class="stat-meta">Calculated</div>' : ''}
+    ${deltaHtml}
+    ${progressHtml}
+  </div>`;
+}
+
+function renderDetail(metric) {
+  if (!metric) return `<div class="empty-state"><div class="empty-text">Select a metric from the sidebar.</div></div>`;
+  if (metric.type === 'task') return renderTaskDetail(metric);
+  const derivedCount = metric.fields.filter(f => f.type==='derived').length;
+
+  return `
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${metric.color};flex-shrink:0;margin-top:4px"></div>
+        <div>
+          <div class="page-title">${metric.name}</div>
+          <div class="page-subtitle">${metric.fields.length} fields · ${metric.entries.length} entr${metric.entries.length===1?'y':'ies'}</div>
+        </div>
+      </div>
+      <div class="page-header-right">
+        <button class="btn" onclick="openModal('edit-metric')">Edit metric</button>
+        <button class="btn btn-primary" onclick="openModal('add-entry')">+ Add entry</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Fields</span>
+        <span style="font-size:11px;font-weight:600;color:var(--red);background:var(--red-bg);border:1px solid rgba(224,92,75,0.25);padding:2px 8px;border-radius:4px;letter-spacing:0.01em">⚠ Please adjust in Claude only</span>
+      </div>
+      <div class="panel-body">
+        <div class="fields-grid">
+          ${metric.fields.map(f => `
+            <div class="field-card">
+              <div class="field-card-top">
+                <span class="field-card-name">${f.name}</span>
+                <span class="field-type-chip ${f.type==='derived'?'chip-derived':'chip-input'}">${f.type}</span>
+              </div>
+              <div class="field-card-formula">${f.type==='derived' ? f.formula : 'Manual input'}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Entries</span>
+        <button class="btn btn-sm btn-primary" onclick="openModal('add-entry')">+ Add entry</button>
+      </div>
+      ${metric.entries.length===0
+        ? `<div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-text">No entries yet</div>
+            <div class="empty-hint">Add your first entry to start tracking</div>
+          </div>`
+        : `<div class="table-wrap">
+            <table class="entries-table">
+              <thead><tr>
+                <th></th>
+                <th>Date Range</th>
+                ${metric.fields.map(f => `<th>${f.name}${f.type==='derived'?' ✦':''}</th>`).join('')}
+                <th></th>
+              </tr></thead>
+              <tbody>
+                ${metric.entries.map((entry) => {
+                  return `<tr class="entry-row" data-entry-id="${entry.id}" draggable="true">
+                    <td style="width:28px;padding:6px 4px 6px 12px">
+                      <span class="entry-drag-handle" title="Drag to reorder">⠿</span>
+                    </td>
+                    <td class="td-period">${fmtPeriodShort(entry)}</td>
+                    ${metric.fields.map(f => {
+                      const val = f.type==='derived'
+                        ? evalFormula(f.formula||'', entry.values||{})
+                        : (entry.values[f.id]??'—');
+                      const isPercent = f.name.includes('%');
+                      const display = val==='—' ? '—' : val+(isPercent?'%':'');
+                      return `<td class="${f.type==='derived'?'td-derived':''}">${display}</td>`;
+                    }).join('')}
+                    <td class="td-actions">
+                      <button class="btn btn-sm" onclick="openModal('edit-entry',{entryId:'${entry.id}'})">Edit</button>
+                      <button class="btn btn-sm btn-danger" data-delete-entry="${entry.id}" style="margin-left:4px" onclick="deleteEntry('${metric.id}','${entry.id}')">Remove</button>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`
+      }
+      ${derivedCount>0 ? `<div style="font-size:11px;color:var(--text-3);padding:10px 16px">✦ Calculated fields</div>` : ''}
+    </div>
+  `;
+}
+
+function renderPresentation(metrics) {
+  return `
+    <div class="present-wrap">
+      <div class="present-header">
+        <div>
+          <div class="present-title">Executive Metrics Report</div>
+          <div class="present-date">${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+        </div>
+        <button class="btn" onclick="togglePresentation()">← Exit</button>
+      </div>
+      ${metrics.map(m => {
+        const idx = (state.metricEntryIndex && state.metricEntryIndex[m.id]) || 0;
+        const entry = m.entries[idx] || null;
+        const prev = m.entries[idx + 1] || null;
+        const periodOptions = m.entries.map((e, i) =>
+          `<option value="${i}" ${i === idx ? 'selected' : ''}>${fmtPeriodShort(e)}</option>`
+        ).join('');
+        const periodDropdown = m.entries.length > 1
+          ? `<select class="period-select" style="margin-left:10px" onchange="setEntryIndex('${m.id}',this.value)">${periodOptions}</select>`
+          : (entry ? `<span class="period-tag" style="margin-left:10px">${fmtPeriodShort(entry)}</span>` : '');
+        const isSupport = m.id === 'm1' || m.name === 'Support Tickets';
+        const isOnboarding = m.id === 'm2' || m.name === 'Onboarding Videos';
+        const chartHtml = (isSupport && m.entries.length > 1)
+          ? renderSupportChart(m)
+          : (isOnboarding && m.entries.length > 0)
+            ? renderSupportChart(m, { maxPoints: 3, fieldIds: ['f1'] })
+            : '';
+        return `
+          <div class="present-metric">
+            <div class="present-metric-name">
+              <div class="pm-bar" style="background:${m.color}"></div>
+              ${m.name}
+              ${(()=>{ const mSt=(state.metricStatus&&state.metricStatus[m.id])||'ongoing'; return `<select class="metric-status-select ${mSt}" style="margin-left:8px" onclick="event.stopPropagation()" onchange="event.stopPropagation();setMetricStatus('${m.id}',this.value)"><option value="ongoing" ${mSt==='ongoing'?'selected':''}>Ongoing</option><option value="in-progress" ${mSt==='in-progress'?'selected':''}>In Progress</option><option value="on-hold" ${mSt==='on-hold'?'selected':''}>On Hold</option><option value="complete" ${mSt==='complete'?'selected':''}>Complete</option></select>`; })()}
+              ${periodDropdown}
+            </div>
+            ${m.type === 'task' ? `
+              ${(() => { const ts = taskStats(m); const fc = ts.pct===100?'var(--green)':m.color; return `
+              <div class="task-stat-grid" style="margin-bottom:16px">
+                <div class="stat-card"><div class="stat-label">Not Started</div><div class="stat-value" style="color:var(--text-3)">${ts.notStarted}</div></div>
+                <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:var(--blue)">${ts.inProgress}</div></div>
+                <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--green)">${ts.complete}</div></div>
+                <div class="stat-card"><div class="stat-label">Total Tasks</div><div class="stat-value" style="color:${m.color}">${ts.total}</div></div>
+                <div class="stat-card"><div class="stat-label">% Complete</div><div class="stat-value" style="color:${fc}">${ts.pct}%</div><div class="stat-progress"><div class="stat-progress-fill" style="width:${ts.pct}%;background:${fc}"></div></div></div>
+              </div>
+              ${renderTaskChart(m)}
+              ${(m.why || m.prediction || m.proposal) ? renderNarrativeBlock({ why: m.why, prediction: m.prediction, proposal: m.proposal }) : ''}
+              `; })()}
+            ` : entry ? `
+              <div class="stat-grid" style="margin-bottom:12px">
+                ${m.fields.map(f => renderStatCard(f, entry, prev, m.color)).join('')}
+              </div>
+              ${chartHtml ? `<div style="margin-top:12px">${chartHtml}</div>` : ''}
+              ${renderNarrativeBlock(entry)}
+            ` : `<div style="color:var(--text-3);font-size:13px">No entries recorded yet.</div>`}
+          </div>
+        `;
+      }).join('')}
+      ${metrics.length===0 ? `<div class="empty-state"><div class="empty-text">No metrics enabled. Exit and toggle metrics on.</div></div>` : ''}
+    </div>
+  `;
+}
+
+function renderModal(type, metric) {
+  if (type==='new-metric' || type==='edit-metric') {
+    const isEdit = type==='edit-metric';
+    const md = modalData;
+    if (!md.fields) md.fields = [];
+    if (!md.color) md.color = COLORS[0];
+    const swatches = COLORS.map((c,i) =>
+      `<div class="color-swatch ${md.color===c?'selected':''}" style="background:${c}" title="${COLOR_LABELS[i]}" onclick="modalData.color='${c}';render()"></div>`
+    ).join('');
+
+    return `<div class="modal-backdrop" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">${isEdit?'Edit metric':'New metric'}</div>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" id="md-name" value="${md.name||''}" placeholder="e.g. Support Tickets" oninput="modalData.name=this.value" autofocus>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <div class="color-picker">${swatches}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fields</label>
+            <div class="form-hint" style="margin-bottom:10px">
+              Input = entered manually. Derived = formula using field IDs
+              (<code style="background:var(--surface-2);padding:1px 5px;border-radius:3px;font-size:11.5px">f1 - f2</code> or
+              <code style="background:var(--surface-2);padding:1px 5px;border-radius:3px;font-size:11.5px">round(f2/f1*100)</code>).
+            </div>
+            <div class="fields-builder">
+              ${md.fields.map((f,i) => `
+                <div class="fb-row">
+                  <input class="form-input" style="font-size:13px;padding:5px 9px"
+                         value="${f.name}" placeholder="Field name (ID: f${i+1})"
+                         oninput="modalData.fields[${i}].name=this.value">
+                  <div class="fb-type ${f.type==='input'?'chip-input':'chip-derived'}">${f.type}</div>
+                  <button class="fb-delete" onclick="modalData.fields.splice(${i},1);render()">×</button>
+                </div>
+                ${f.type==='derived' ? `
+                  <div class="fb-row-extra">
+                    <input class="form-input" style="font-size:12px;padding:5px 9px;font-family:'SF Mono','Fira Code',monospace"
+                           value="${f.formula||''}" placeholder="e.g.  f1 - f2   or   round(f2/f1*100)"
+                           oninput="modalData.fields[${i}].formula=this.value">
+                  </div>
+                ` : ''}
+              `).join('')}
+              <div class="fb-row-add">
+                <button class="btn btn-sm" onclick="addField('input')">+ Input field</button>
+                <button class="btn btn-sm" onclick="addField('derived')">+ Derived field</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            ${isEdit ? `<button class="btn btn-sm btn-danger" onclick="deleteMetric('${metric?.id}')">Delete metric</button>` : ''}
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="${isEdit?'saveEditMetric()':'saveNewMetric()'}">
+              ${isEdit?'Save changes':'Create metric'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (type==='add-entry' || type==='edit-entry') {
+    if (!metric) return '';
+    const isEdit = type==='edit-entry';
+    const md = modalData;
+    const inputFields = metric.fields.filter(f => f.type==='input');
+    const derivedFields = metric.fields.filter(f => f.type==='derived');
+
+    const previewVals = {};
+    inputFields.forEach(f => { previewVals[f.id] = parseFloat(md.values?.[f.id]) || 0; });
+    const derivedPreview = derivedFields.map(f => {
+      const val = evalFormula(f.formula||'', previewVals);
+      const isPercent = f.name.includes('%');
+      const display = val==='—' ? '—' : val+(isPercent?'%':'');
+      return `<div class="derived-preview-row">
+        <span style="color:var(--text-2)">${f.name}</span>
+        <span style="font-weight:600;color:var(--blue)">${display}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="modal-backdrop" onclick="closeModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">${isEdit?'Edit entry':'New entry'} — ${metric.name}</div>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Period</label>
+            <div class="form-row" style="margin-bottom:8px">
+              <div>
+                <label class="form-sublabel">Start date</label>
+                <div class="date-input-wrap">
+                  <input class="form-input" type="date" id="e-start" value="${md.periodStart||''}" onchange="updatePeriodLabel()">
+                  <span class="date-cal-btn">📅</span>
+                </div>
+              </div>
+              <div>
+                <label class="form-sublabel">End date</label>
+                <div class="date-input-wrap">
+                  <input class="form-input" type="date" id="e-end" value="${md.periodEnd||''}" onchange="updatePeriodLabel()">
+                  <span class="date-cal-btn">📅</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+              <input class="form-input" id="e-period" value="${md.period||''}" placeholder="Period label (e.g. Q1 2024)">
+              <button class="btn btn-sm" onclick="setRolling30()" style="white-space:nowrap;flex-shrink:0">Last 30 days</button>
+              <button class="btn btn-sm" onclick="clearEntryDates()" style="white-space:nowrap;flex-shrink:0">Clear dates</button>
+            </div>
+          </div>
+          <hr class="form-divider">
+          ${inputFields.map(f => `
+            <div class="form-group">
+              <label class="form-label">${f.name}</label>
+              <input class="form-input" type="number" id="ev-${f.id}" placeholder="0"
+                     value="${md.values?.[f.id]??''}"
+                     oninput="modalData.values = modalData.values||{}; modalData.values['${f.id}']=parseFloat(this.value)||0; rerenderDerived()">
+            </div>
+          `).join('')}
+          ${derivedFields.length>0 ? `
+            <div class="derived-preview">
+              <div class="derived-preview-label">Calculated fields</div>
+              ${derivedPreview}
+            </div>
+          ` : ''}
+          <hr class="form-divider">
+          <div class="form-group">
+            <label class="form-label">📊 Why it matters</label>
+            <textarea class="form-input narrative-textarea" id="e-why" placeholder="What does this data mean?">${md.why||''}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔮 Prediction</label>
+            <textarea class="form-input narrative-textarea" id="e-prediction" placeholder="What do you expect next?">${md.prediction||''}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🎯 Proposal</label>
+            <textarea class="form-input narrative-textarea" id="e-proposal" placeholder="What are you going to do about it?">${md.proposal||''}</textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            ${isEdit ? `<button class="btn btn-sm btn-danger" onclick="deleteEntryModal('${metric.id}','${md.entryId}')">Delete entry</button>` : ''}
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="${isEdit?`saveEditEntry('${metric.id}','${md.entryId}')`:`saveEntry('${metric.id}')`}">
+              ${isEdit?'Save changes':'Add entry'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (type==='manage-rocks') {
+    return renderRocksModal();
+  }
+
+  return '';
+}
+
+function renderRocksModal() {
+  const rocks = state.rocks || [];
+  const rockRows = rocks.map(r => `
+    <div class="rock-row" data-rock-id="${r.id}">
+      <input class="form-input rock-edit-input" data-id="${r.id}" style="font-size:13px;padding:6px 10px;flex:1" value="${r.name.replace(/"/g,'&quot;')}">
+      <button class="btn btn-sm btn-danger" style="flex-shrink:0" onclick="this.closest('.rock-row').remove()">×</button>
+    </div>
+  `).join('');
+
+  return `<div class="modal-backdrop" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">🪨 Manage Rocks</div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.5">
+          Rocks are quarterly objectives you can assign to each metric on the Summary page.
+        </p>
+        <div class="rocks-list" id="rocks-edit-list">
+          ${rockRows}
+        </div>
+        <button class="btn btn-sm" onclick="addRockRow()" style="width:100%;justify-content:center;margin-top:4px">+ Add rock</button>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveRocks()">Save rocks</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rerenderDerived() {
+  const metric = state.metrics.find(m => m.id === state.activeMetric);
+  if (!metric) return;
+  const derivedFields = metric.fields.filter(f => f.type==='derived');
+  if (!derivedFields.length) return;
+
+  const inputFields = metric.fields.filter(f => f.type==='input');
+  const previewVals = {};
+  inputFields.forEach(f => {
+    const el = document.getElementById('ev-' + f.id);
+    previewVals[f.id] = el ? parseFloat(el.value)||0 : 0;
+  });
+
+  const preview = document.querySelector('.derived-preview');
+  if (!preview) return;
+
+  const rows = derivedFields.map(f => {
+    const val = evalFormula(f.formula||'', previewVals);
+    const isPercent = f.name.includes('%');
+    const display = val==='—' ? '—' : val+(isPercent?'%':'');
+    return `<div class="derived-preview-row">
+      <span style="color:var(--text-2)">${f.name}</span>
+      <span style="font-weight:600;color:var(--blue)">${display}</span>
+    </div>`;
+  }).join('');
+
+  preview.innerHTML = `<div class="derived-preview-label">Calculated fields</div>${rows}`;
+}
+
+// ── Sidebar resize ──
+let _sidebarWidth = 252;
+function initSidebarResize() {
+  const handle = document.getElementById('sidebar-resize');
+  const sidebar = document.getElementById('sidebar');
+  if (!handle || !sidebar) return;
+  sidebar.style.width = _sidebarWidth + 'px';
+  let startX, startW;
+  handle.addEventListener('mousedown', e => {
+    startX = e.clientX;
+    startW = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = e => {
+      const newW = Math.min(480, Math.max(160, startW + (e.clientX - startX)));
+      sidebar.style.width = newW + 'px';
+      _sidebarWidth = newW;
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// ── Boot ──
+initAuth();
+</script>
+</body>
+</html>

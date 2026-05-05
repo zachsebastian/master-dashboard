@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-2: #f0efe9;
+  --surface-3: #e5e4dd;
+  --border: rgba(0,0,0,0.07);
+  --border-md: rgba(0,0,0,0.12);
+  --text: #111111;
+  --text-2: #555555;
+  --text-3: #999999;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.14), 0 4px 8px rgba(0,0,0,0.06);
+  --blue: #1d6fa8;
+  --blue-bg: #e9f1fb;
+  --green: #2a7d46;
+  --green-bg: #e6f3ec;
+  --red: #c0392b;
+  --red-bg: #fbeae8;
+  --orange: #c96a10;
+  --orange-bg: #fdf0e3;
+  --purple: #6b3fa0;
+  --purple-bg: #f0eaf8;
+  --r-sm: 6px;
+  --r-lg: 14px;
+}
+
+html[data-theme="dark"] {
+  --bg: #111111;
+  --surface: #1a1a1a;
+  --surface-2: #222222;
+  --surface-3: #2c2c2c;
+  --border: rgba(255,255,255,0.07);
+  --border-md: rgba(255,255,255,0.12);
+  --text: #e8e8e8;
+  --text-2: #888888;
+  --text-3: #505050;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.7);
+  --blue: #4a9fd4;
+  --blue-bg: rgba(74,159,212,0.12);
+  --green: #4caf73;
+  --green-bg: rgba(76,175,115,0.12);
+  --red: #e05c4b;
+  --red-bg: rgba(224,92,75,0.12);
+  --orange: #e08a3c;
+  --orange-bg: rgba(224,138,60,0.12);
+  --purple: #a07ad4;
+  --purple-bg: rgba(160,122,212,0.12);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+.app { display: grid; grid-template-rows: 56px 1fr; min-height: 100vh; }
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-md);
+  box-shadow: var(--shadow-sm);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 20;
+}
+.topbar-left { display: flex; align-items: flex-start; gap: 14px; }
+.brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+.brand-name span { opacity: 0.35; font-weight: 400; }
+.sidebar-toggle-btn {
+  font-size: 10.5px; font-weight: 500; color: var(--text-3);
+  background: none; border: none; cursor: pointer;
+  padding: 0; transition: color 0.1s; white-space: nowrap;
+  text-align: left; display: block;
+}
+.sidebar-toggle-btn:hover { color: var(--text-2); }
+.save-wrap { display: flex; align-items: center; gap: 5px; opacity: 0; transition: opacity 0.4s; }
+.save-wrap.visible { opacity: 1; }
+.save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.save-label { font-size: 11px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+.topbar-right { display: flex; gap: 8px; align-items: center; }
+
+/* ── Theme toggle ── */
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  cursor: pointer; padding: 6px 12px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-md); background: var(--surface);
+  transition: background 0.1s; user-select: none; line-height: 1.2;
+}
+.theme-toggle:hover { background: var(--surface-3); }
+.theme-track { width: 28px; height: 16px; border-radius: 8px; background: var(--surface-3); position: relative; transition: background 0.2s; flex-shrink: 0; }
+html[data-theme="dark"] .theme-track { background: #4a9fd4; }
+.theme-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; transition: left 0.18s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+html[data-theme="dark"] .theme-thumb { left: 14px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 500; padding: 6px 14px;
+  border-radius: var(--r-sm); border: 1px solid var(--border-md);
+  background: var(--surface); color: var(--text);
+  cursor: pointer; transition: background 0.1s, opacity 0.1s;
+  white-space: nowrap; line-height: 1.2;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: var(--shadow-sm); }
+.btn-primary:hover { opacity: 0.85; background: var(--text); }
+.btn-sm { font-size: 12px; padding: 4px 10px; }
+.btn-danger { color: var(--red); border-color: rgba(224,92,75,0.3); }
+.btn-danger:hover { background: var(--red-bg); }
+
+/* ── View tabs ── */
+.view-tabs {
+  display: flex; gap: 2px; background: var(--surface-2);
+  border: 1px solid var(--border-md); border-radius: var(--r-sm); padding: 2px;
+}
+.view-tab {
+  font-size: 13px; font-weight: 500; padding: 4px 16px;
+  border-radius: 4px; border: none; background: transparent;
+  color: var(--text-2); cursor: pointer; transition: all 0.12s; line-height: 1.2;
+}
+.view-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* ── Dropdown ── */
+.dropdown-wrap { position: relative; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  min-width: 160px; overflow: hidden; z-index: 50;
+  animation: fade-in 0.1s ease;
+}
+.dropdown-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; font-size: 13px; font-weight: 500;
+  color: var(--text); cursor: pointer; transition: background 0.1s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.dropdown-item:hover { background: var(--surface-2); }
+.dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ── Layout ── */
+.main { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 260px; min-width: 160px; max-width: 480px;
+  background: var(--surface); border-right: 1px solid var(--border-md);
+  display: flex; flex-direction: column; overflow: hidden;
+  flex-shrink: 0; position: relative; transition: width 0.2s;
+}
+.sidebar.collapsed { width: 0; min-width: 0; border-right: none; }
+.sidebar-resize-handle {
+  position: absolute; top: 0; right: -3px; width: 6px; height: 100%;
+  cursor: col-resize; z-index: 10; transition: background 0.15s;
+}
+.sidebar-resize-handle:hover, .sidebar-resize-handle.dragging { background: var(--blue); opacity: 0.5; border-radius: 3px; }
+.sidebar-main { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.sidebar-active { flex: 0 0 70%; overflow-y: auto; padding: 16px 10px 8px; min-height: 0; }
+.sidebar-completed {
+  flex: 1; overflow-y: auto; padding: 10px 10px 8px; min-height: 0;
+  border-top: 2px solid var(--border-md);
+}
+.sidebar-label {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--text-3); padding: 0 8px; margin-bottom: 8px;
+}
+
+/* ── Project items in sidebar ── */
+.project-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; border-radius: var(--r-sm); cursor: pointer;
+  transition: background 0.1s; margin-bottom: 2px; position: relative; user-select: none;
+}
+.project-item:hover { background: var(--surface-2); }
+.project-item.active { background: var(--surface-2); }
+.project-item.active::before {
+  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
+  width: 3px; background: var(--item-color, #aaa); border-radius: 0 2px 2px 0;
+}
+.p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; align-self: flex-start; }
+.p-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.p-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-item.active .p-name { font-weight: 600; }
+.p-mini-progress {
+  height: 3px; background: var(--surface-3); border-radius: 2px; overflow: hidden; width: 100%;
+}
+.p-mini-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+.status-pill {
+  font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+  cursor: default;
+}
+.status-pill.not-started { background: var(--surface-3); color: var(--text-3); }
+.status-pill.in-progress { background: var(--blue-bg); color: var(--blue); }
+.status-pill.done { background: var(--green-bg); color: var(--green); }
+.status-pill.on-hold { background: var(--orange-bg); color: var(--orange); }
+
+.sidebar-footer { padding: 12px 10px; border-top: 1px solid var(--border); }
+.sidebar-footer-btns { display: flex; gap: 6px; }
+
+/* ── Content ── */
+.content { padding: 28px 32px; overflow-y: auto; flex: 1; min-width: 0; }
+
+/* ── Page header ── */
+.page-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; margin-bottom: 24px;
+}
+.page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+.page-subtitle { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.page-header-right { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+/* ── Summary cards row ── */
+.summary-strip {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;
+  margin-bottom: 20px;
+}
+.summary-card {
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); padding: 14px 16px; box-shadow: var(--shadow-sm);
+}
+.sc-label { font-size: 11px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.sc-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.1; }
+.sc-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+/* ── Project grid + cards on summary view ── */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+.project-card {
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.project-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.project-card-stripe { height: 3px; flex-shrink: 0; }
+.project-card-header {
+  padding: 12px 14px 10px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.project-card-title { font-size: 13px; font-weight: 700; letter-spacing: -0.1px; line-height: 1.35; }
+.project-card-badges { display: flex; gap: 6px; align-items: center; }
+.project-card-body { padding: 0 14px 13px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.project-card-meta-row { display: flex; align-items: center; gap: 6px; min-height: 20px; font-size: 11px; color: var(--text-3); }
+.project-card-meta-row .chip { font-size: 10px; padding: 2px 7px; }
+
+/* ── Progress bar ── */
+.progress-track {
+  height: 7px; background: var(--surface-3); border-radius: 4px; overflow: hidden;
+  margin-bottom: 8px;
+}
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.progress-label { font-size: 12px; color: var(--text-2); display: flex; justify-content: space-between; }
+
+/* ── Meta chips ── */
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.chip {
+  font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px;
+  background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border-md);
+}
+.chip.priority-high { background: var(--red-bg); color: var(--red); border-color: transparent; }
+.chip.priority-medium { background: var(--orange-bg); color: var(--orange); border-color: transparent; }
+.chip.priority-low { background: var(--green-bg); color: var(--green); border-color: transparent; }
+.chip.tag { background: var(--purple-bg); color: var(--purple); border-color: transparent; }
+.chip.due { background: var(--surface-2); color: var(--text-2); }
+.chip.due.overdue { background: var(--red-bg); color: var(--red); border-color: transparent; }
+.chip.due.soon { background: var(--orange-bg); color: var(--orange); border-color: transparent; }
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 16px;
+}
+.panel-header {
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-2); border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.panel-title {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-3);
+}
+.panel-body { padding: 20px; }
+
+/* ── Chart ── */
+.chart-wrap { padding: 4px 20px 16px; }
+.chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.chart-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); }
+svg.proj-chart { width: 100%; height: 160px; display: block; overflow: visible; }
+
+/* ── Detail view (single project) ── */
+.detail-header {
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px;
+}
+.detail-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.detail-subtitle { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+.detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 800px) { .detail-grid { grid-template-columns: 1fr; } }
+
+/* ── Entry list ── */
+.entry-list { display: flex; flex-direction: column; gap: 0; }
+.entry-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 20px; border-bottom: 1px solid var(--border);
+  transition: background 0.1s; cursor: pointer;
+}
+.entry-row:last-child { border-bottom: none; }
+.entry-row:hover { background: var(--surface-2); }
+.entry-date { font-size: 11.5px; color: var(--text-3); font-weight: 500; white-space: nowrap; min-width: 80px; margin-top: 1px; }
+.entry-body { flex: 1; min-width: 0; }
+.entry-pct { font-size: 13px; font-weight: 700; color: var(--blue); margin-bottom: 3px; }
+.entry-status-chip { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-left: 6px; }
+.entry-note { font-size: 12.5px; color: var(--text-2); line-height: 1.55; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
+.entry-empty { font-style: italic; color: var(--text-3); }
+.entry-meta-row { display: flex; gap: 12px; margin-top: 5px; flex-wrap: wrap; }
+.entry-meta-item { font-size: 11px; color: var(--text-3); }
+
+/* ── Log textarea ── */
+.log-area {
+  width: 100%; min-height: 70px; resize: vertical;
+  font-family: inherit; font-size: 13px; line-height: 1.6;
+  border: 1px solid var(--border-md); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text); padding: 10px 12px;
+  transition: border-color 0.12s;
+}
+.log-area:focus { outline: none; border-color: var(--blue); }
+
+/* ── Task list ── */
+.task-list { display: flex; flex-direction: column; }
+.task-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+}
+.task-row:last-child { border-bottom: none; }
+.task-dot { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--text-3); flex-shrink: 0; }
+.task-dot.done { background: var(--green); border-color: var(--green); }
+.task-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.45; }
+.task-text.done { text-decoration: line-through; color: var(--text-3); }
+.task-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+/* ── Blocker list ── */
+.blocker-list { display: flex; flex-direction: column; gap: 6px; }
+.blocker-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+}
+.blocker-text { flex: 1; font-size: 13px; color: var(--text-2); }
+.blocker-resolved { text-decoration: line-through; color: var(--text-3); }
+
+/* ── Form elements ── */
+.form-group { margin-bottom: 16px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; display: block; }
+.form-sublabel { font-size: 11px; color: var(--text-3); margin-bottom: 4px; display: block; }
+.form-input {
+  width: 100%; padding: 8px 12px; font-size: 13px; font-family: inherit;
+  border: 1px solid var(--border-md); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text); transition: border-color 0.12s;
+}
+.form-input:focus { outline: none; border-color: var(--blue); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+select.form-input {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+
+/* ── Modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; animation: fade-in 0.12s ease;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  width: 520px; max-width: calc(100vw - 32px); max-height: 90vh;
+  display: flex; flex-direction: column; animation: slide-up 0.15s ease;
+}
+.modal-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-title { font-size: 15px; font-weight: 700; }
+.modal-close {
+  background: none; border: none; cursor: pointer; font-size: 20px;
+  color: var(--text-3); padding: 0 4px; line-height: 1; transition: color 0.1s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 14px 20px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.modal-footer-right { display: flex; gap: 8px; }
+.form-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ── Tags input ── */
+.tags-wrap {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  min-height: 36px; padding: 5px 8px; border: 1px solid var(--border-md);
+  border-radius: var(--r-sm); background: var(--surface); cursor: text;
+  transition: border-color 0.12s;
+}
+.tags-wrap:focus-within { border-color: var(--blue); }
+.tag-chip {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--purple-bg); color: var(--purple);
+  font-size: 11.5px; font-weight: 500; padding: 2px 8px 2px 9px;
+  border-radius: 20px; white-space: nowrap;
+}
+.tag-chip-del { background: none; border: none; cursor: pointer; color: var(--purple); opacity: 0.7; font-size: 13px; padding: 0 1px; line-height: 1; }
+.tag-chip-del:hover { opacity: 1; }
+.tags-input { border: none; background: transparent; color: var(--text); font-size: 13px; font-family: inherit; outline: none; min-width: 80px; flex: 1; padding: 1px 2px; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 20px; text-align: center; gap: 12px;
+}
+.empty-icon { font-size: 36px; opacity: 0.4; }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-2); }
+.empty-sub { font-size: 13px; color: var(--text-3); max-width: 300px; line-height: 1.6; }
+
+/* ── Animations ── */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+/* ── Inline editable ── */
+.inline-edit-input {
+  font-size: inherit; font-weight: inherit; letter-spacing: inherit;
+  border: none; border-bottom: 2px solid var(--blue);
+  background: transparent; color: var(--text);
+  font-family: inherit; outline: none; padding: 0 2px; width: 100%;
+}
+
+/* ── Priority select inline ── */
+.priority-select {
+  font-size: 10px; font-weight: 700; padding: 2px 20px 2px 8px;
+  border-radius: 10px; border: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none; text-transform: uppercase; letter-spacing: 0.04em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M1 1l2.5 2L6 1' stroke='%23888' stroke-width='1.1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.priority-select:focus { outline: none; }
+.priority-select.high { background-color: var(--red-bg); color: var(--red); }
+.priority-select.medium { background-color: var(--orange-bg); color: var(--orange); }
+.priority-select.low { background-color: var(--green-bg); color: var(--green); }
+
+/* ── Status select inline ── */
+.status-select-inline {
+  font-size: 10px; font-weight: 700; padding: 2px 20px 2px 8px;
+  border-radius: 10px; border: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none; text-transform: uppercase; letter-spacing: 0.04em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M1 1l2.5 2L6 1' stroke='%23888' stroke-width='1.1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.status-select-inline:focus { outline: none; }
+.status-select-inline.not-started { background-color: var(--surface-3); color: var(--text-3); }
+.status-select-inline.in-progress { background-color: var(--blue-bg); color: var(--blue); }
+.status-select-inline.done { background-color: var(--green-bg); color: var(--green); }
+.status-select-inline.on-hold { background-color: var(--orange-bg); color: var(--orange); }
+
+/* ── Circular progress ── */
+.circ-wrap { display: flex; align-items: center; gap: 14px; }
+.circ-svg { flex-shrink: 0; }
+.circ-label { font-size: 13px; color: var(--text-2); }
+.circ-pct { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+
+/* ── Login screen ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; animation: fade-in 0.2s ease;
+}
+.login-card {
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  width: 380px; max-width: calc(100vw - 32px); padding: 32px;
+  animation: slide-up 0.2s ease;
+}
+.login-logo { font-size: 24px; margin-bottom: 16px; }
+.login-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 24px; line-height: 1.6; }
+.login-sent { text-align: center; padding: 12px 0 4px; }
+.login-sent-icon { font-size: 40px; margin-bottom: 14px; }
+.login-sent-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.login-sent-sub { font-size: 13px; color: var(--text-2); line-height: 1.65; }
+.login-error { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📋</div>
+    <div class="login-title">Project Dashboard</div>
+    <div class="login-sub">Sign in to access your projects.</div>
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input class="form-input" type="email" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')signIn()">
+      </div>
+      <button class="btn btn-primary" id="login-btn" onclick="signIn()" style="width:100%;justify-content:center;padding:9px 14px">Sign in</button>
+      <div class="login-error" id="login-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP (hidden until authenticated) -->
+<div class="app" id="app-wrap" style="display:none">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/" style="font-size:12px;color:var(--text-3);text-decoration:none;white-space:nowrap;transition:color 0.1s;margin-right:2px" onmouseover="this.style.color='var(--text-2)'" onmouseout="this.style.color='var(--text-3)'">← Home</a>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="brand-name">Project Tracker</div>
+      <button class="sidebar-toggle-btn" onclick="toggleSidebar()" id="sidebar-toggle-btn">hide sidebar</button>
+    </div>
+  </div>
+  <div id="save-wrap" class="save-wrap">
+    <div class="save-dot"></div>
+    <div class="save-label">Saved</div>
+  </div>
+  <div class="topbar-right">
+    <div class="view-tabs">
+      <button class="view-tab active" id="tab-summary" onclick="setView('summary')">Summary</button>
+      <button class="view-tab" id="tab-detail" onclick="setView('detail')">Detail</button>
+    </div>
+    <div class="dropdown-wrap" id="menu-wrap">
+      <button class="btn" onclick="toggleMenu()">⋯ More</button>
+      <div class="dropdown-menu" id="dropdown-menu" style="display:none">
+        <button class="dropdown-item" onclick="exportData(); closeMenu()">📤 Export JSON</button>
+        <button class="dropdown-item" onclick="importClick(); closeMenu()">📥 Import JSON</button>
+      </div>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
+      <span id="theme-label">Light</span>
+    </div>
+    <button class="btn" onclick="signOut()">Sign Out</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-main">
+      <div class="sidebar-active">
+        <div class="sidebar-label">Active</div>
+        <div id="project-list"></div>
+      </div>
+      <div class="sidebar-completed">
+        <div class="sidebar-label">Completed</div>
+        <div id="completed-list"></div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-btns">
+          <button class="btn btn-sm btn-primary" style="flex:1;justify-content:center" onclick="openAddProjectModal()">+ Add project</button>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-resize-handle" id="sidebar-resize"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content"></div>
+</div>
+
+</div><!-- end #app-wrap -->
+
+<!-- MODAL CONTAINER -->
+<div id="modal-container"></div>
+
+<script>
+// ── Supabase config ──
+// Replace these with your project's values from supabase.com → Project Settings → API
+// The anon key is safe to be public — security is enforced by Row Level Security policies.
+const SUPABASE_URL = 'https://eggholiwuisydsszlbfl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Y09q5HIOgbN1r8R1w_TwKQ_mo6nv5sw';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ──
+const COLORS = [
+  '#e05c4b','#4a9fd4','#4caf73','#a07ad4','#e08a3c',
+  '#e06699','#5ab4b4','#b4a55a','#5a7ab4','#7ab45a',
+];
+
+const DEFAULT_STATE = {
+  projects: [
+    {
+      id: 'ute4l4a', name: 'Example Project', color: '#5ab4b4',
+      status: 'in-progress', priority: 'medium', completion: 71,
+      tags: ['Example Tag 1', 'Example Tag 2'], dueDate: '2026-05-28',
+      description: 'This is an example project. Feel free to delete this project once you\'ve begun using this tool.',
+      entries: [
+        { id: 'sge74xc', date: '2026-03-24', completion: 29, status: 'in-progress', note: 'Finished first two tasks.', nextSteps: 'Please ensure you delete this project. You don\'t need to, but I recommend it...' },
+        { id: 'm3ndosr', date: '2026-04-27', completion: 71, status: 'in-progress', note: 'Completed the next 3 tasks', nextSteps: 'Please ensure you delete this project. You don\'t need to, but I recommend it...' },
+      ],
+      blockers: ['Need to get approval from John Doe to be able to complete task 6.'],
+      tasks: [
+        { id: '4zeqozu', text: 'Example Task 1', completedInEntry: 'sge74xc' },
+        { id: 'staujry', text: 'Example Task 2', completedInEntry: 'sge74xc' },
+        { id: 'd6s6y0f', text: 'Example Task 3', completedInEntry: 'm3ndosr' },
+        { id: 'dseljqj', text: 'Example Task 4', completedInEntry: 'm3ndosr' },
+        { id: 'r928e80', text: 'Example Task 5', completedInEntry: 'm3ndosr' },
+        { id: 'vfp2j75', text: 'Example Task 6', completedInEntry: null },
+        { id: 'eu18ycx', text: 'Example Task 7', completedInEntry: null },
+      ],
+      nextSteps: 'Please ensure you delete this project. You don\'t need to, but I recommend it...',
+      notes: 'Run wild!'
+    },
+  ],
+  activeProject: 'ute4l4a',
+  sidebarOpen: true,
+  view: 'summary',
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+let _currentUser = null;
+let _saveTimer = null;
+
+// ── Supabase persistence ──
+async function loadStateFromSupabase() {
+  const { data, error } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', _currentUser.id)
+    .maybeSingle();
+
+  if (error) { console.error('Load error:', error); return; }
+
+  if (data) {
+    state = data.data;
+    // Recalculate completions from tasks on every load
+    state.projects.forEach(p => {
+      const tasks = p.tasks || [];
+      if (!tasks.length) return;
+      // Reconstruct each entry's completion snapshot based on tasks completed up to that entry
+      const sorted = [...(p.entries || [])].sort((a,b) => new Date(a.date)-new Date(b.date));
+      const entryIds = sorted.map(e => e.id);
+      sorted.forEach((e, idx) => {
+        const done = tasks.filter(t => t.completedInEntry && entryIds.indexOf(t.completedInEntry) <= idx).length;
+        e.completion = Math.round(done / tasks.length * 100);
+      });
+      p.completion = calcCompletion(p);
+    });
+  } else {
+    // First sign-in: seed with sample data
+    await saveStateToSupabase();
+  }
+}
+
+async function saveStateToSupabase() {
+  if (!_currentUser) return;
+  const { error } = await sb.from('dashboards').upsert(
+    { user_id: _currentUser.id, data: state, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  if (error) console.error('Save error:', error);
+}
+
+function saveState() {
+  const sw = document.getElementById('save-wrap');
+  if (sw) { sw.classList.add('visible'); clearTimeout(sw._t); sw._t = setTimeout(() => sw.classList.remove('visible'), 1800); }
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(saveStateToSupabase, 800);
+}
+
+// ── Auth ──
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!email) { errEl.textContent = 'Please enter your email.'; return; }
+  if (!password) { errEl.textContent = 'Please enter your password.'; return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errEl.textContent = error.message;
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+    return;
+  }
+
+  _currentUser = data.user;
+  await loadStateFromSupabase();
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'grid';
+  render();
+  setTimeout(initSidebarResize, 0);
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  _currentUser = null;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  document.getElementById('app-wrap').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+  const btn = document.getElementById('login-btn');
+  btn.disabled = false;
+  btn.textContent = 'Sign in';
+}
+
+// ── Render ──
+function render() {
+  renderSidebar();
+  renderContent();
+  updateThemeUI();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('project-list');
+  const completedList = document.getElementById('completed-list');
+  if (!list) return;
+  const sidebar = document.getElementById('sidebar');
+  if (state.sidebarOpen) sidebar.classList.remove('collapsed');
+  else sidebar.classList.add('collapsed');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (toggleBtn) toggleBtn.textContent = state.sidebarOpen ? 'hide sidebar' : 'show sidebar';
+
+  const activeProjects = state.projects.filter(p => p.status !== 'done').sort(byPriority);
+  const completedProjects = state.projects.filter(p => p.status === 'done').sort(byPriority);
+
+  const buildItem = p => {
+    const active = p.id === state.activeProject ? 'active' : '';
+    return `<div class="project-item ${active}" style="--item-color:${p.color}" onclick="selectProject('${p.id}')">
+      <div class="p-dot" style="background:${p.color}"></div>
+      <div class="p-body">
+        <div class="p-name">${esc(p.name)}</div>
+        <div class="p-mini-progress">
+          <div class="p-mini-fill" style="width:${p.completion}%;background:${p.color}"></div>
+        </div>
+      </div>
+      <span class="status-pill ${p.status}">${statusLabel(p.status)}</span>
+    </div>`;
+  };
+
+  list.innerHTML = activeProjects.length
+    ? activeProjects.map(buildItem).join('')
+    : `<div style="padding:8px;font-size:12px;color:var(--text-3)">No active projects.</div>`;
+
+  if (completedList) {
+    completedList.innerHTML = completedProjects.length
+      ? completedProjects.map(buildItem).join('')
+      : `<div style="padding:8px;font-size:12px;color:var(--text-3);font-style:italic">None yet.</div>`;
+  }
+}
+
+function renderContent() {
+  const el = document.getElementById('content');
+  if (!el) return;
+  if (state.view === 'summary') el.innerHTML = renderSummaryView();
+  else el.innerHTML = renderDetailView();
+  // re-attach chart after render
+  if (state.view === 'detail') {
+    const p = state.projects.find(x => x.id === state.activeProject);
+    if (p && p.entries.length > 1) drawChart(p);
+  }
+}
+
+// ── Summary View ──
+function renderSummaryView() {
+  const projects = state.projects;
+  const total = projects.length;
+  const done = projects.filter(p => p.status === 'done').length;
+  const inProg = projects.filter(p => p.status === 'in-progress').length;
+  const openProjects = projects.filter(p => p.status !== 'done');
+  const avgCompletion = openProjects.length ? Math.round(openProjects.reduce((s,p) => s+p.completion, 0) / openProjects.length) : 0;
+  const overdue = projects.filter(p => p.dueDate && new Date(p.dueDate) < new Date() && p.status !== 'done').length;
+
+  const strip = `<div class="summary-strip">
+    <div class="summary-card"><div class="sc-label">Total</div><div class="sc-value">${total}</div><div class="sc-sub">projects</div></div>
+    <div class="summary-card"><div class="sc-label">In Progress</div><div class="sc-value" style="color:var(--blue)">${inProg}</div><div class="sc-sub">active</div></div>
+    <div class="summary-card"><div class="sc-label">Completed</div><div class="sc-value" style="color:var(--green)">${done}</div><div class="sc-sub">done</div></div>
+    <div class="summary-card"><div class="sc-label">Avg. Progress</div><div class="sc-value">${avgCompletion}%</div><div class="sc-sub">overall</div></div>
+    ${overdue ? `<div class="summary-card"><div class="sc-label">Overdue</div><div class="sc-value" style="color:var(--red)">${overdue}</div><div class="sc-sub">past due</div></div>` : ''}
+  </div>`;
+
+  if (!projects.length) {
+    return strip + `<div class="empty-state">
+      <div class="empty-icon">📂</div>
+      <div class="empty-title">No projects yet</div>
+      <div class="empty-sub">Click "Add project" in the sidebar to get started.</div>
+    </div>`;
+  }
+
+  const buildCard = p => {
+    const dueMeta = dueMeta_(p);
+    const lastEntry = p.entries.length ? p.entries[p.entries.length-1] : null;
+    const totalTasks = (p.tasks || []).length;
+    const doneTasks = (p.tasks || []).filter(t => t.completedInEntry).length;
+    const remainingTasks = totalTasks - doneTasks;
+    const taskRow = totalTasks > 0 ? `
+      <div style="display:flex;gap:0;margin-top:8px;border:1px solid var(--border-md);border-radius:var(--r-sm);overflow:hidden">
+        <div style="flex:1;padding:5px 8px;text-align:center;border-right:1px solid var(--border-md)">
+          <div style="font-size:13px;font-weight:700;line-height:1.1">${totalTasks}</div>
+          <div style="font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Total</div>
+        </div>
+        <div style="flex:1;padding:5px 8px;text-align:center;border-right:1px solid var(--border-md)">
+          <div style="font-size:13px;font-weight:700;line-height:1.1;color:var(--green)">${doneTasks}</div>
+          <div style="font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Done</div>
+        </div>
+        <div style="flex:1;padding:5px 8px;text-align:center">
+          <div style="font-size:13px;font-weight:700;line-height:1.1;color:${remainingTasks > 0 ? 'var(--blue)' : 'var(--text-3)'}">${remainingTasks}</div>
+          <div style="font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Left</div>
+        </div>
+      </div>` : '';
+    const tagsRow = p.tags.length ? `<div class="project-card-meta-row">${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join('')}</div>` : '';
+    const dueRow = dueMeta ? `<div class="project-card-meta-row"><span class="chip due ${dueMeta.cls}">📅 ${dueMeta.label}</span></div>` : '';
+    const blockerRow = p.blockers.length ? `<div class="project-card-meta-row"><span class="chip" style="background:var(--red-bg);color:var(--red);border-color:transparent">⚠️ ${p.blockers.length} blocker${p.blockers.length>1?'s':''}</span></div>` : '';
+    return `<div class="project-card" onclick="openDetail('${p.id}')">
+      <div class="project-card-stripe" style="background:${p.color}"></div>
+      <div class="project-card-header">
+        <div class="project-card-title">${esc(p.name)}</div>
+        <div class="project-card-badges">
+          <select class="status-select-inline ${p.status}" onclick="event.stopPropagation()" onchange="updateProjectStatus('${p.id}',this.value)">
+            <option value="not-started" ${p.status==='not-started'?'selected':''}>Not Started</option>
+            <option value="in-progress" ${p.status==='in-progress'?'selected':''}>In Progress</option>
+            <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
+            <option value="done" ${p.status==='done'?'selected':''}>Done</option>
+          </select>
+          <select class="priority-select ${p.priority}" onclick="event.stopPropagation()" onchange="updateProjectPriority('${p.id}',this.value)">
+            <option value="high" ${p.priority==='high'?'selected':''}>High</option>
+            <option value="medium" ${p.priority==='medium'?'selected':''}>Medium</option>
+            <option value="low" ${p.priority==='low'?'selected':''}>Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="project-card-body">
+        <div>
+          <div class="progress-track" style="margin-bottom:6px"><div class="progress-fill" style="width:${p.completion}%;background:${p.color}"></div></div>
+          <div class="progress-label"><span>${lastEntry ? fmtDate(lastEntry.date) : 'No entries'}</span><span style="font-weight:700;color:var(--text)">${p.completion}%</span></div>
+        </div>
+        ${taskRow}
+        ${dueRow}
+        ${tagsRow}
+        ${blockerRow}
+      </div>
+    </div>`;
+  };
+
+  const activeProjects = projects.filter(p => p.status !== 'done').sort(byPriority);
+  const completedProjects = projects.filter(p => p.status === 'done').sort(byPriority);
+
+  const completedSection = completedProjects.length ? `
+    <div style="margin-top:36px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--text-2)">Completed Projects</div>
+        <div style="font-size:12px;color:var(--text-3)">${completedProjects.length} project${completedProjects.length!==1?'s':''}</div>
+      </div>
+      <div class="project-grid" style="opacity:0.75">${completedProjects.map(buildCard).join('')}</div>
+    </div>` : '';
+
+  return `<div class="page-header">
+    <div><div class="page-title">Projects</div><div class="page-subtitle">${total} project${total!==1?'s':''} · ${inProg} in progress</div></div>
+    <div class="page-header-right">
+      <button class="btn btn-primary" onclick="openAddProjectModal()">+ Add project</button>
+    </div>
+  </div>
+  ${strip}
+  <div class="project-grid">${activeProjects.map(buildCard).join('')}</div>
+  ${completedSection}`;
+}
+
+// ── Detail View ──
+function renderDetailView() {
+  const p = state.projects.find(x => x.id === state.activeProject);
+  if (!p) {
+    return `<div class="empty-state">
+      <div class="empty-icon">👈</div>
+      <div class="empty-title">Select a project</div>
+      <div class="empty-sub">Choose a project from the sidebar to view details.</div>
+    </div>`;
+  }
+
+  const dueMeta = dueMeta_(p);
+  const sortedEntries = [...p.entries].sort((a,b) => new Date(b.date)-new Date(a.date));
+
+  const entriesHTML = sortedEntries.length ? sortedEntries.map(e => `
+    <div class="entry-row" onclick="openEditEntryModal('${p.id}','${e.id}')">
+      <div class="entry-date">${fmtDate(e.date)}</div>
+      <div class="entry-body">
+        <div class="entry-pct">${e.completion}%
+          <span class="entry-status-chip ${e.status}" style="background:${e.status==='done'?'var(--green-bg)':e.status==='in-progress'?'var(--blue-bg)':e.status==='on-hold'?'var(--orange-bg)':'var(--surface-3)'};color:${e.status==='done'?'var(--green)':e.status==='in-progress'?'var(--blue)':e.status==='on-hold'?'var(--orange)':'var(--text-3)'}">${statusLabel(e.status)}</span>
+        </div>
+        ${e.note ? `<div class="entry-note">${esc(e.note)}</div>` : ''}
+        ${e.nextSteps ? `<div class="entry-meta-row"><span class="entry-meta-item">→ ${esc(e.nextSteps)}</span></div>` : ''}
+      </div>
+    </div>
+  `).join('') : `<div style="padding:20px"><div class="entry-empty">No entries yet. Add your first progress update.</div></div>`;
+
+  const tasks = p.tasks || [];
+  const openTasks = tasks.filter(t => !t.completedInEntry);
+  const doneTasks = tasks.filter(t => t.completedInEntry);
+  const tasksHTML = tasks.length ? tasks.map(t => {
+    const isDone = !!t.completedInEntry;
+    const entry = isDone ? p.entries.find(e => e.id === t.completedInEntry) : null;
+    return `<div class="task-row">
+      <div class="task-text${isDone?' done':''}">${esc(t.text)}</div>
+      ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
+      ${!isDone ? `<div style="display:flex;gap:4px">
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteTask('${p.id}','${t.id}')">✕</button>
+      </div>` : ''}
+    </div>`;
+  }).join('') : `<div style="padding:16px 20px;font-size:12px;color:var(--text-3);font-style:italic">No tasks yet.</div>`;
+
+  const blockersHTML = p.blockers.length ? p.blockers.map((b,i) => `
+    <div class="blocker-row">
+      <div class="blocker-text">${esc(b)}</div>
+      <button class="btn btn-sm" onclick="resolveBlocker('${p.id}',${i})" title="Mark resolved">✓</button>
+    </div>
+  `).join('') : `<div style="font-size:12px;color:var(--text-3);font-style:italic">No active blockers.</div>`;
+
+  return `
+  <button onclick="setView('summary')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-3);padding:0 0 14px 0;display:flex;align-items:center;gap:4px;transition:color 0.1s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">← Back to Summary</button>
+  <div class="detail-header">
+    <div>
+      <div class="detail-title" style="color:${p.color}">${esc(p.name)}</div>
+      <div class="detail-subtitle">${esc(p.description || '')}</div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-sm" onclick="openEditProjectModal('${p.id}')">✏️ Edit</button>
+      <button class="btn btn-sm btn-primary" onclick="openAddEntryModal('${p.id}')">+ Log Update</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteProject('${p.id}')">Delete</button>
+    </div>
+  </div>
+
+  <!-- meta chips -->
+  <div class="chip-row" style="margin-bottom:20px">
+    <select class="status-select-inline ${p.status}" onchange="updateProjectStatus('${p.id}',this.value)">
+      <option value="not-started" ${p.status==='not-started'?'selected':''}>Not Started</option>
+      <option value="in-progress" ${p.status==='in-progress'?'selected':''}>In Progress</option>
+      <option value="on-hold" ${p.status==='on-hold'?'selected':''}>On Hold</option>
+      <option value="done" ${p.status==='done'?'selected':''}>Done</option>
+    </select>
+    <select class="priority-select ${p.priority}" onchange="updateProjectPriority('${p.id}',this.value)">
+      <option value="high" ${p.priority==='high'?'selected':''}>High</option>
+      <option value="medium" ${p.priority==='medium'?'selected':''}>Medium</option>
+      <option value="low" ${p.priority==='low'?'selected':''}>Low</option>
+    </select>
+    ${dueMeta ? `<span class="chip due ${dueMeta.cls}">📅 ${dueMeta.label}</span>` : ''}
+    ${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join('')}
+  </div>
+
+  <!-- progress + chart -->
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-header"><span class="panel-title">Progress</span></div>
+    <div style="padding:16px 20px 4px">
+      <div class="circ-wrap">
+        ${circleProgress(p.completion, p.color)}
+        <div>
+          <div class="circ-pct">${p.completion}% complete</div>
+          <div class="circ-label">${p.entries.length} update${p.entries.length!==1?'s':''} logged</div>
+        </div>
+      </div>
+      <div class="progress-track" style="margin-top:14px;height:9px">
+        <div class="progress-fill" style="width:${p.completion}%;background:${p.color}"></div>
+      </div>
+    </div>
+    ${p.entries.length > 1 ? `<div class="chart-wrap"><div class="chart-header"><span class="chart-title">Progress over time</span></div><svg class="proj-chart" id="proj-chart-${p.id}"></svg></div>` : ''}
+  </div>
+
+  <!-- Tasks -->
+  <div class="panel" style="margin-bottom:16px">
+    <div class="panel-header">
+      <span class="panel-title">✅ Tasks <span style="font-weight:400;opacity:0.6">${openTasks.length} open · ${doneTasks.length} done</span></span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openImportTasksModal('${p.id}')">Import</button>
+        <button class="btn btn-sm btn-primary" onclick="openAddTaskModal('${p.id}')">+ Add task</button>
+      </div>
+    </div>
+    <div class="task-list">${tasksHTML}</div>
+  </div>
+
+  <div class="detail-grid">
+    <!-- Update log -->
+    <div class="panel" style="grid-column:1/-1">
+      <div class="panel-header">
+        <span class="panel-title">Update log</span>
+        <button class="btn btn-sm btn-primary" onclick="openAddEntryModal('${p.id}')">+ Log Update</button>
+      </div>
+      <div class="entry-list">${entriesHTML}</div>
+    </div>
+
+    <!-- Blockers -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">⚠️ Blockers</span>
+        <button class="btn btn-sm" onclick="openAddBlockerModal('${p.id}')">+ Add</button>
+      </div>
+      <div class="panel-body"><div class="blocker-list">${blockersHTML}</div></div>
+    </div>
+
+    <!-- Next steps + notes -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">🎯 Next steps & notes</span></div>
+      <div class="panel-body">
+        ${p.nextSteps ? `<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-3);margin-bottom:5px">Next Steps</div><div style="font-size:13px;color:var(--text-2);line-height:1.65">${esc(p.nextSteps)}</div></div>` : ''}
+        ${p.notes ? `<div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-3);margin-bottom:5px">Notes</div><div style="font-size:13px;color:var(--text-2);line-height:1.65;white-space:pre-wrap">${esc(p.notes)}</div></div>` : `<div style="font-size:12px;color:var(--text-3);font-style:italic">No notes.</div>`}
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// ── Chart ──
+function drawChart(p) {
+  const svg = document.getElementById(`proj-chart-${p.id}`);
+  if (!svg) return;
+  const sorted = [...p.entries].sort((a,b) => new Date(a.date)-new Date(b.date));
+  const W = svg.clientWidth || 500, H = 160;
+  const pad = { t: 14, r: 24, b: 28, l: 36 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  if (sorted.length < 2) return;
+
+  const xs = sorted.map(e => new Date(e.date).getTime());
+  const minX = xs[0], maxX = xs[xs.length-1], rangeX = maxX - minX || 1;
+  const toX = t => pad.l + ((t-minX)/rangeX)*iW;
+  const toY = v => pad.t + iH - (v/100)*iH;
+
+  const pts = sorted.map((e,i) => `${toX(xs[i])},${toY(e.completion)}`).join(' ');
+  const polyPts = `${pad.l},${pad.t+iH} ` + sorted.map((e,i) => `${toX(xs[i])},${toY(e.completion)}`).join(' ') + ` ${toX(xs[xs.length-1])},${pad.t+iH}`;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridC = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const labelC = isDark ? '#505050' : '#999999';
+
+  let gridLines = '';
+  [0,25,50,75,100].forEach(v => {
+    const y = toY(v);
+    gridLines += `<line x1="${pad.l}" y1="${y}" x2="${pad.l+iW}" y2="${y}" stroke="${gridC}" stroke-width="1"/>`;
+    gridLines += `<text x="${pad.l-5}" y="${y+4}" text-anchor="end" font-size="9" fill="${labelC}">${v}</text>`;
+  });
+
+  let xLabels = '';
+  sorted.forEach((e,i) => {
+    if (i===0 || i===sorted.length-1 || sorted.length<=5) {
+      xLabels += `<text x="${toX(xs[i])}" y="${H-4}" text-anchor="middle" font-size="9" fill="${labelC}">${fmtDateShort(e.date)}</text>`;
+    }
+  });
+
+  const colorHex = p.color;
+  const areaId = `area-${p.id}`;
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="${areaId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${colorHex}" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="${colorHex}" stop-opacity="0.03"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <polygon points="${polyPts}" fill="url(#${areaId})"/>
+    <polyline points="${pts}" fill="none" stroke="${colorHex}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${sorted.map((e,i) => `<circle cx="${toX(xs[i])}" cy="${toY(e.completion)}" r="4" fill="${colorHex}" stroke="${isDark?'#1a1a1a':'#fff'}" stroke-width="2"/>`).join('')}
+    ${xLabels}
+  `;
+}
+
+// ── Helpers ──
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+function byPriority(a, b) { return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid() { return Math.random().toString(36).slice(2,9); }
+function statusLabel(s) {
+  return {
+    'not-started':'Not Started','in-progress':'In Progress',
+    'done':'Done','on-hold':'On Hold'
+  }[s] || s;
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+function fmtDateShort(d) {
+  if (!d) return '';
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function dueMeta_(p) {
+  if (!p.dueDate) return null;
+  const due = new Date(p.dueDate + 'T12:00:00');
+  const now = new Date();
+  const days = Math.ceil((due-now)/(1000*60*60*24));
+  if (p.status === 'done') return null;
+  if (days < 0) return { label: `Overdue by ${-days}d`, cls:'overdue' };
+  if (days <= 7) return { label: `Due in ${days}d`, cls:'soon' };
+  return { label: `Due ${fmtDate(p.dueDate)}`, cls:'' };
+}
+function circleProgress(pct, color) {
+  const r = 24, cx = 30, cy = 30;
+  const circ = 2 * Math.PI * r;
+  const full = pct >= 100;
+  const dash = full ? circ : (pct / 100) * circ;
+  const dashArray = full ? `${circ} 0` : `${dash} ${circ}`;
+  const linecap = full ? 'butt' : 'round';
+  return `<svg class="circ-svg" width="60" height="60" viewBox="0 0 60 60">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="5"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="5"
+      stroke-dasharray="${dashArray}" stroke-dashoffset="${circ/4}" stroke-linecap="${linecap}"
+      transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dasharray 0.5s ease"/>
+  </svg>`;
+}
+
+// ── Actions ──
+function selectProject(id) {
+  state.activeProject = id;
+  render();
+}
+function openDetail(id) {
+  state.activeProject = id;
+  state.view = 'detail';
+  setView('detail');
+}
+function setView(v) {
+  state.view = v;
+  document.getElementById('tab-summary').classList.toggle('active', v==='summary');
+  document.getElementById('tab-detail').classList.toggle('active', v==='detail');
+  renderContent();
+  saveState();
+}
+function toggleSidebar() {
+  state.sidebarOpen = !state.sidebarOpen;
+  renderSidebar();
+  saveState();
+}
+function updateProjectStatus(id, val) {
+  const p = state.projects.find(x => x.id===id);
+  if (!p) return;
+  p.status = val;
+  p.completion = calcCompletion(p);
+  saveState(); render();
+}
+function updateProjectPriority(id, val) {
+  const p = state.projects.find(x => x.id===id);
+  if (!p) return;
+  p.priority = val;
+  saveState(); render();
+}
+function resolveBlocker(id, idx) {
+  const p = state.projects.find(x => x.id===id);
+  if (!p) return;
+  p.blockers.splice(idx, 1);
+  saveState(); render();
+}
+function deleteProject(id) {
+  if (!confirm('Delete this project and all its data?')) return;
+  state.projects = state.projects.filter(x => x.id!==id);
+  if (state.activeProject === id) state.activeProject = state.projects[0]?.id || null;
+  saveState(); render();
+}
+
+// ── Add Project Modal ──
+function openAddProjectModal() {
+  renderModal('add-project', {});
+}
+function openEditProjectModal(id) {
+  renderModal('edit-project', { id });
+}
+
+// ── Add Entry Modal ──
+function openAddEntryModal(pid) {
+  renderModal('add-entry', { pid });
+}
+function updateModalCompletion(totalTasks, alreadyDone) {
+  if (!totalTasks) return;
+  const checked = document.querySelectorAll('.task-checkbox:checked').length;
+  const pct = Math.round((alreadyDone + checked) / totalTasks * 100);
+  const el = document.getElementById('e-completion-display');
+  if (el) el.textContent = pct + '%';
+}
+function openEditEntryModal(pid, eid) {
+  renderModal('edit-entry', { pid, eid });
+}
+
+// ── Add Blocker Modal ──
+function openAddBlockerModal(pid) {
+  renderModal('add-blocker', { pid });
+}
+
+// ── Task Modals ──
+function openAddTaskModal(pid) { renderModal('add-task', { pid }); }
+function openImportTasksModal(pid) { renderModal('import-tasks', { pid }); }
+function saveAddTask(pid) {
+  const p = state.projects.find(x => x.id===pid);
+  const text = document.getElementById('t-text').value.trim();
+  if (!text) { alert('Please enter a task.'); return; }
+  if (!p.tasks) p.tasks = [];
+  p.tasks.push({ id: uid(), text, completedInEntry: null });
+  p.completion = calcCompletion(p);
+  closeModal(); saveState(); render();
+}
+function saveImportTasks(pid) {
+  const p = state.projects.find(x => x.id===pid);
+  const lines = document.getElementById('t-import').value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { alert('Please enter at least one task.'); return; }
+  if (!p.tasks) p.tasks = [];
+  lines.forEach(text => p.tasks.push({ id: uid(), text, completedInEntry: null }));
+  p.completion = calcCompletion(p);
+  closeModal(); saveState(); render();
+}
+function deleteTask(pid, tid) {
+  if (!confirm('Delete this task?')) return;
+  const p = state.projects.find(x => x.id===pid);
+  if (!p) return;
+  p.tasks = (p.tasks || []).filter(t => t.id !== tid);
+  p.completion = calcCompletion(p);
+  saveState(); render();
+}
+function openEditTaskModal(pid, tid) { renderModal('edit-task', { pid, tid }); }
+function saveEditTask(pid, tid) {
+  const p = state.projects.find(x => x.id===pid);
+  if (!p) return;
+  const text = document.getElementById('t-edit-text').value.trim();
+  if (!text) { alert('Task cannot be empty.'); return; }
+  const task = (p.tasks || []).find(t => t.id===tid);
+  if (task) task.text = text;
+  closeModal(); saveState(); render();
+}
+
+// ── Modal rendering ──
+let _modalTags = [];
+
+function renderModal(type, data) {
+  const container = document.getElementById('modal-container');
+  container.innerHTML = buildModal(type, data);
+}
+function closeModal() {
+  document.getElementById('modal-container').innerHTML = '';
+  _modalTags = [];
+}
+
+function buildModal(type, data) {
+  if (type === 'add-project' || type === 'edit-project') {
+    const isEdit = type === 'edit-project';
+    const p = isEdit ? state.projects.find(x => x.id===data.id) : null;
+    _modalTags = p ? [...p.tags] : [];
+    const colorOptions = COLORS.map((c,i) => `
+      <div onclick="selectModalColor('${c}',this)" style="width:20px;height:20px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${(p&&p.color===c)||(!p&&i===0)?'var(--text)':'transparent'}" data-color="${c}"></div>
+    `).join('');
+
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div class="modal-title">${isEdit?'Edit project':'New project'}</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Project name</label>
+          <input class="form-input" id="m-name" placeholder="e.g. Website Redesign" value="${esc(p?.name||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input class="form-input" id="m-desc" placeholder="Short description" value="${esc(p?.description||'')}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-input" id="m-status">
+              <option value="not-started" ${(!p||p.status==='not-started')?'selected':''}>Not Started</option>
+              <option value="in-progress" ${p?.status==='in-progress'?'selected':''}>In Progress</option>
+              <option value="on-hold" ${p?.status==='on-hold'?'selected':''}>On Hold</option>
+              <option value="done" ${p?.status==='done'?'selected':''}>Done</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-input" id="m-priority">
+              <option value="high" ${p?.priority==='high'?'selected':''}>High</option>
+              <option value="medium" ${(!p||p.priority==='medium')?'selected':''}>Medium</option>
+              <option value="low" ${p?.priority==='low'?'selected':''}>Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due date</label>
+          <input class="form-input" type="date" id="m-due" value="${p?.dueDate||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--text-3);font-weight:400">(press Enter to add)</span></label>
+          <div class="tags-wrap" onclick="document.getElementById('m-tag-input').focus()" id="tags-wrap-modal">
+            ${_modalTags.map((t,i) => `<div class="tag-chip" id="tag-${i}">${esc(t)}<button class="tag-chip-del" onclick="removeModalTag(${i})">×</button></div>`).join('')}
+            <input class="tags-input" id="m-tag-input" placeholder="Add tag…" onkeydown="handleTagKey(event)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="color-swatches">${colorOptions}</div>
+          <input type="hidden" id="m-color" value="${p?.color||COLORS[0]}">
+        </div>
+        <hr class="form-divider">
+        <div class="form-group">
+          <label class="form-label">Next steps</label>
+          <input class="form-input" id="m-nextsteps" placeholder="What needs to happen next?" value="${esc(p?.nextSteps||'')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="log-area" id="m-notes" placeholder="Ongoing notes, context, decisions…">${esc(p?.notes||'')}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          ${isEdit ? `<button class="btn btn-sm btn-danger" onclick="deleteProject('${p.id}');closeModal()">Delete project</button>` : ''}
+        </div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="${isEdit?`saveEditProject('${p.id}')`:'saveAddProject()'}">${isEdit?'Save changes':'Create project'}</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  if (type === 'add-entry' || type === 'edit-entry') {
+    const isEdit = type === 'edit-entry';
+    const p = state.projects.find(x => x.id===data.pid);
+    const e = isEdit ? p?.entries.find(x => x.id===data.eid) : null;
+    const todayStr = new Date().toISOString().slice(0,10);
+    const allTasks = p?.tasks || [];
+    // For add: show open tasks. For edit: show open tasks + tasks completed in this entry.
+    const completedInThisEntry = isEdit ? allTasks.filter(t => t.completedInEntry === e?.id) : [];
+    const selectableTasks = isEdit
+      ? [...allTasks.filter(t => !t.completedInEntry), ...completedInThisEntry]
+      : allTasks.filter(t => !t.completedInEntry);
+    const totalTasks = allTasks.length;
+    const alreadyDoneCount = isEdit
+      ? allTasks.filter(t => t.completedInEntry && t.completedInEntry !== e?.id).length
+      : allTasks.filter(t => t.completedInEntry).length;
+    const initialPct = totalTasks ? Math.round(alreadyDoneCount / totalTasks * 100) : 0;
+    const taskCheckboxes = selectableTasks.length ? `
+      <hr class="form-divider">
+      <div class="form-group">
+        <label class="form-label">✅ Tasks completed in this update</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          ${selectableTasks.map(t => {
+            const checked = completedInThisEntry.some(ct => ct.id === t.id) ? 'checked' : '';
+            return `<label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--text)">
+              <input type="checkbox" class="task-checkbox" data-task-id="${t.id}" ${checked} onchange="updateModalCompletion(${totalTasks},${alreadyDoneCount})" style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue);flex-shrink:0">
+              <span>${esc(t.text)}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div class="modal-title">${isEdit?'Edit update':'Log Update'} — ${esc(p?.name||'')}</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="e-date" value="${e?.date||todayStr}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">% Completion</label>
+            <div class="form-input" style="color:var(--text-2);background:var(--surface-2);cursor:default"><span id="e-completion-display">${initialPct}%</span> <span style="font-size:11px;color:var(--text-3)">(auto from tasks)</span></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-input" id="e-status">
+              <option value="not-started" ${e?.status==='not-started'?'selected':''}>Not Started</option>
+              <option value="in-progress" ${(!e||e.status==='in-progress')?'selected':''}>In Progress</option>
+              <option value="on-hold" ${e?.status==='on-hold'?'selected':''}>On Hold</option>
+              <option value="done" ${e?.status==='done'?'selected':''}>Done</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">📝 Update note</label>
+          <div class="form-hint" style="margin-bottom:6px">What happened? What did you accomplish?</div>
+          <textarea class="log-area" id="e-note" placeholder="e.g. Completed wireframes for 3 core pages, approved by stakeholder…">${esc(e?.note||'')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🎯 Next steps</label>
+          <input class="form-input" id="e-nextsteps" placeholder="What's next?" value="${esc(e?.nextSteps||p?.nextSteps||'')}">
+        </div>
+        ${taskCheckboxes}
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          ${isEdit ? `<button class="btn btn-sm btn-danger" onclick="deleteEntry('${data.pid}','${data.eid}')">Delete entry</button>` : ''}
+        </div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="${isEdit?`saveEditEntry('${data.pid}','${data.eid}')`:`saveAddEntry('${data.pid}')`}">${isEdit?'Save changes':'Save update'}</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  if (type === 'add-task') {
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:440px">
+      <div class="modal-header"><div class="modal-title">Add task</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Task</label>
+          <input class="form-input" id="t-text" placeholder="e.g. Write copy for landing page" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveAddTask('${data.pid}')">Add task</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  if (type === 'edit-task') {
+    const p = state.projects.find(x => x.id===data.pid);
+    const task = p ? (p.tasks||[]).find(t => t.id===data.tid) : null;
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:440px">
+      <div class="modal-header"><div class="modal-title">Edit task</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Task</label>
+          <input class="form-input" id="t-edit-text" value="${task ? esc(task.text) : ''}" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveEditTask('${data.pid}','${data.tid}')">Save</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  if (type === 'import-tasks') {
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div class="modal-title">Import tasks</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Paste tasks — one per line</label>
+          <textarea class="log-area" id="t-import" style="min-height:140px" placeholder="Design homepage mockup&#10;Write copy for 3 landing pages&#10;Get stakeholder sign-off"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveImportTasks('${data.pid}')">Import</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  if (type === 'add-blocker') {
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:400px">
+      <div class="modal-header"><div class="modal-title">Add blocker</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Blocker description</label>
+          <input class="form-input" id="b-text" placeholder="e.g. Waiting on legal sign-off…" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveBlocker('${data.pid}')">Add blocker</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+  return '';
+}
+
+// ── Tag helpers ──
+function handleTagKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim().replace(',','');
+    if (val && !_modalTags.includes(val)) {
+      _modalTags.push(val);
+      refreshTagsUI();
+    }
+    e.target.value = '';
+  }
+}
+function removeModalTag(i) {
+  _modalTags.splice(i,1);
+  refreshTagsUI();
+}
+function refreshTagsUI() {
+  const wrap = document.getElementById('tags-wrap-modal');
+  const input = document.getElementById('m-tag-input');
+  if (!wrap || !input) return;
+  const chips = _modalTags.map((t,i) => {
+    const d = document.createElement('div');
+    d.className = 'tag-chip';
+    d.id = `tag-${i}`;
+    d.innerHTML = `${esc(t)}<button class="tag-chip-del" onclick="removeModalTag(${i})">×</button>`;
+    return d;
+  });
+  // clear all except input
+  Array.from(wrap.children).forEach(c => { if (c !== input) wrap.removeChild(c); });
+  chips.forEach(c => wrap.insertBefore(c, input));
+}
+function selectModalColor(c, el) {
+  document.getElementById('m-color').value = c;
+  document.querySelectorAll('#color-swatches > div').forEach(d => d.style.borderColor = d.dataset.color===c?'var(--text)':'transparent');
+}
+
+// ── Save handlers ──
+function saveAddProject() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('Please enter a project name.'); return; }
+  const p = {
+    id: uid(), name,
+    description: document.getElementById('m-desc').value.trim(),
+    status: document.getElementById('m-status').value,
+    priority: document.getElementById('m-priority').value,
+    dueDate: document.getElementById('m-due').value || '',
+    tags: [..._modalTags],
+    color: document.getElementById('m-color').value,
+    completion: 0,
+    entries: [],
+    blockers: [],
+    tasks: [],
+    nextSteps: document.getElementById('m-nextsteps').value.trim(),
+    notes: document.getElementById('m-notes').value.trim(),
+  };
+  state.projects.push(p);
+  state.activeProject = p.id;
+  closeModal(); saveState(); render();
+}
+function saveEditProject(id) {
+  const p = state.projects.find(x => x.id===id);
+  if (!p) return;
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('Please enter a project name.'); return; }
+  p.name = name;
+  p.description = document.getElementById('m-desc').value.trim();
+  p.status = document.getElementById('m-status').value;
+  p.priority = document.getElementById('m-priority').value;
+  p.dueDate = document.getElementById('m-due').value || '';
+  p.tags = [..._modalTags];
+  p.color = document.getElementById('m-color').value;
+  p.nextSteps = document.getElementById('m-nextsteps').value.trim();
+  p.notes = document.getElementById('m-notes').value.trim();
+  closeModal(); saveState(); render();
+}
+function calcCompletion(p) {
+  const tasks = p.tasks || [];
+  if (!tasks.length) return 0;
+  return Math.round(tasks.filter(t => t.completedInEntry).length / tasks.length * 100);
+}
+
+function getCheckedTaskIds() {
+  return Array.from(document.querySelectorAll('.task-checkbox:checked')).map(el => el.dataset.taskId);
+}
+function saveAddEntry(pid) {
+  const p = state.projects.find(x => x.id===pid);
+  if (!p) return;
+  const e = {
+    id: uid(),
+    date: document.getElementById('e-date').value || new Date().toISOString().slice(0,10),
+    completion: 0,
+    status: document.getElementById('e-status').value,
+    note: document.getElementById('e-note').value.trim(),
+    nextSteps: document.getElementById('e-nextsteps').value.trim(),
+  };
+  // mark checked tasks as completed in this entry before calculating
+  const checkedIds = getCheckedTaskIds();
+  (p.tasks || []).forEach(t => { if (checkedIds.includes(t.id)) t.completedInEntry = e.id; });
+  e.completion = calcCompletion(p);
+  p.entries.push(e);
+  p.completion = e.completion;
+  p.nextSteps = e.nextSteps || p.nextSteps;
+  if (e.status === 'done') p.status = 'done';
+  closeModal(); saveState(); render();
+  // Prompt to mark project complete if all tasks done and status isn't already done
+  if (e.completion === 100 && p.status !== 'done') {
+    if (confirm('🎉 All tasks complete! Mark this project as Done?')) {
+      p.status = 'done';
+      saveState(); render();
+    }
+  }
+}
+function saveEditEntry(pid, eid) {
+  const p = state.projects.find(x => x.id===pid);
+  const e = p?.entries.find(x => x.id===eid);
+  if (!e) return;
+  e.date = document.getElementById('e-date').value;
+  e.status = document.getElementById('e-status').value;
+  e.note = document.getElementById('e-note').value.trim();
+  e.nextSteps = document.getElementById('e-nextsteps').value.trim();
+  // sync task completion: checked = done in this entry, unchecked = reopen
+  const checkedIds = getCheckedTaskIds();
+  (p.tasks || []).forEach(t => {
+    if (t.completedInEntry === eid && !checkedIds.includes(t.id)) t.completedInEntry = null;
+    if (!t.completedInEntry && checkedIds.includes(t.id)) t.completedInEntry = eid;
+  });
+  e.completion = calcCompletion(p);
+  p.completion = e.completion;
+  closeModal(); saveState(); render();
+}
+function deleteEntry(pid, eid) {
+  if (!confirm('Delete this entry?')) return;
+  const p = state.projects.find(x => x.id===pid);
+  if (!p) return;
+  // reopen any tasks completed in this entry
+  (p.tasks || []).forEach(t => { if (t.completedInEntry === eid) t.completedInEntry = null; });
+  p.entries = p.entries.filter(e => e.id!==eid);
+  p.completion = calcCompletion(p);
+  closeModal(); saveState(); render();
+}
+function saveBlocker(pid) {
+  const p = state.projects.find(x => x.id===pid);
+  const text = document.getElementById('b-text').value.trim();
+  if (!text) { alert('Please enter a blocker description.'); return; }
+  p.blockers.push(text);
+  closeModal(); saveState(); render();
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeUI();
+  if (state.view==='detail') {
+    const p = state.projects.find(x => x.id===state.activeProject);
+    if (p && p.entries.length>1) setTimeout(() => drawChart(p), 50);
+  }
+}
+function updateThemeUI() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('theme-label').textContent = isDark ? 'Dark' : 'Light';
+}
+
+// ── Import/Export ──
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'project_dashboard.json';
+  a.click();
+}
+function importClick() { document.getElementById('import-file').click(); }
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      state = JSON.parse(ev.target.result);
+      saveState(); render();
+    } catch(err) { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+function clearAll() {
+  if (!confirm('Clear all data and reset to sample projects?')) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  saveState(); render();
+}
+
+// ── Dropdown ──
+function toggleMenu() {
+  const m = document.getElementById('dropdown-menu');
+  m.style.display = m.style.display==='none' ? 'block' : 'none';
+}
+function closeMenu() { document.getElementById('dropdown-menu').style.display='none'; }
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('menu-wrap');
+  if (wrap && !wrap.contains(e.target)) closeMenu();
+});
+
+// ── Sidebar resize ──
+function initSidebarResize() {
+  const handle = document.getElementById('sidebar-resize');
+  const sidebar = document.getElementById('sidebar');
+  if (!handle || !sidebar) return;
+  let startX, startW;
+  handle.addEventListener('mousedown', e => {
+    startX = e.clientX; startW = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = e => {
+      const newW = Math.min(480, Math.max(160, startW + (e.clientX - startX)));
+      sidebar.style.width = newW + 'px';
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// ── Boot ──
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (session) {
+    _currentUser = session.user;
+    await loadStateFromSupabase();
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-wrap').style.display = 'grid';
+    render();
+    setTimeout(initSidebarResize, 0);
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session && !_currentUser) {
+      _currentUser = session.user;
+      await loadStateFromSupabase();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-wrap').style.display = 'grid';
+      render();
+      setTimeout(initSidebarResize, 0);
+    }
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
