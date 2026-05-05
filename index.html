@@ -265,10 +265,10 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 
 /* ── Impersonation banner ── */
 .impersonation-banner {
+  display: none;
   background: #f59e0b;
   color: #1a1100;
   padding: 10px 20px;
-  display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
@@ -278,6 +278,7 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   z-index: 15;
   gap: 12px;
 }
+.impersonation-banner.visible { display: flex; }
 .btn-return {
   padding: 5px 12px;
   background: rgba(0,0,0,0.12);
@@ -313,7 +314,7 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 </div>
 
 <div id="app" style="display:none">
-  <div class="impersonation-banner" id="impersonation-banner" style="display:none">
+  <div class="impersonation-banner" id="impersonation-banner">
     <span>Viewing as <strong id="impersonation-email"></strong></span>
     <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
   </div>
@@ -370,7 +371,7 @@ async function init() {
   document.getElementById('loading-screen').style.display = 'none';
   if (session) {
     await onSignedIn(session.user);
-    if (sessionStorage.getItem('adminSession')) showImpersonationBanner(session.user.email);
+    if (sessionStorage.getItem('adminSession')) showBanner(session.user.email);
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
@@ -379,10 +380,10 @@ async function init() {
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
       await onSignedIn(session.user);
-      if (sessionStorage.getItem('adminSession')) showImpersonationBanner(session.user.email);
+      if (sessionStorage.getItem('adminSession')) showBanner(session.user.email);
     } else if (!_returningToAdmin) {
       document.getElementById('app').style.display = 'none';
-      document.getElementById('impersonation-banner').style.display = 'none';
+      hideBanner();
       document.getElementById('auth-screen').style.display = 'flex';
     }
   });
@@ -393,7 +394,7 @@ async function onSignedIn(user) {
 
   // Always reset conditional sections before re-rendering
   document.getElementById('admin-section').style.display = 'none';
-  document.getElementById('impersonation-banner').style.display = 'none';
+  hideBanner();
 
   // Upsert profile
   await sb.from('profiles').upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id' });
@@ -508,9 +509,14 @@ function applyTheme(theme) {
   if (label) label.textContent = dark ? 'Dark' : 'Light';
 }
 
-function showImpersonationBanner(email) {
+function showBanner(email) {
   document.getElementById('impersonation-email').textContent = email;
-  document.getElementById('impersonation-banner').style.display = 'flex';
+  document.getElementById('impersonation-banner').classList.add('visible');
+}
+
+function hideBanner() {
+  document.getElementById('impersonation-banner').classList.remove('visible');
+  document.getElementById('impersonation-email').textContent = '';
 }
 
 async function impersonate(userId, email) {
@@ -549,7 +555,7 @@ async function impersonate(userId, email) {
 
   // Explicitly re-render as the target user, then show banner
   await onSignedIn(otpData.user);
-  showImpersonationBanner(otpData.user.email);
+  showBanner(otpData.user.email);
 }
 
 async function returnToAdmin() {
@@ -558,7 +564,7 @@ async function returnToAdmin() {
   const { access_token, refresh_token } = JSON.parse(stored);
   sessionStorage.removeItem('adminSession');
   _returningToAdmin = true;
-  document.getElementById('impersonation-banner').style.display = 'none';
+  hideBanner();
   await sb.auth.signOut();
   const { error } = await sb.auth.setSession({ access_token, refresh_token });
   _returningToAdmin = false;
