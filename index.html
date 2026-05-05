@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard</title>
+<title>Dashboard Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,6 +26,8 @@
   --blue-bg: #e9f1fb;
   --green: #2a7d46;
   --green-bg: #e6f3ec;
+  --red: #c0392b;
+  --red-bg: #fbeae8;
   --r-sm: 6px;
   --r-lg: 14px;
 }
@@ -46,6 +49,8 @@ html[data-theme="dark"] {
   --blue-bg: rgba(74,159,212,0.12);
   --green: #4caf73;
   --green-bg: rgba(76,175,115,0.12);
+  --red: #e05c4b;
+  --red-bg: rgba(224,92,75,0.12);
 }
 
 body {
@@ -59,6 +64,84 @@ body {
   transition: background 0.2s, color 0.2s;
 }
 
+/* ── Auth screen ── */
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  width: 380px;
+  max-width: 94vw;
+}
+.auth-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+.auth-subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
+.auth-error {
+  background: var(--red-bg);
+  border: 1px solid rgba(192,57,43,0.2);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--red);
+  margin-bottom: 14px;
+  display: none;
+}
+.auth-error.visible { display: block; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; display: block; letter-spacing: 0.3px; text-transform: uppercase; }
+.form-input {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 14px;
+  transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--blue); }
+.btn-primary {
+  width: 100%; padding: 10px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Loading screen ── */
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border-md);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── App ── */
+.app { display: none; }
+.app.visible { display: block; }
+
 .topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border-md);
@@ -70,9 +153,12 @@ body {
   height: 56px;
   position: sticky; top: 0; z-index: 20;
 }
+.topbar-left { display: flex; align-items: center; gap: 16px; }
 .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 .brand-name span { opacity: 0.35; font-weight: 400; }
+.user-email { font-size: 12px; color: var(--text-3); }
 
+.topbar-right { display: flex; align-items: center; gap: 10px; }
 .theme-toggle {
   display: flex; align-items: center; gap: 7px;
   cursor: pointer; font-size: 13px; color: var(--text-2);
@@ -83,38 +169,39 @@ body {
   background: var(--surface-3); border: 1px solid var(--border-md);
   position: relative; transition: background 0.2s;
 }
-.theme-track.on { background: #1d6fa8; border-color: #1d6fa8; }
+.theme-track.on { background: var(--blue); border-color: var(--blue); }
 .theme-thumb {
   width: 12px; height: 12px; border-radius: 50%;
   background: #fff; position: absolute; top: 2px; left: 2px;
   transition: left 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .theme-track.on .theme-thumb { left: 16px; }
+.btn-signout {
+  padding: 6px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.btn-signout:hover { background: var(--surface-3); }
 
 .main {
   max-width: 860px;
   margin: 0 auto;
   padding: 48px 20px 80px;
 }
-
-.page-title {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin-bottom: 6px;
-}
-.page-subtitle {
-  font-size: 14px;
-  color: var(--text-2);
-  margin-bottom: 36px;
-}
+.page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+.page-subtitle { font-size: 14px; color: var(--text-2); margin-bottom: 36px; }
 
 .module-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
-
 .module-card {
   background: var(--surface);
   border: 1px solid var(--border-md);
@@ -127,7 +214,6 @@ body {
   flex-direction: column;
   gap: 10px;
   transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-  cursor: pointer;
 }
 .module-card:hover {
   box-shadow: var(--shadow-md);
@@ -135,72 +221,130 @@ body {
   border-color: rgba(0,0,0,0.18);
 }
 html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18); }
-
-.module-icon {
-  font-size: 28px;
-  line-height: 1;
-  margin-bottom: 2px;
-}
-.module-name {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-}
-.module-desc {
-  font-size: 13px;
-  color: var(--text-2);
-  line-height: 1.5;
-}
-.module-arrow {
-  margin-top: auto;
-  padding-top: 12px;
-  font-size: 12px;
-  color: var(--text-3);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+.module-icon { font-size: 28px; line-height: 1; margin-bottom: 2px; }
+.module-name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+.module-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.module-arrow { margin-top: auto; padding-top: 12px; font-size: 12px; color: var(--text-3); }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand-name">Dashboard <span>Suite</span></div>
-  <div class="theme-toggle" onclick="toggleTheme()" id="theme-toggle">
-    <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
-    <span id="theme-label">Light</span>
+<!-- Loading -->
+<div class="loading-screen" id="loading-screen">
+  <div class="spinner"></div>
+</div>
+
+<!-- Auth -->
+<div class="auth-screen" id="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">Dashboard Suite</div>
+    <div class="auth-subtitle">Sign in to access your tools.</div>
+    <div class="auth-error" id="auth-error"></div>
+    <label class="form-label">Email</label>
+    <input class="form-input" type="email" id="login-email" placeholder="you@example.com"
+      onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" autofocus>
+    <label class="form-label">Password</label>
+    <input class="form-input" type="password" id="login-password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')signIn()">
+    <button class="btn-primary" id="signin-btn" onclick="signIn()">Sign in</button>
   </div>
 </div>
 
-<div class="main">
-  <div class="page-title">Your tools</div>
-  <div class="page-subtitle">Select a module to open it.</div>
+<!-- App -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand-name">Dashboard <span>Suite</span></div>
+      <div class="user-email" id="user-email"></div>
+    </div>
+    <div class="topbar-right">
+      <div class="theme-toggle" onclick="toggleTheme()">
+        <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
+        <span id="theme-label">Light</span>
+      </div>
+      <button class="btn-signout" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
 
-  <div class="module-grid">
-
-    <a class="module-card" href="/projects/">
-      <div class="module-icon">📋</div>
-      <div class="module-name">Project Tracker</div>
-      <div class="module-desc">Track projects, log updates, manage tasks, and monitor progress across all your initiatives.</div>
-      <div class="module-arrow">Open →</div>
-    </a>
-
-    <a class="module-card" href="/metrics/">
-      <div class="module-icon">📊</div>
-      <div class="module-name">Metrics Dashboard</div>
-      <div class="module-desc">Monitor your key business metrics, track rocks, and visualize trends over time.</div>
-      <div class="module-arrow">Open →</div>
-    </a>
-
+  <div class="main">
+    <div class="page-title">Your tools</div>
+    <div class="page-subtitle">Select a module to open it.</div>
+    <div class="module-grid">
+      <a class="module-card" href="/projects/">
+        <div class="module-icon">📋</div>
+        <div class="module-name">Project Tracker</div>
+        <div class="module-desc">Track projects, log updates, manage tasks, and monitor progress across all your initiatives.</div>
+        <div class="module-arrow">Open →</div>
+      </a>
+      <a class="module-card" href="/metrics/">
+        <div class="module-icon">📊</div>
+        <div class="module-name">Metrics Dashboard</div>
+        <div class="module-desc">Monitor your key business metrics, track rocks, and visualize trends over time.</div>
+        <div class="module-arrow">Open →</div>
+      </a>
+    </div>
   </div>
 </div>
 
 <script>
+const SUPABASE_URL = 'https://gfxfedfxmipbgcvtpesx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_oauR1DwB9y9bldVhSDpFHQ_rRDNO0FX';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  hide('loading-screen');
+  if (session) {
+    showApp(session.user);
+  } else {
+    show('auth-screen');
+  }
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      hide('auth-screen');
+      showApp(session.user);
+    } else {
+      hide('app');
+      show('auth-screen');
+    }
+  });
+}
+
+function showApp(user) {
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('user-email').textContent = user.email;
+  updateThemeUI(localStorage.getItem('theme') || 'light');
+}
+
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('signin-btn');
+  const err = document.getElementById('auth-error');
+  err.classList.remove('visible');
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    err.textContent = error.message;
+    err.classList.add('visible');
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+}
+
 function toggleTheme() {
-  const html = document.documentElement;
-  const dark = html.getAttribute('data-theme') === 'dark';
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = dark ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
+  document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   updateThemeUI(next);
 }
@@ -213,7 +357,7 @@ function updateThemeUI(theme) {
   if (label) label.textContent = dark ? 'Dark' : 'Light';
 }
 
-updateThemeUI(localStorage.getItem('theme') || 'light');
+init();
 </script>
 
 </body>
