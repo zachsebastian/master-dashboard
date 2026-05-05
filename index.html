@@ -262,6 +262,35 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   background: var(--surface-3);
   border-radius: 4px; padding: 2px 6px;
 }
+
+/* ── Impersonation banner ── */
+.impersonation-banner {
+  background: #f59e0b;
+  color: #1a1100;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  position: sticky;
+  top: 56px;
+  z-index: 15;
+  gap: 12px;
+}
+.btn-return {
+  padding: 5px 12px;
+  background: rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a1100;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-return:hover { background: rgba(0,0,0,0.22); }
 </style>
 </head>
 <body>
@@ -284,6 +313,11 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 </div>
 
 <div id="app" style="display:none">
+  <div class="impersonation-banner" id="impersonation-banner" style="display:none">
+    <span>Viewing as <strong id="impersonation-email"></strong></span>
+    <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
+  </div>
+
   <div class="topbar">
     <div class="topbar-left">
       <div class="brand-name">Dashboard <span>Suite</span></div>
@@ -328,6 +362,7 @@ const ALL_MODULES = [
 ];
 
 let currentUser = null;
+let _returningToAdmin = false;
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -341,8 +376,9 @@ async function init() {
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
       await onSignedIn(session.user);
-    } else {
+    } else if (!_returningToAdmin) {
       document.getElementById('app').style.display = 'none';
+      document.getElementById('impersonation-banner').style.display = 'none';
       document.getElementById('auth-screen').style.display = 'flex';
     }
   });
@@ -369,6 +405,10 @@ async function onSignedIn(user) {
   if (user.app_metadata?.is_admin) await renderAdminPanel();
 
   document.getElementById('app').style.display = 'block';
+
+  if (sessionStorage.getItem('adminSession')) {
+    showImpersonationBanner(user.email);
+  }
 }
 
 function renderModules(allowed) {
@@ -410,7 +450,7 @@ async function renderAdminPanel() {
     return `<div class="admin-row">
       <div class="admin-email">${p.email}</div>
       <div class="module-toggles">${badges}</div>
-      <div>${isAdmin ? '<span class="admin-tag">Admin</span>' : ''}</div>
+      <div>${isAdmin ? '<span class="admin-tag">Admin</span>' : `<button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button>`}</div>
     </div>`;
   }).join('');
 }
@@ -462,6 +502,58 @@ function applyTheme(theme) {
   const label = document.getElementById('theme-label');
   if (track) track.classList.toggle('on', dark);
   if (label) label.textContent = dark ? 'Dark' : 'Light';
+}
+
+function showImpersonationBanner(email) {
+  document.getElementById('impersonation-email').textContent = email;
+  document.getElementById('impersonation-banner').style.display = 'flex';
+}
+
+async function impersonate(userId, email) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  sessionStorage.setItem('adminSession', JSON.stringify({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  }));
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/impersonate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await res.json();
+  if (data.error) {
+    alert('Impersonation failed: ' + data.error);
+    sessionStorage.removeItem('adminSession');
+    return;
+  }
+
+  const { error } = await sb.auth.verifyOtp({ email: data.email, token: data.token, type: 'email' });
+  if (error) {
+    alert('Sign-in failed: ' + error.message);
+    sessionStorage.removeItem('adminSession');
+  }
+}
+
+async function returnToAdmin() {
+  const stored = sessionStorage.getItem('adminSession');
+  if (!stored) return;
+  const { access_token, refresh_token } = JSON.parse(stored);
+  sessionStorage.removeItem('adminSession');
+  _returningToAdmin = true;
+  document.getElementById('impersonation-banner').style.display = 'none';
+  await sb.auth.signOut();
+  const { error } = await sb.auth.setSession({ access_token, refresh_token });
+  _returningToAdmin = false;
+  if (error) {
+    alert('Failed to restore session: ' + error.message);
+    window.location.reload();
+  }
 }
 
 init();
