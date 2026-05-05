@@ -533,7 +533,7 @@ async function impersonate(userId, email) {
     return;
   }
 
-  const { error } = await sb.auth.verifyOtp({ email: data.email, token: data.token, type: 'email' });
+  const { error } = await sb.auth.verifyOtp({ token_hash: data.token, type: 'magiclink' });
   if (error) {
     alert('Sign-in failed: ' + error.message);
     sessionStorage.removeItem('adminSession');
