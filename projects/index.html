@@ -526,9 +526,47 @@ select.form-input {
 .login-sent-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 .login-sent-sub { font-size: 13px; color: var(--text-2); line-height: 1.65; }
 .login-error { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+
+/* ── Impersonation banner ── */
+.impersonation-banner {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: #f59e0b;
+  color: #1a1100;
+  padding: 9px 20px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 999;
+  gap: 12px;
+}
+.impersonation-banner.visible { display: flex; }
+.btn-return {
+  padding: 4px 12px;
+  background: rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a1100;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-return:hover { background: rgba(0,0,0,0.22); }
+/* Shift content down when banner is visible */
+body.has-banner { padding-top: 38px; }
+body.has-banner .topbar { top: 38px; }
 </style>
 </head>
 <body>
+
+<div class="impersonation-banner" id="impersonation-banner">
+  <span>Viewing as <strong id="impersonation-email"></strong></span>
+  <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
+</div>
 
 <!-- APP -->
 <div class="app" id="app-wrap" style="display:none">
@@ -1705,6 +1743,7 @@ async function boot() {
   if (!session) { window.location.href = '/'; return; }
 
   _currentUser = session.user;
+  initImpersonationBanner();
 
   // Apply account theme
   const { data: prefs } = await sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle();
@@ -1721,6 +1760,22 @@ async function boot() {
   sb.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') window.location.href = '/';
   });
+}
+
+function initImpersonationBanner() {
+  if (!sessionStorage.getItem('adminSession')) return;
+  document.getElementById('impersonation-email').textContent = _currentUser.email;
+  document.getElementById('impersonation-banner').classList.add('visible');
+  document.body.classList.add('has-banner');
+}
+
+async function returnToAdmin() {
+  const stored = sessionStorage.getItem('adminSession');
+  if (!stored) return;
+  const { access_token, refresh_token } = JSON.parse(stored);
+  sessionStorage.removeItem('adminSession');
+  await sb.auth.setSession({ access_token, refresh_token });
+  window.location.href = '/';
 }
 
 boot();
