@@ -311,9 +311,11 @@ async function returnToAdmin() {
 function showBanner(email) {
   document.getElementById('impersonation-email').textContent = email;
   document.getElementById('impersonation-banner').classList.add('visible');
+  document.body.classList.add('has-banner');
 }
 
 function hideBanner() {
   document.getElementById('impersonation-banner').classList.remove('visible');
   document.getElementById('impersonation-email').textContent = '';
+  document.body.classList.remove('has-banner');
 }
