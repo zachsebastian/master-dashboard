@@ -370,6 +370,7 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
         <span id="theme-label">Light</span>
       </div>
       <span id="user-display-name" style="font-size:13px;color:var(--text-2);font-weight:500"></span>
+      <button class="btn-sm" id="admin-btn" onclick="showAdminPage()" style="display:none">Admin</button>
       <button class="btn-sm" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -379,21 +380,20 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
     <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
   </div>
 
-  <div class="main">
+  <!-- Main dashboard view -->
+  <div class="main" id="main-view">
     <div class="page-title" id="page-title">Your tools</div>
     <div class="page-subtitle" id="page-subtitle">Select a module to open it.</div>
     <div class="module-grid" id="module-grid"></div>
+  </div>
 
-    <div id="admin-section" style="display:none">
-      <div class="section-title">Admin — User Access</div>
-      <div class="admin-table">
-        <div class="admin-row admin-row-header">
-          <div>User</div>
-          <div>Modules</div>
-          <div></div>
-        </div>
-        <div id="admin-user-list"></div>
-      </div>
+  <!-- Admin full-page view -->
+  <div id="admin-page" style="display:none">
+    <div class="main">
+      <button class="btn-sm" onclick="showMainPage()" style="margin-bottom:28px">← Dashboard</button>
+      <div class="page-title">Admin</div>
+      <div class="page-subtitle" style="margin-bottom:36px">Manage user access and permissions.</div>
+      <div id="admin-page-content"></div>
     </div>
   </div>
 </div>
@@ -524,8 +524,8 @@ async function saveProfile() {
 async function onSignedIn(user) {
   currentUser = user;
 
-  // Always reset conditional sections before re-rendering
-  document.getElementById('admin-section').style.display = 'none';
+  // Always reset to main view, hide admin page
+  document.getElementById('admin-page').style.display = 'none';
   hideBanner();
 
   // Fetch profile (names are guaranteed present if coming from normal flow)
@@ -566,8 +566,15 @@ async function onSignedIn(user) {
   const allowed = new Set((modRows || []).map(r => r.module));
   renderModules(allowed);
 
-  // Admin panel
-  if (user.app_metadata?.is_admin) await renderAdminPanel();
+  // Sync is_admin flag to profiles so admin page can filter correctly
+  const isAdmin = !!user.app_metadata?.is_admin;
+  if (isAdmin) {
+    await sb.from('profiles').update({ is_admin: true, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+  }
+
+  // Show Admin button only for admins
+  document.getElementById('admin-btn').style.display = isAdmin ? '' : 'none';
 
   document.getElementById('app').style.display = 'block';
 }
@@ -588,11 +595,24 @@ function renderModules(allowed) {
   }
 }
 
-async function renderAdminPanel() {
-  document.getElementById('admin-section').style.display = 'block';
+function showAdminPage() {
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('admin-page').style.display = 'block';
+  renderAdminPage();
+}
 
-  // Fetch all profiles + their module access
-  const { data: profiles } = await sb.from('profiles').select('user_id, email, first_name, last_name').order('email');
+function showMainPage() {
+  document.getElementById('admin-page').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+}
+
+async function renderAdminPage() {
+  const content = document.getElementById('admin-page-content');
+  content.innerHTML = '<div style="color:var(--text-3);font-size:13px">Loading…</div>';
+
+  const { data: profiles } = await sb.from('profiles')
+    .select('user_id, email, first_name, last_name, is_admin')
+    .order('email');
   const { data: allMods } = await sb.from('user_modules').select('user_id, module');
 
   const modsByUser = {};
@@ -601,22 +621,50 @@ async function renderAdminPanel() {
     modsByUser[r.user_id].add(r.module);
   });
 
-  const list = document.getElementById('admin-user-list');
-  list.innerHTML = (profiles || []).map(p => {
-    const isAdmin = p.user_id === currentUser.id;
+  const adminProfiles = (profiles || []).filter(p => p.is_admin);
+  const userProfiles  = (profiles || []).filter(p => !p.is_admin);
+
+  function nameCell(p) {
+    const full = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : '';
+    return full
+      ? `<div style="font-weight:600">${full}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>`
+      : p.email;
+  }
+
+  // ── Administrators section (read-only, no module toggles) ──
+  const adminRows = adminProfiles.map(p => `
+    <div class="admin-row">
+      <div class="admin-email">${nameCell(p)}</div>
+      <div></div>
+      <div><span class="admin-tag">${p.user_id === currentUser.id ? 'You' : 'Admin'}</span></div>
+    </div>`).join('') || '<div style="padding:14px 18px;font-size:13px;color:var(--text-3)">No admin accounts found.</div>';
+
+  // ── Users section (module toggles + impersonation) ──
+  const userRows = userProfiles.map(p => {
     const badges = ALL_MODULES.map(m => {
       const on = modsByUser[p.user_id]?.has(m.id);
       return `<span class="module-badge ${on ? 'on' : ''}" onclick="toggleModule('${p.user_id}','${m.id}',this)">${m.name}</span>`;
     }).join('');
-    const fullName = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : '';
-    return `<div class="admin-row">
-      <div class="admin-email">
-        ${fullName ? `<div style="font-weight:600">${fullName}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>` : p.email}
-      </div>
+    return `
+    <div class="admin-row">
+      <div class="admin-email">${nameCell(p)}</div>
       <div class="module-toggles">${badges}</div>
-      <div>${isAdmin ? '<span class="admin-tag">Admin</span>' : `<button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button>`}</div>
+      <div><button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button></div>
     </div>`;
-  }).join('');
+  }).join('') || '<div style="padding:14px 18px;font-size:13px;color:var(--text-3)">No users found.</div>';
+
+  content.innerHTML = `
+    <div class="section-title">Administrators</div>
+    <div class="admin-table" style="margin-bottom:48px">
+      <div class="admin-row admin-row-header"><div>Account</div><div></div><div></div></div>
+      ${adminRows}
+    </div>
+
+    <div class="section-title">Users</div>
+    <div class="admin-table">
+      <div class="admin-row admin-row-header"><div>User</div><div>Modules</div><div></div></div>
+      ${userRows}
+    </div>`;
 }
 
 async function toggleModule(userId, moduleId, el) {
@@ -712,8 +760,9 @@ async function impersonate(userId, email) {
     return;
   }
 
-  // Explicitly re-render as the target user, then show banner
+  // Re-render as target user, return to main view, show banner
   await onSignedIn(otpData.user);
+  showMainPage();
   showBanner(otpData.user.email);
 }
 
