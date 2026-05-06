@@ -65,7 +65,28 @@
         <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
         <span id="theme-label">Light</span>
       </div>
-      <span id="user-display-name" style="font-size:13px;color:var(--text-2);font-weight:500"></span>
+      <div class="profile-btn-wrap">
+        <button class="btn-sm" id="profile-btn" onclick="toggleProfilePanel()">
+          <span id="user-display-name"></span>
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style="margin-left:4px;opacity:0.5;flex-shrink:0"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="profile-panel" id="profile-panel" style="display:none">
+          <div class="profile-panel-title">My Profile</div>
+          <div class="profile-section-label">Name</div>
+          <div class="profile-name-row">
+            <input class="form-input" id="pp-first" type="text" placeholder="First name" style="margin-bottom:0">
+            <input class="form-input" id="pp-last" type="text" placeholder="Last name" style="margin-bottom:0">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+            <button class="btn-sm" id="pp-save-btn" onclick="saveProfileName()" style="font-weight:600">Save Changes</button>
+            <span id="pp-name-status" style="font-size:12px;"></span>
+          </div>
+          <div class="profile-divider"></div>
+          <div class="profile-section-label">Password</div>
+          <button class="btn-sm" id="pp-reset-btn" onclick="sendPasswordReset()" style="width:100%;justify-content:center;">Send Password Reset Email</button>
+          <div id="pp-reset-status" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
+        </div>
+      </div>
       <button class="btn-sm" id="admin-btn" onclick="showAdminPage()" style="display:none">Admin</button>
       <button class="btn-sm" onclick="signOut()">Sign out</button>
     </div>

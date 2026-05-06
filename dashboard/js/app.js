@@ -91,4 +91,65 @@ async function onSignedIn(user) {
   document.getElementById('app').style.display = 'block';
 }
 
+// ── Profile panel ──
+function toggleProfilePanel() {
+  const panel = document.getElementById('profile-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    document.getElementById('pp-first').value = currentProfile?.first_name || '';
+    document.getElementById('pp-last').value  = currentProfile?.last_name  || '';
+    document.getElementById('pp-name-status').textContent  = '';
+    document.getElementById('pp-reset-status').textContent = '';
+    setTimeout(() => {
+      document.addEventListener('click', function _close(e) {
+        const panel = document.getElementById('profile-panel');
+        const btn   = document.getElementById('profile-btn');
+        if (panel && !panel.contains(e.target) && !btn.contains(e.target)) {
+          panel.style.display = 'none';
+          document.removeEventListener('click', _close);
+        }
+      });
+    }, 0);
+  }
+}
+
+async function saveProfileName() {
+  const first  = document.getElementById('pp-first').value.trim();
+  const last   = document.getElementById('pp-last').value.trim();
+  const status = document.getElementById('pp-name-status');
+  const btn    = document.getElementById('pp-save-btn');
+  if (!first || !last) { status.textContent = 'Both fields are required.'; status.style.color = 'var(--red)'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('profiles').update({
+    first_name: first, last_name: last, updated_at: new Date().toISOString()
+  }).eq('user_id', currentUser.id);
+  if (error) {
+    status.textContent = error.message; status.style.color = 'var(--red)';
+  } else {
+    currentProfile = { ...currentProfile, first_name: first, last_name: last };
+    document.getElementById('user-display-name').textContent = `${first} ${last}`;
+    document.getElementById('page-title').textContent = `Hey, ${first}.`;
+    status.textContent = '✓ Saved'; status.style.color = 'var(--green)';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  }
+  btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+async function sendPasswordReset() {
+  const btn    = document.getElementById('pp-reset-btn');
+  const status = document.getElementById('pp-reset-status');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, {
+    redirectTo: window.location.origin + '/',
+  });
+  if (error) {
+    status.textContent = error.message; status.style.color = 'var(--red)';
+  } else {
+    status.textContent = `Reset email sent to ${currentUser.email}`; status.style.color = 'var(--green)';
+    setTimeout(() => { status.textContent = ''; }, 6000);
+  }
+  btn.disabled = false; btn.textContent = 'Send Password Reset Email';
+}
+
 init();
