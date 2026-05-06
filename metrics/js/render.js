@@ -143,7 +143,6 @@ function render() {
   if (!_appReady) return;
   const app = document.getElementById('app');
   const { metrics, activeMetric, view, modal, presentationMode } = state;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const selectedMetric = metrics.find(m => m.id === activeMetric);
 
   if (presentationMode) {
@@ -156,55 +155,18 @@ function render() {
   app.style.minHeight = '';
 
   app.innerHTML = `
-    <div class="app">
-      <div class="topbar">
-        <div class="topbar-left">
-          <a href="/" style="font-size:12px;color:var(--text-3);text-decoration:none;white-space:nowrap;transition:color 0.1s;margin-right:2px" onmouseover="this.style.color='var(--text-2)'" onmouseout="this.style.color='var(--text-3)'">← Home</a>
-          <div>
-            <div class="brand-name">Metrics <span>Dashboard</span></div>
-            ${view === 'summary' ? `<button class="sidebar-toggle-btn" onclick="toggleSummarySidebar()">${state.summarySidebarVisible ? '‹ Hide sidebar' : '› Show sidebar'}</button>` : ''}
-          </div>
-          <div id="save-wrap" class="save-wrap">
-            <div id="save-dot" class="save-dot"></div>
-            <span id="save-label" class="save-label">Saved</span>
-          </div>
-        </div>
-        <div class="view-tabs">
-          ${['summary','detail'].map(v =>
-            `<button class="view-tab ${view===v?'active':''}" onclick="setView('${v}')">${v==='summary'?'Summary':'Detail'}</button>`
-          ).join('')}
-        </div>
-        <div class="topbar-right">
-          <div class="theme-toggle" onclick="toggleTheme()">
-            <div class="theme-track ${isDark?'on':''}" id="theme-track"><div class="theme-thumb"></div></div>
-            <span id="theme-label">${isDark?'Dark':'Light'}</span>
-          </div>
-          <button class="btn" onclick="openModal('manage-rocks')">🪨 Rocks</button>
-          <button class="btn" onclick="openModal('new-metric')">+ New metric</button>
-          <div class="dropdown-wrap">
-            <button class="btn" onclick="toggleDatasetMenu()">Data Set ▾</button>
-            <div id="dataset-menu" class="dropdown-menu" style="display:none">
-              <button class="dropdown-item" onclick="exportData();document.getElementById('dataset-menu').style.display='none'"><span class="dropdown-item-icon">⬇</span> Export (download)</button>
-              <button class="dropdown-item" onclick="importData();document.getElementById('dataset-menu').style.display='none'"><span class="dropdown-item-icon">⬆</span> Import</button>
-              <div class="dropdown-divider"></div>
-              <button class="dropdown-item" onclick="copyDataModal();document.getElementById('dataset-menu').style.display='none'"><span class="dropdown-item-icon">📋</span> Copy data</button>
-            </div>
-          </div>
-          <button class="btn" onclick="signOut()" title="Sign out">Sign out</button>
-          <button class="btn btn-primary" onclick="togglePresentation()">Present ↗</button>
-        </div>
-      </div>
-      <div class="main">
-        ${view === 'detail' || state.summarySidebarVisible ? renderSidebar(metrics, activeMetric) : ''}
-        <div class="${view === 'detail' || state.summarySidebarVisible ? 'sidebar-main' : ''}" style="${view === 'summary' && !state.summarySidebarVisible ? 'flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;' : ''}">
-          <div class="content">
-            ${view === 'summary' ? renderSummary(metrics) : renderDetail(selectedMetric)}
-          </div>
+    <div class="main">
+      ${view === 'detail' || state.summarySidebarVisible ? renderSidebar(metrics, activeMetric) : ''}
+      <div class="${view === 'detail' || state.summarySidebarVisible ? 'sidebar-main' : ''}" style="${view === 'summary' && !state.summarySidebarVisible ? 'flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;' : ''}">
+        <div class="content">
+          ${view === 'summary' ? renderSummary(metrics) : renderDetail(selectedMetric)}
         </div>
       </div>
       ${modal ? renderModal(modal, selectedMetric) : ''}
     </div>
   `;
+  setActiveTab(state.view);
+  updateSidebarBtn(state.summarySidebarVisible);
   setTimeout(initSidebarResize, 0);
   const _activeM = state.metrics.find(m => m.id === state.activeMetric);
   if (_activeM && _activeM.type === 'task') {

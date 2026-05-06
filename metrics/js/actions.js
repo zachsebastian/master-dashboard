@@ -1,6 +1,6 @@
 // ── View ──
 function setView(v) { state.view = v; save(); render(); }
-function toggleSummarySidebar() { state.summarySidebarVisible = !state.summarySidebarVisible; save(); render(); }
+function toggleSidebar() { state.summarySidebarVisible = !state.summarySidebarVisible; save(); render(); }
 function togglePresentation() { state.presentationMode = !state.presentationMode; save(); render(); }
 function setActive(id, goDetail) {
   state.activeMetric = id;

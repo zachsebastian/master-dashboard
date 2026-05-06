@@ -138,6 +138,18 @@ body {
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 .brand-name span { opacity: 0.35; font-weight: 400; }
+.brand-wrap { display: flex; flex-direction: column; gap: 1px; }
+.sidebar-toggle-btn {
+  display: block;
+  font-size: 10.5px; font-weight: 500; color: var(--text-3);
+  background: none; border: none; cursor: pointer;
+  padding: 0; text-align: left;
+  transition: color 0.1s; white-space: nowrap;
+}
+.sidebar-toggle-btn:hover { color: var(--text-2); }
+.save-wrap { display: flex; align-items: center; gap: 5px; opacity: 0; transition: opacity 0.4s; }
+.save-wrap.visible { opacity: 1; }
+.save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; transition: background 0.3s; }
 
 /* ── Theme toggle ── */
 .theme-toggle {
@@ -153,7 +165,8 @@ body {
 .theme-track.on { background: var(--blue); border-color: var(--blue); }
 .theme-thumb {
   width: 12px; height: 12px; border-radius: 50%;
-  background: #fff; position: absolute; top: 2px; left: 2px;
+  background: #fff; position: absolute; top: 50%; left: 2px;
+  transform: translateY(-50%);
   transition: left 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .theme-track.on .theme-thumb { left: 16px; }

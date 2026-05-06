@@ -1,33 +1,7 @@
-.app { display: grid; grid-template-rows: 56px 1fr; min-height: 100vh; }
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+#topbar { flex-shrink: 0; }
+.app { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
-/* ── Topbar overrides for projects ── */
-.topbar-left { align-items: flex-start; gap: 14px; }
-.brand-name { white-space: nowrap; }
-.sidebar-toggle-btn {
-  font-size: 10.5px; font-weight: 500; color: var(--text-3);
-  background: none; border: none; cursor: pointer;
-  padding: 0; transition: color 0.1s; white-space: nowrap;
-  text-align: left; display: block;
-}
-.sidebar-toggle-btn:hover { color: var(--text-2); }
-.save-wrap { display: flex; align-items: center; gap: 5px; opacity: 0; transition: opacity 0.4s; }
-.save-wrap.visible { opacity: 1; }
-.save-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-.save-label { font-size: 11px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
-
-/* ── Theme toggle (projects variant — has border) ── */
-.theme-toggle {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 13px; font-weight: 500; color: var(--text-2);
-  cursor: pointer; padding: 6px 12px; border-radius: var(--r-sm);
-  border: 1px solid var(--border-md); background: var(--surface);
-  transition: background 0.1s; user-select: none; line-height: 1.2;
-}
-.theme-toggle:hover { background: var(--surface-3); }
-.theme-track { width: 28px; height: 16px; border-radius: 8px; background: var(--surface-3); position: relative; transition: background 0.2s; flex-shrink: 0; }
-html[data-theme="dark"] .theme-track { background: #4a9fd4; }
-.theme-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; transition: left 0.18s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-html[data-theme="dark"] .theme-thumb { left: 14px; }
 
 /* ── Buttons ── */
 .btn {
@@ -76,7 +50,7 @@ html[data-theme="dark"] .theme-thumb { left: 14px; }
 .dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
 
 /* ── Layout ── */
-.main { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+.main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ── Sidebar ── */
 .sidebar {

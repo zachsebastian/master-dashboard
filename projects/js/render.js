@@ -43,7 +43,6 @@ function circleProgress(pct, color) {
 function render() {
   renderSidebar();
   renderContent();
-  updateThemeUI();
 }
 
 function renderSidebar() {

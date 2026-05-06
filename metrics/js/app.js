@@ -1,13 +1,4 @@
 // ── Theme ──
-function applyTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  const track = document.getElementById('theme-track');
-  const label = document.getElementById('theme-label');
-  if (track) track.classList.toggle('on', isDark);
-  if (label) label.textContent = isDark ? 'Dark' : 'Light';
-}
-
 async function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = isDark ? 'light' : 'dark';
@@ -19,6 +10,7 @@ async function toggleTheme() {
       { onConflict: 'user_id' }
     );
   }
+  applyTheme();
   render();
 }
 
@@ -175,6 +167,17 @@ async function initAuth() {
   const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
+
+  initModuleHeader({
+    name: 'Metrics',
+    subtitle: 'Dashboard',
+    hasSidebar: true,
+    tabs: true,
+    leftActions: `
+      <button class="btn" onclick="openModal('manage-rocks')">🪨 Rocks</button>
+      <button class="btn" onclick="openModal('new-metric')">+ New metric</button>
+    `
+  });
 
   await loadFromSupabase();
 

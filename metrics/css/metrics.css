@@ -1,80 +1,7 @@
-.app { display: grid; grid-template-rows: 56px 1fr; min-height: 100vh; }
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+#topbar { flex-shrink: 0; }
+#app { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
-/* ── Topbar ── */
-.topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-md);
-  box-shadow: var(--shadow-sm);
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-.topbar-left { display: flex; align-items: center; gap: 14px; }
-.brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
-.brand-name span { opacity: 0.35; font-weight: 400; }
-.sidebar-toggle-btn {
-  display: block; margin-top: 1px;
-  font-size: 10.5px; font-weight: 500; color: var(--text-3);
-  background: none; border: none; cursor: pointer;
-  padding: 0; text-align: left;
-  transition: color 0.1s; white-space: nowrap;
-}
-.sidebar-toggle-btn:hover { color: var(--text-2); }
-.save-wrap { display: flex; align-items: center; gap: 5px; opacity: 0; transition: opacity 0.4s; }
-.save-wrap.visible { opacity: 1; }
-.save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; transition: background 0.3s; }
-.save-label { font-size: 11px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
-.topbar-right { display: flex; gap: 8px; align-items: center; }
-
-/* ── Dropdown ── */
-.dropdown-wrap { position: relative; }
-.dropdown-menu {
-  position: absolute; top: calc(100% + 6px); right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border-md);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-lg);
-  min-width: 160px; overflow: hidden;
-  z-index: 50; animation: fade-in 0.1s ease;
-}
-.dropdown-item {
-  display: flex; align-items: center; gap: 9px;
-  padding: 10px 14px; font-size: 13px; font-weight: 500;
-  color: var(--text); cursor: pointer;
-  transition: background 0.1s;
-  border: none; background: none; width: 100%; text-align: left;
-}
-.dropdown-item:hover { background: var(--surface-2); }
-.dropdown-item-icon { font-size: 14px; width: 16px; text-align: center; flex-shrink: 0; }
-.dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
-
-/* ── Theme toggle ── */
-.theme-toggle {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 12px; font-weight: 500; color: var(--text-2);
-  cursor: pointer; padding: 5px 10px;
-  border-radius: var(--r-sm); border: 1px solid var(--border-md);
-  background: var(--surface-2); transition: background 0.1s; user-select: none;
-}
-.theme-toggle:hover { background: var(--surface-3); }
-.theme-track {
-  width: 28px; height: 16px; border-radius: 8px;
-  background: var(--surface-3); position: relative;
-  transition: background 0.2s; flex-shrink: 0;
-}
-.theme-track.on { background: #1a1a1a; }
-html[data-theme="dark"] .theme-track { background: #4a9fd4; }
-.theme-thumb {
-  position: absolute; top: 2px; left: 2px;
-  width: 12px; height: 12px; border-radius: 50%;
-  background: white; transition: left 0.18s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-.theme-track.on .theme-thumb { left: 14px; }
 
 /* ── Buttons ── */
 .btn {
@@ -107,7 +34,7 @@ html[data-theme="dark"] .theme-track { background: #4a9fd4; }
 .view-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* ── Layout ── */
-.main { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+.main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
 /* ── Sidebar ── */
 .sidebar {
@@ -442,4 +369,3 @@ svg.metric-chart { width: 100%; height: 160px; display: block; overflow: hidden;
 .btn-return { padding: 4px 12px; background: rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.18); border-radius: var(--r-sm); font-size: 12px; font-weight: 600; cursor: pointer; color: #1a1100; white-space: nowrap; transition: background 0.15s; }
 .btn-return:hover { background: rgba(0,0,0,0.22); }
 body.has-banner { padding-top: 38px; }
-body.has-banner .topbar { top: 38px; }

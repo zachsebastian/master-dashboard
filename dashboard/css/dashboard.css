@@ -150,3 +150,6 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   background: var(--surface-3);
   border-radius: 4px; padding: 2px 6px;
 }
+.admin-actions { display: flex; gap: 6px; align-items: center; }
+
+@keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
