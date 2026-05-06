@@ -263,6 +263,29 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   border-radius: 4px; padding: 2px 6px;
 }
 
+/* ── Profile completion screen ── */
+.profile-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-card {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  width: 420px;
+  max-width: 94vw;
+}
+.profile-name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.profile-name-row .form-input { margin-bottom: 0; }
+
 /* ── Impersonation banner ── */
 .impersonation-banner {
   display: none;
@@ -298,6 +321,29 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 
 <div class="loading-screen" id="loading-screen"><div class="spinner"></div></div>
 
+<!-- Profile completion — shown when first_name/last_name are missing -->
+<div class="profile-screen" id="profile-screen" style="display:none">
+  <div class="profile-card">
+    <div class="auth-title">Complete your profile</div>
+    <div class="auth-subtitle" style="margin-bottom:28px">Just a couple of details before you get started.</div>
+    <div class="auth-error" id="profile-error"></div>
+    <div class="profile-name-row">
+      <div>
+        <label class="form-label">First Name</label>
+        <input class="form-input" type="text" id="profile-first-name" placeholder="Jane"
+          onkeydown="if(event.key==='Enter')document.getElementById('profile-last-name').focus()" autofocus>
+      </div>
+      <div>
+        <label class="form-label">Last Name</label>
+        <input class="form-input" type="text" id="profile-last-name" placeholder="Smith"
+          onkeydown="if(event.key==='Enter')saveProfile()">
+      </div>
+    </div>
+    <div style="margin-top:14px"></div>
+    <button class="btn-primary" id="profile-save-btn" onclick="saveProfile()">Save & Continue</button>
+  </div>
+</div>
+
 <div class="auth-screen" id="auth-screen" style="display:none">
   <div class="auth-card">
     <div class="auth-title">Dashboard Suite</div>
@@ -323,6 +369,7 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
         <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
         <span id="theme-label">Light</span>
       </div>
+      <span id="user-display-name" style="font-size:13px;color:var(--text-2);font-weight:500"></span>
       <button class="btn-sm" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -333,8 +380,8 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   </div>
 
   <div class="main">
-    <div class="page-title">Your tools</div>
-    <div class="page-subtitle">Select a module to open it.</div>
+    <div class="page-title" id="page-title">Your tools</div>
+    <div class="page-subtitle" id="page-subtitle">Select a module to open it.</div>
     <div class="module-grid" id="module-grid"></div>
 
     <div id="admin-section" style="display:none">
@@ -362,40 +409,116 @@ const ALL_MODULES = [
   { id: 'metrics',  name: 'Metrics Dashboard', icon: '📊', desc: 'Monitor your key business metrics, track rocks, and visualize trends over time.', href: '/metrics/' },
 ];
 
-let currentUser = null;
+let currentUser    = null;
+let currentProfile = null;          // { first_name, last_name, email }
+let _pendingProfileUser = null;     // user waiting on profile-completion screen
 let _returningToAdmin = false;
-let _impersonating = false;
+let _impersonating    = false;
+
+// Called whenever auth state changes with a live session (not during impersonation swaps).
+// Checks profile completeness before rendering the app.
+async function handleNewSession(user) {
+  const complete = await checkProfile(user);
+  if (!complete) return; // profile-screen is now visible; wait for saveProfile()
+
+  await onSignedIn(user);
+
+  if (sessionStorage.getItem('adminSession') && !user.app_metadata?.is_admin) {
+    showBanner(user.email);
+  } else {
+    sessionStorage.removeItem('adminSession');
+  }
+}
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   document.getElementById('loading-screen').style.display = 'none';
   if (session) {
-    await onSignedIn(session.user);
-    // Only show banner if impersonating (not admin on their own account)
-    if (sessionStorage.getItem('adminSession') && !session.user.app_metadata?.is_admin) {
-      showBanner(session.user.email);
-    } else {
-      sessionStorage.removeItem('adminSession'); // clear any stale data
-    }
+    await handleNewSession(session.user);
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
+
   sb.auth.onAuthStateChange(async (_event, session) => {
     if (_impersonating) return;
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
-      await onSignedIn(session.user);
-      if (sessionStorage.getItem('adminSession') && !session.user.app_metadata?.is_admin) {
-        showBanner(session.user.email);
-      } else {
-        sessionStorage.removeItem('adminSession');
-      }
+      document.getElementById('profile-screen').style.display = 'none';
+      await handleNewSession(session.user);
     } else if (!_returningToAdmin) {
       document.getElementById('app').style.display = 'none';
+      document.getElementById('profile-screen').style.display = 'none';
       hideBanner();
       document.getElementById('auth-screen').style.display = 'flex';
     }
   });
+}
+
+// Returns true if profile is complete (first+last name present).
+// Returns false and shows the profile-completion screen if not.
+async function checkProfile(user) {
+  const { data: profile } = await sb.from('profiles')
+    .select('first_name, last_name')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (profile?.first_name?.trim() && profile?.last_name?.trim()) return true;
+
+  // Profile incomplete — show blocking screen
+  _pendingProfileUser = user;
+  document.getElementById('loading-screen').style.display  = 'none';
+  document.getElementById('auth-screen').style.display     = 'none';
+  document.getElementById('app').style.display             = 'none';
+  document.getElementById('profile-screen').style.display  = 'flex';
+  // Focus first field after render
+  setTimeout(() => document.getElementById('profile-first-name').focus(), 50);
+  return false;
+}
+
+async function saveProfile() {
+  const firstName = document.getElementById('profile-first-name').value.trim();
+  const lastName  = document.getElementById('profile-last-name').value.trim();
+  const errEl     = document.getElementById('profile-error');
+  const btn       = document.getElementById('profile-save-btn');
+
+  errEl.classList.remove('visible');
+
+  if (!firstName || !lastName) {
+    errEl.textContent = 'Both fields are required.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const user = _pendingProfileUser;
+  const { error } = await sb.from('profiles').upsert({
+    user_id:    user.id,
+    email:      user.email,
+    first_name: firstName,
+    last_name:  lastName,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+
+  if (error) {
+    errEl.textContent = 'Could not save profile: ' + error.message;
+    errEl.classList.add('visible');
+    btn.disabled = false;
+    btn.textContent = 'Save & Continue';
+    return;
+  }
+
+  // Reset form for next time
+  document.getElementById('profile-first-name').value = '';
+  document.getElementById('profile-last-name').value  = '';
+  btn.disabled = false;
+  btn.textContent = 'Save & Continue';
+
+  document.getElementById('profile-screen').style.display = 'none';
+  _pendingProfileUser = null;
+
+  await onSignedIn(user);
 }
 
 async function onSignedIn(user) {
@@ -405,8 +528,32 @@ async function onSignedIn(user) {
   document.getElementById('admin-section').style.display = 'none';
   hideBanner();
 
-  // Upsert profile
-  await sb.from('profiles').upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id' });
+  // Fetch profile (names are guaranteed present if coming from normal flow)
+  const { data: profile } = await sb.from('profiles')
+    .select('first_name, last_name, email')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  currentProfile = profile;
+
+  // Keep email in sync (in case it changed)
+  if (profile && profile.email !== user.email) {
+    await sb.from('profiles').update({ email: user.email, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+  } else if (!profile) {
+    // Fallback: create bare profile row (shouldn't normally happen post-checkProfile)
+    await sb.from('profiles').upsert({ user_id: user.id, email: user.email }, { onConflict: 'user_id' });
+  }
+
+  // Topbar name
+  const displayName = profile?.first_name
+    ? `${profile.first_name} ${profile.last_name}`
+    : user.email;
+  document.getElementById('user-display-name').textContent = displayName;
+
+  // Page greeting
+  document.getElementById('page-title').textContent    = profile?.first_name ? `Hey, ${profile.first_name}` : 'Your tools';
+  document.getElementById('page-subtitle').textContent = 'Select a module to open it.';
 
   // Load + apply theme
   const { data: prefs } = await sb.from('user_preferences').select('theme').eq('user_id', user.id).maybeSingle();
@@ -445,7 +592,7 @@ async function renderAdminPanel() {
   document.getElementById('admin-section').style.display = 'block';
 
   // Fetch all profiles + their module access
-  const { data: profiles } = await sb.from('profiles').select('user_id, email').order('email');
+  const { data: profiles } = await sb.from('profiles').select('user_id, email, first_name, last_name').order('email');
   const { data: allMods } = await sb.from('user_modules').select('user_id, module');
 
   const modsByUser = {};
@@ -461,8 +608,11 @@ async function renderAdminPanel() {
       const on = modsByUser[p.user_id]?.has(m.id);
       return `<span class="module-badge ${on ? 'on' : ''}" onclick="toggleModule('${p.user_id}','${m.id}',this)">${m.name}</span>`;
     }).join('');
+    const fullName = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : '';
     return `<div class="admin-row">
-      <div class="admin-email">${p.email}</div>
+      <div class="admin-email">
+        ${fullName ? `<div style="font-weight:600">${fullName}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>` : p.email}
+      </div>
       <div class="module-toggles">${badges}</div>
       <div>${isAdmin ? '<span class="admin-tag">Admin</span>' : `<button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button>`}</div>
     </div>`;
