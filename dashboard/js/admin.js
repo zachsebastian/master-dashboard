@@ -33,59 +33,55 @@ async function renderAdminPage() {
   const adminProfiles = (profiles || []).filter(p => p.is_admin);
   const userProfiles  = (profiles || []).filter(p => !p.is_admin);
 
-  function nameCell(p) {
+  function nameCell(p, isYou) {
     const full = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : '';
+    const youTag = isYou ? ' <span class="admin-tag" style="margin-left:6px;">You</span>' : '';
     return full
-      ? `<div style="font-weight:600">${full}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>`
-      : p.email;
+      ? `<div style="font-weight:600;display:flex;align-items:center;">${full}${youTag}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>`
+      : `<div style="display:flex;align-items:center;">${p.email}${youTag}</div>`;
   }
 
-  const adminRows = adminProfiles.map(p => {
+  function buildBadges(userId) {
+    return ALL_MODULES.map(m => {
+      const on = modsByUser[userId]?.has(m.id);
+      return `<span class="module-badge ${on ? 'on' : ''}" onclick="toggleModule('${userId}','${m.id}',this)">${m.name}</span>`;
+    }).join('');
+  }
+
+  function userBlock(p, isAdmin) {
     const displayName = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : p.email;
     const isYou = p.user_id === currentUser.id;
-    const youTag = isYou ? ' <span class="admin-tag" style="margin-left:6px;">You</span>' : '';
-    const nameLine = (p.first_name && p.last_name)
-      ? `<div style="font-weight:600;display:flex;align-items:center;">${p.first_name} ${p.last_name}${youTag}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>`
-      : `<div style="display:flex;align-items:center;">${p.email}${youTag}</div>`;
+    const uid = p.user_id.replace(/-/g, '');
     return `
-    <div class="admin-row">
-      <div class="admin-email">${nameLine}</div>
-      <div></div>
-      <div class="admin-actions">
-        <button class="btn-sm" onclick="openDataModal('${p.user_id}','${displayName.replace(/'/g,"\\'")}')">Data</button>
-        ${!isYou ? '<span class="admin-tag">Admin</span>' : ''}
+      <div class="admin-row">
+        <div class="admin-email">${nameCell(p, isYou)}</div>
+        <div class="admin-actions">
+          <button class="btn-sm" onclick="togglePermissions('${uid}',this)">Permissions</button>
+          <button class="btn-sm" onclick="openDataModal('${p.user_id}','${displayName.replace(/'/g,"\\'")}')">Data</button>
+          ${!isAdmin ? `<button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button>` : ''}
+        </div>
       </div>
-    </div>`;
-  }).join('') ||
+      <div class="admin-permissions-panel" id="perms-${uid}">
+        <span class="permissions-label">Module access</span>
+        <div class="module-toggles">${buildBadges(p.user_id)}</div>
+      </div>`;
+  }
+
+  const adminRows = adminProfiles.map(p => userBlock(p, true)).join('') ||
     '<div style="padding:14px 18px;font-size:13px;color:var(--text-3)">No admin accounts found.</div>';
 
-  const userRows = userProfiles.map(p => {
-    const displayName = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : p.email;
-    const badges = ALL_MODULES.map(m => {
-      const on = modsByUser[p.user_id]?.has(m.id);
-      return `<span class="module-badge ${on ? 'on' : ''}" onclick="toggleModule('${p.user_id}','${m.id}',this)">${m.name}</span>`;
-    }).join('');
-    return `
-    <div class="admin-row">
-      <div class="admin-email">${nameCell(p)}</div>
-      <div class="module-toggles">${badges}</div>
-      <div class="admin-actions">
-        <button class="btn-sm" onclick="openDataModal('${p.user_id}','${displayName.replace(/'/g,"\\'")}')">Data</button>
-        <button class="btn-sm" onclick="impersonate('${p.user_id}','${p.email}')">Log in as</button>
-      </div>
-    </div>`;
-  }).join('') ||
+  const userRows = userProfiles.map(p => userBlock(p, false)).join('') ||
     '<div style="padding:14px 18px;font-size:13px;color:var(--text-3)">No users found.</div>';
 
   content.innerHTML = `
     <div class="section-title">Administrators</div>
     <div class="admin-table" style="margin-bottom:48px">
-      <div class="admin-row admin-row-header"><div>Account</div><div></div><div></div></div>
+      <div class="admin-row admin-row-header"><div>Account</div><div>Actions</div></div>
       ${adminRows}
     </div>
     <div class="section-title">Users</div>
     <div class="admin-table">
-      <div class="admin-row admin-row-header"><div>User</div><div>Modules</div><div></div></div>
+      <div class="admin-row admin-row-header"><div>User</div><div>Actions</div></div>
       ${userRows}
     </div>`;
 }
@@ -98,6 +94,13 @@ async function toggleModule(userId, moduleId, el) {
     await sb.from('user_modules').insert({ user_id: userId, module: moduleId });
     el.classList.add('on');
   }
+}
+
+function togglePermissions(uid, btn) {
+  const panel = document.getElementById('perms-' + uid);
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  btn.textContent = open ? 'Permissions ▴' : 'Permissions';
 }
 
 // ── Data modal ──
