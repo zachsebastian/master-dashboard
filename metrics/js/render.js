@@ -625,7 +625,7 @@ function renderModal(type, metric) {
           <div class="modal-footer-left">${isEdit ? `<button class="btn btn-sm btn-danger" onclick="deleteMetric('${metric?.id}')">Delete metric</button>` : ''}</div>
           <div class="modal-footer-right">
             <button class="btn" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="${isEdit?'saveEditMetric()':'saveNewMetric()}">${isEdit?'Save changes':'Create metric'}</button>
+            <button class="btn btn-primary" onclick="${isEdit?'saveEditMetric()':'saveNewMetric()'}">${isEdit?'Save changes':'Create metric'}</button>
           </div>
         </div>
       </div>
