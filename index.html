@@ -274,7 +274,7 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
   font-size: 13px;
   font-weight: 500;
   position: sticky;
-  top: 56px;
+  top: 56px; /* sits flush below the 56px topbar */
   z-index: 15;
   gap: 12px;
 }
@@ -314,11 +314,6 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
 </div>
 
 <div id="app" style="display:none">
-  <div class="impersonation-banner" id="impersonation-banner">
-    <span>Viewing as <strong id="impersonation-email"></strong></span>
-    <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
-  </div>
-
   <div class="topbar">
     <div class="topbar-left">
       <div class="brand-name">Dashboard <span>Suite</span></div>
@@ -330,6 +325,11 @@ html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18
       </div>
       <button class="btn-sm" onclick="signOut()">Sign out</button>
     </div>
+  </div>
+
+  <div class="impersonation-banner" id="impersonation-banner">
+    <span>Viewing as <strong id="impersonation-email"></strong></span>
+    <button class="btn-return" onclick="returnToAdmin()">← Return to my account</button>
   </div>
 
   <div class="main">
@@ -371,7 +371,12 @@ async function init() {
   document.getElementById('loading-screen').style.display = 'none';
   if (session) {
     await onSignedIn(session.user);
-    if (sessionStorage.getItem('adminSession')) showBanner(session.user.email);
+    // Only show banner if impersonating (not admin on their own account)
+    if (sessionStorage.getItem('adminSession') && !session.user.app_metadata?.is_admin) {
+      showBanner(session.user.email);
+    } else {
+      sessionStorage.removeItem('adminSession'); // clear any stale data
+    }
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
@@ -380,7 +385,11 @@ async function init() {
     if (session) {
       document.getElementById('auth-screen').style.display = 'none';
       await onSignedIn(session.user);
-      if (sessionStorage.getItem('adminSession')) showBanner(session.user.email);
+      if (sessionStorage.getItem('adminSession') && !session.user.app_metadata?.is_admin) {
+        showBanner(session.user.email);
+      } else {
+        sessionStorage.removeItem('adminSession');
+      }
     } else if (!_returningToAdmin) {
       document.getElementById('app').style.display = 'none';
       hideBanner();
@@ -563,15 +572,14 @@ async function returnToAdmin() {
   if (!stored) return;
   const { access_token, refresh_token } = JSON.parse(stored);
   sessionStorage.removeItem('adminSession');
-  _returningToAdmin = true;
   hideBanner();
   await sb.auth.signOut();
   const { error } = await sb.auth.setSession({ access_token, refresh_token });
-  _returningToAdmin = false;
   if (error) {
     alert('Failed to restore session: ' + error.message);
-    window.location.reload();
   }
+  // Reload for a clean slate — avoids mixed state from competing onAuthStateChange calls
+  window.location.reload();
 }
 
 init();
