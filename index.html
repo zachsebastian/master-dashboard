@@ -572,14 +572,20 @@ async function returnToAdmin() {
   if (!stored) return;
   const { access_token, refresh_token } = JSON.parse(stored);
   sessionStorage.removeItem('adminSession');
-  hideBanner();
-  await sb.auth.signOut();
-  const { error } = await sb.auth.setSession({ access_token, refresh_token });
-  if (error) {
-    alert('Failed to restore session: ' + error.message);
+
+  _impersonating = true; // block onAuthStateChange during session swap
+  const { data, error } = await sb.auth.setSession({ access_token, refresh_token });
+
+  if (error || !data?.user) {
+    _impersonating = false;
+    alert('Failed to restore admin session: ' + (error?.message || 'Unknown error'));
+    window.location.reload();
+    return;
   }
-  // Reload for a clean slate — avoids mixed state from competing onAuthStateChange calls
-  window.location.reload();
+
+  hideBanner();
+  await onSignedIn(data.user);
+  _impersonating = false;
 }
 
 init();
