@@ -1,9 +1,17 @@
 // Impersonation banner for module pages (projects, metrics).
 // On the main dashboard the banner is managed by dashboard/js/admin.js instead.
 
-function initImpersonationBanner() {
+async function initImpersonationBanner() {
   if (!sessionStorage.getItem('adminSession')) return;
-  document.getElementById('impersonation-email').textContent = _currentUser.email;
+  let displayName = _currentUser.email;
+  const { data: profile } = await sb.from('profiles')
+    .select('first_name, last_name')
+    .eq('user_id', _currentUser.id)
+    .maybeSingle();
+  if (profile?.first_name) {
+    displayName = `${profile.first_name}${profile.last_name ? ' ' + profile.last_name : ''}`;
+  }
+  document.getElementById('impersonation-email').textContent = displayName;
   document.getElementById('impersonation-banner').classList.add('visible');
   document.body.classList.add('has-banner');
 }

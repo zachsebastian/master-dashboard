@@ -194,13 +194,12 @@ body {
   color: #1a1100;
   padding: 9px 20px;
   align-items: center;
-  justify-content: space-between;
+  grid-template-columns: 1fr auto 1fr;
   font-size: 13px;
   font-weight: 500;
   z-index: 999;
-  gap: 12px;
 }
-.impersonation-banner.visible { display: flex; }
+.impersonation-banner.visible { display: grid; }
 .btn-return {
   padding: 4px 12px;
   background: rgba(0,0,0,0.12);

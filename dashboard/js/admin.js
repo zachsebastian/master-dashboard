@@ -284,7 +284,10 @@ async function impersonate(userId, email) {
 
   await onSignedIn(otpData.user);
   showMainPage();
-  showBanner(otpData.user.email);
+  const displayName = currentProfile?.first_name
+    ? `${currentProfile.first_name}${currentProfile.last_name ? ' ' + currentProfile.last_name : ''}`
+    : otpData.user.email;
+  showBanner(displayName);
 }
 
 async function returnToAdmin() {
