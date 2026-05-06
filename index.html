@@ -576,7 +576,7 @@ async function onSignedIn(user) {
   document.getElementById('user-display-name').textContent = displayName;
 
   // Page greeting
-  document.getElementById('page-title').textContent    = profile?.first_name ? `Hey, ${profile.first_name}` : 'Your tools';
+  document.getElementById('page-title').textContent    = profile?.first_name ? `Hey, ${profile.first_name}.` : 'Your tools';
   document.getElementById('page-subtitle').textContent = 'Select a module to open it.';
 
   // Load + apply theme
