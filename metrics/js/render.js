@@ -142,7 +142,8 @@ function renderStatCard(f, latest, prev, metricColor) {
 function render() {
   if (!_appReady) return;
   const app = document.getElementById('app');
-  const { metrics, activeMetric, view, modal, presentationMode, darkMode } = state;
+  const { metrics, activeMetric, view, modal, presentationMode } = state;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const selectedMetric = metrics.find(m => m.id === activeMetric);
 
   if (presentationMode) {
@@ -174,9 +175,9 @@ function render() {
           ).join('')}
         </div>
         <div class="topbar-right">
-          <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
-            <div class="theme-track ${darkMode?'on':''}"><div class="theme-thumb"></div></div>
-            <span>${darkMode ? '🌙 Dark' : '☀️ Light'}</span>
+          <div class="theme-toggle" onclick="toggleTheme()">
+            <div class="theme-track ${isDark?'on':''}" id="theme-track"><div class="theme-thumb"></div></div>
+            <span id="theme-label">${isDark?'Dark':'Light'}</span>
           </div>
           <button class="btn" onclick="openModal('manage-rocks')">🪨 Rocks</button>
           <button class="btn" onclick="openModal('new-metric')">+ New metric</button>

@@ -53,8 +53,7 @@ const initialState = {
   activeMetric: 'm1',
   view: 'summary',
   modal: null,
-  presentationMode: false,
-  darkMode: false
+  presentationMode: false
 };
 
 // ── Runtime state ──

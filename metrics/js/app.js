@@ -1,19 +1,24 @@
 // ── Theme ──
 function applyTheme() {
-  document.documentElement.setAttribute('data-theme', state.darkMode ? 'dark' : 'light');
-  localStorage.setItem('theme', state.darkMode ? 'dark' : 'light');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  const track = document.getElementById('theme-track');
+  const label = document.getElementById('theme-label');
+  if (track) track.classList.toggle('on', isDark);
+  if (label) label.textContent = isDark ? 'Dark' : 'Light';
 }
 
 async function toggleTheme() {
-  state.darkMode = !state.darkMode;
-  applyTheme();
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
   if (_currentUser) {
     await sb.from('user_preferences').upsert(
-      { user_id: _currentUser.id, theme: state.darkMode ? 'dark' : 'light', updated_at: new Date().toISOString() },
+      { user_id: _currentUser.id, theme: next, updated_at: new Date().toISOString() },
       { onConflict: 'user_id' }
     );
   }
-  save();
   render();
 }
 
@@ -168,9 +173,8 @@ async function initAuth() {
 
   const { data: prefs } = await sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle();
   const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
-  state.darkMode = theme === 'dark';
-  applyTheme();
 
   await loadFromSupabase();
 
