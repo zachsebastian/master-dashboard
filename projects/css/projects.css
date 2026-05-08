@@ -16,6 +16,7 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .btn.btn-primary { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: var(--shadow-sm); }
 .btn.btn-primary:hover { opacity: 0.85; }
 .btn.btn-sm { font-size: 12px; padding: 4px 10px; }
+.btn.btn-sm.btn-primary { width: auto; }
 .btn.btn-danger { color: var(--red); border-color: rgba(224,92,75,0.3); }
 .btn.btn-danger:hover { background: var(--red-bg); }
 
