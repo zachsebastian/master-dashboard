@@ -50,13 +50,17 @@ async function initAuth() {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
 
+  const { data: modRows } = await sb.from('user_modules')
+    .select('module').eq('user_id', session.user.id);
+  const userModules = new Set((modRows || []).map(r => r.module));
+
   initModuleHeader({
     name: 'Links',
     subtitle: 'Home',
-    leftActions: `
-      <a class="btn" href="/projects/">Projects</a>
-      <a class="btn" href="/metrics/">Metrics</a>
-    `
+    leftActions: [
+      userModules.has('projects') ? `<a class="btn" href="/projects/">Projects</a>` : '',
+      userModules.has('metrics')  ? `<a class="btn" href="/metrics/">Metrics</a>`  : '',
+    ].join('')
   });
 
   const { data: profile } = await sb.from('profiles')
