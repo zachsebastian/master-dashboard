@@ -54,14 +54,13 @@ async function loadState() {
         items: rawItems
           .filter(i => i.group_id === g.id)
           .map(i => ({
-            id:         i.id,
-            groupId:    g.id,
-            name:       i.name,
-            url:        i.url,
-            iconUrl:    i.icon_url,
-            showLabel:  i.show_label,
-            sortOrder:  i.sort_order,
-            clickCount: i.click_count || 0,
+            id:        i.id,
+            groupId:   g.id,
+            name:      i.name,
+            url:       i.url,
+            iconUrl:   i.icon_url,
+            showLabel: i.show_label,
+            sortOrder: i.sort_order,
           })),
       })),
   }));
@@ -316,10 +315,8 @@ function safeUrl(url) {
 
 // ── Click tracking ──
 function trackLinkClick(itemId) {
-  const item = findItem(itemId);
-  if (!item) return;
-  item.clickCount = (item.clickCount || 0) + 1;
-  sb.from('link_items').update({ click_count: item.clickCount }).eq('id', itemId);
+  if (!_currentUser) return;
+  sb.rpc('increment_link_click', { item_id: itemId, uid: _currentUser.id });
 }
 
 // ── Save indicator ──

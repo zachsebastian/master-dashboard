@@ -60,6 +60,18 @@ create policy "Users manage own link_icon_library"
 -- Click tracking: running tally of how often each link is used
 alter table link_items add column if not exists click_count integer not null default 0;
 
+-- RPC: atomic server-side increment (avoids stale local-state overwrites)
+create or replace function increment_link_click(item_id uuid, uid uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update link_items
+  set click_count = click_count + 1
+  where id = item_id and user_id = uid;
+$$;
+
 -- Settings: per-user grid preferences
 create table if not exists link_settings (
   user_id    uuid references auth.users primary key,
