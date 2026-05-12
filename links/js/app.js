@@ -50,7 +50,14 @@ async function initAuth() {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
 
-  initModuleHeader({ name: 'Links', subtitle: 'Home' });
+  initModuleHeader({
+    name: 'Links',
+    subtitle: 'Home',
+    leftActions: `
+      <a class="btn" href="/projects/">Projects</a>
+      <a class="btn" href="/metrics/">Metrics</a>
+    `
+  });
 
   await Promise.all([loadState(), fetchWeather()]);
   render();
