@@ -212,7 +212,8 @@ function renderTabs(card, activeIdx) {
   if (!card.groups.length && !editMode) return '';
   if (card.groups.length <= 1 && !editMode) return '';
   return `
-    <div class="card-tabs">
+    <div class="card-tabs"
+         ${editMode ? `ondragover="onTabBarDragOver(event)" ondrop="onTabBarDrop(event)"` : ''}>
       ${card.groups.map((g, i) => `
         <button class="card-tab${i===activeIdx?' active':''}"
           data-group-id="${g.id}"

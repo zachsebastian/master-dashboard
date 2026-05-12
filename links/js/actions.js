@@ -682,6 +682,37 @@ function onTabDrop(e, targetGroupId) {
   _dragTabId = null;
 }
 
+function onTabBarDragOver(e) {
+  if (!_dragTabId) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onTabBarDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!_dragTabId || _tabDropDone) return;
+  // Commit whatever order the live reorder left the DOM in
+  const dragEl = document.querySelector(`.card-tab[data-group-id="${_dragTabId}"]`);
+  if (!dragEl) { _dragTabId = null; return; }
+  _tabDropDone = true;
+  const newOrder = [...dragEl.closest('.card-tabs').querySelectorAll('.card-tab[data-group-id]')]
+    .map(t => t.dataset.groupId);
+  for (const c of state.cards) {
+    if (!c.groups.some(g => g.id === _dragTabId)) continue;
+    const groupMap = new Map(c.groups.map(g => [g.id, g]));
+    c.groups = newOrder.map(id => groupMap.get(id)).filter(Boolean);
+    Promise.all(c.groups.map((g, i) =>
+      sb.from('link_groups').update({ sort_order: i }).eq('id', g.id)
+    ));
+    render();
+    showSaved();
+    break;
+  }
+  _dragTabId = null;
+}
+
 function onTabDragEnd(e) {
   document.querySelectorAll('.card-tab').forEach(t => {
     t.classList.remove('dragging');
