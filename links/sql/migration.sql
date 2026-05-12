@@ -57,6 +57,9 @@ alter table link_icon_library enable row level security;
 create policy "Users manage own link_icon_library"
   on link_icon_library using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Click tracking: running tally of how often each link is used
+alter table link_items add column if not exists click_count integer not null default 0;
+
 -- Settings: per-user grid preferences
 create table if not exists link_settings (
   user_id    uuid references auth.users primary key,

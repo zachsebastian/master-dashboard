@@ -11,11 +11,12 @@ const ALL_MODULES = [
     href: '/links/',
 
     async fetchStats(sb, userId) {
-      const [cRes, gRes, iRes, cntRes] = await Promise.all([
+      const [cRes, gRes, iRes, cntRes, topRes] = await Promise.all([
         sb.from('link_cards').select('id').eq('user_id', userId),
         sb.from('link_groups').select('id, name').eq('user_id', userId),
         sb.from('link_items').select('id, name, group_id').eq('user_id', userId).order('id', { ascending: false }).limit(5),
         sb.from('link_items').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        sb.from('link_items').select('id, name, url, icon_url').eq('user_id', userId).gt('click_count', 0).order('click_count', { ascending: false }).limit(6),
       ]);
       const cards  = cRes.data  || [];
       const groups = gRes.data  || [];
@@ -23,9 +24,10 @@ const ALL_MODULES = [
       const total  = cntRes.count || 0;
       const groupName = (gid) => (groups.find(g => g.id === gid) || {}).name || 'Links';
       return {
-        primary:   { value: total, label: 'Links' },
-        secondary: { value: cards.length, label: 'Cards' },
-        spark: null,
+        primary:      { value: total, label: 'Links' },
+        secondary:    { value: cards.length, label: 'Cards' },
+        spark:        null,
+        quickAccess:  topRes.data || [],
         latestEntries: items.map(i => ({ when: null, target: i.name, note: `in ${groupName(i.group_id)}` })),
         summaryFragment: cards.length === 0 ? 'No links saved yet' : `${cards.length} link card${cards.length === 1 ? '' : 's'}`,
       };
@@ -151,6 +153,20 @@ function renderModules(modRows, statsByModule) {
   if (launchpadList) {
     launchpadList.innerHTML = launchpads.map(m => {
       const stats = (statsByModule && statsByModule[m.id]) || {};
+      const qa = stats.quickAccess || [];
+      const quickHtml = qa.length ? `
+        <div class="launchpad-quick-access">
+          ${qa.map(item => {
+            const src = item.icon_url || _faviconSrc(item.url);
+            const imgHtml = src
+              ? `<img src="${escHtml(src)}" alt="" onerror="this.style.display='none'">`
+              : `<span class="qa-icon-letter">${escHtml((item.name || '?')[0].toUpperCase())}</span>`;
+            return `<a class="qa-icon" href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+              ${imgHtml}
+              <span class="qa-icon-label">${escHtml(item.name)}</span>
+            </a>`;
+          }).join('')}
+        </div>` : '<div></div>';
       const statsHtml = (stats.primary || stats.secondary) ? `
         <div class="launchpad-row-stats">
           ${stats.primary   ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
@@ -165,6 +181,7 @@ function renderModules(modRows, statsByModule) {
             <div class="launchpad-row-name">${m.name}</div>
             <div class="launchpad-row-desc">${m.desc}</div>
           </div>
+          ${quickHtml}
           ${statsHtml}
           <div class="launchpad-row-arrow">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -338,6 +355,13 @@ function renderHeroSummary(firstName, summaryFragments) {
 }
 
 // ── Helpers ──
+function _faviconSrc(url) {
+  try {
+    const domain = new URL(url).hostname;
+    return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32` : '';
+  } catch { return ''; }
+}
+
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
