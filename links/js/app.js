@@ -19,6 +19,21 @@ async function signOut() {
   window.location.href = '/';
 }
 
+// ── Weather ──
+async function fetchWeather() {
+  try {
+    const r = await fetch('https://wttr.in/?format=j1');
+    if (!r.ok) return;
+    const j = await r.json();
+    const c = j.current_condition[0];
+    _weather = {
+      tempF:     Math.round(parseFloat(c.temp_F)),
+      condition: c.weatherDesc[0].value,
+      location:  j.nearest_area[0].areaName[0].value,
+    };
+  } catch { /* silently hide weather tile on failure */ }
+}
+
 // ── Boot ──
 async function initAuth() {
   renderLoading();
@@ -37,7 +52,7 @@ async function initAuth() {
 
   initModuleHeader({ name: 'Links', subtitle: 'Home' });
 
-  await loadState();
+  await Promise.all([loadState(), fetchWeather()]);
   render();
 
   sb.auth.onAuthStateChange(event => {

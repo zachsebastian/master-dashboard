@@ -1,3 +1,72 @@
+// ── Hero helpers ──
+let _weather    = null; // populated by app.js after wttr.in fetch
+let _heroTimer  = null;
+
+function _greeting() {
+  const h = new Date().getHours();
+  if (h < 5)  return 'Working late';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  if (h < 21) return 'Good evening';
+  return 'Good evening';
+}
+function _fmtTime(d) {
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+function _fmtDate(d) {
+  return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+}
+function _firstName() {
+  if (!_currentUser) return '';
+  const meta = _currentUser.user_metadata || {};
+  const full  = meta.full_name || meta.name || '';
+  if (full) return full.split(' ')[0];
+  const prefix = (_currentUser.email || '').split('@')[0].split(/[._]/)[0];
+  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+}
+
+function faviconEl(item, imgClass, monoClass) {
+  const letter = esc((item.name || '?').charAt(0).toUpperCase());
+  const src = item.iconUrl || faviconUrl(item.url);
+  if (!src) return `<span class="${monoClass}">${letter}</span>`;
+  return `<img class="${imgClass}" src="${esc(src)}" onerror="this.outerHTML='<span class=\\'${monoClass}\\'>${letter}</span>'">`;
+}
+
+function renderHero() {
+  const name = _firstName();
+  const now  = new Date();
+  const weatherPart = _weather
+    ? `<span class="hero-sep">·</span><span class="hero-weather-inline">${esc(String(_weather.tempF))}° ${esc(_weather.condition)}${_weather.location ? ' · ' + esc(_weather.location) : ''}</span>`
+    : '';
+  return `
+    <div class="links-hero">
+      <div class="hero-content">
+        <div class="hero-greeting">
+          <span class="hero-greeting-verb" data-hero-greeting>${esc(_greeting())}</span>${name ? `<span class="hero-comma">,</span> <span class="hero-name">${esc(name)}</span>` : ''}<span class="hero-period">.</span>
+        </div>
+        <div class="hero-meta">
+          <span data-hero-date>${esc(_fmtDate(now))}</span>
+          <span class="hero-sep">·</span>
+          <span data-hero-time>${esc(_fmtTime(now))}</span>
+          ${weatherPart}
+        </div>
+      </div>
+    </div>`;
+}
+
+function startHeroClock() {
+  clearInterval(_heroTimer);
+  _heroTimer = setInterval(() => {
+    const d = new Date();
+    const tEl = document.querySelector('[data-hero-time]');
+    const gEl = document.querySelector('[data-hero-greeting]');
+    const dEl = document.querySelector('[data-hero-date]');
+    if (tEl) tEl.textContent = _fmtTime(d);
+    if (gEl) gEl.textContent = _greeting();
+    if (dEl) dEl.textContent = _fmtDate(d);
+  }, 30000);
+}
+
 // ── Top-level render ──
 function render() {
   const app = document.getElementById('app');
@@ -12,8 +81,10 @@ function applyZoom() {
 
 // ── Grid view ──
 function renderGridView(app) {
+  clearInterval(_heroTimer);
   const cols = state.settings.gridCols;
   app.innerHTML = `
+    ${renderHero()}
     ${renderToolbar()}
     <div id="links-grid" class="links-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">
       ${state.cards.map(c => renderCard(c)).join('')}
@@ -22,6 +93,7 @@ function renderGridView(app) {
         Add Card
       </button>` : state.cards.length === 0 ? renderEmptyPage() : ''}
     </div>`;
+  startHeroClock();
 }
 
 function renderToolbar() {
@@ -180,10 +252,7 @@ function renderLinkList(card, group) {
             ondragleave="onItemDragLeave(event)"
             ondragend="onItemDragEnd(event)"` : ''}>
           ${editMode ? `<span class="item-drag-handle">⠿</span>` : ''}
-          <img class="link-favicon"
-            src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
-            onerror="this.style.display='none'"
-            ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
+          ${faviconEl(item, 'link-favicon', 'link-favicon-mono')}
           ${editMode
             ? `<span class="link-name-static">${esc(item.name)}</span>
                <button class="item-btn edit" onclick="openItemEdit('${item.id}')" title="Edit">✎</button>
@@ -211,10 +280,7 @@ function renderIconGrid(card, group) {
           ${editMode
             ? `<div class="icon-item editing-icon" onclick="openItemEdit('${item.id}')">
                  <div class="icon-img-wrap">
-                   <img class="icon-img"
-                     src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
-                     onerror="this.style.display='none'"
-                     ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
+                   ${faviconEl(item, 'icon-img', 'icon-img-mono')}
                    <div class="icon-edit-overlay">✎</div>
                  </div>
                  <span class="icon-label">${esc(item.name)}</span>
@@ -222,10 +288,7 @@ function renderIconGrid(card, group) {
                <button class="icon-del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')" title="Delete">×</button>`
             : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer">
                  <div class="icon-img-wrap">
-                   <img class="icon-img"
-                     src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
-                     onerror="this.style.display='none'"
-                     ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
+                   ${faviconEl(item, 'icon-img', 'icon-img-mono')}
                  </div>
                  ${item.showLabel ? `<span class="icon-label">${esc(item.name)}</span>` : ''}
                </a>`}
