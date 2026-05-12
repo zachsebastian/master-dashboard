@@ -385,12 +385,10 @@ function onCardDragEnd(e) {
   _dropCommitted = false;
 }
 
-function onCardDrop(e, targetCardId) {
-  e.preventDefault();
-  if (!_dragCardId) return;
+function _commitCardDrop() {
+  if (!_dragCardId || _dropCommitted) return;
   _dropCommitted = true;
 
-  // Derive new order directly from current DOM (live reorder already moved elements)
   const grid = document.getElementById('links-grid');
   const newOrder = grid
     ? [...grid.querySelectorAll('.link-card[data-card-id]')].map(c => c.dataset.cardId)
@@ -401,6 +399,23 @@ function onCardDrop(e, targetCardId) {
   reorderCards(state.cards.map(c => c.id)); // saves to DB + calls render()
   _dragCardId    = null;
   _dragOverCardId = null;
+}
+
+function onCardDrop(e, targetCardId) {
+  e.preventDefault();
+  e.stopPropagation(); // don't let grid's ondrop also fire
+  _commitCardDrop();
+}
+
+function onGridDragOver(e) {
+  if (!_dragCardId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onGridDrop(e) {
+  e.preventDefault();
+  _commitCardDrop(); // no-op if onCardDrop already fired
 }
 
 // ── Item drag-and-drop ──
