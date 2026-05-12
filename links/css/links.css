@@ -19,6 +19,8 @@
 /* ── App layout ── */
 #app {
   padding: 0 24px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 /* ── Hero ── */
@@ -372,6 +374,11 @@
   list-style: none;
   padding: 0 calc(8px * var(--lz, 1));
   margin: 0;
+}
+.link-card:not(.edit-active) .link-list {
+  width: fit-content;
+  min-width: 60%;
+  margin: 0 auto;
 }
 
 .link-item {
