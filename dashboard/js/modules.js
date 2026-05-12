@@ -16,18 +16,19 @@ const ALL_MODULES = [
         sb.from('link_groups').select('id, name').eq('user_id', userId),
         sb.from('link_items').select('id, name, group_id').eq('user_id', userId).order('id', { ascending: false }).limit(5),
         sb.from('link_items').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-        sb.from('link_items').select('id, name, url, icon_url').eq('user_id', userId).gt('click_count', 0).order('click_count', { ascending: false }).limit(6),
+        sb.from('link_items').select('id, name, url, icon_url, click_count').eq('user_id', userId).gt('click_count', 0).order('click_count', { ascending: false }).limit(3),
       ]);
       const cards  = cRes.data  || [];
       const groups = gRes.data  || [];
       const items  = iRes.data  || [];
       const total  = cntRes.count || 0;
       const groupName = (gid) => (groups.find(g => g.id === gid) || {}).name || 'Links';
+      const quickAccess = (topRes.data || []).sort((a, b) => (b.click_count || 0) - (a.click_count || 0));
       return {
         primary:      { value: total, label: 'Links' },
         secondary:    { value: cards.length, label: 'Cards' },
         spark:        null,
-        quickAccess:  topRes.data || [],
+        quickAccess,
         latestEntries: items.map(i => ({ when: null, target: i.name, note: `in ${groupName(i.group_id)}` })),
         summaryFragment: cards.length === 0 ? 'No links saved yet' : `${cards.length} link card${cards.length === 1 ? '' : 's'}`,
       };
@@ -335,11 +336,12 @@ function renderActivityTicker(activity) {
   if (!strip) return;
   if (!activity || activity.length === 0) { strip.style.display = 'none'; return; }
   strip.style.display = '';
-  document.getElementById('activity-items').innerHTML = activity.slice(0, 5).map(a => `
+  const itemHtml = activity.slice(0, 5).map(a => `
     <div class="activity-item">
       <div class="activity-dot" data-mod="${a.mod}"></div>
       <div class="activity-text"><strong>${escHtml(a.target || '')}</strong> · ${escHtml(a.note || '')} <span class="activity-when">· ${escHtml(a.when || '')}</span></div>
     </div>`).join('');
+  document.getElementById('activity-items').innerHTML = itemHtml + itemHtml;
 }
 
 // ── Hero summary ──
