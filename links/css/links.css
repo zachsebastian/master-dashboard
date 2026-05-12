@@ -329,6 +329,12 @@
   overflow-y: auto;
   max-height: calc(300px * var(--lz, 1));
 }
+.link-card:not(.edit-active) .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
 
 /* ── List pagination ── */
 .list-page-arrows {
