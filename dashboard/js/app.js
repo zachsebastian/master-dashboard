@@ -71,24 +71,59 @@ async function onSignedIn(user) {
   }
 
   // Update UI
-  const displayName = profile?.first_name
-    ? `${profile.first_name} ${profile.last_name}`
-    : user.email;
+  const firstName   = profile?.first_name || '';
+  const displayName = firstName ? `${firstName} ${profile.last_name || ''}`.trim() : user.email;
   document.getElementById('user-display-name').textContent = displayName;
-  document.getElementById('page-title').textContent =
-    profile?.first_name ? `Hey, ${profile.first_name}.` : 'Your tools';
-  document.getElementById('page-subtitle').textContent = 'Select a module to open it.';
+  document.getElementById('page-title').textContent = firstName ? `Hey, ${firstName}.` : 'Your tools';
   document.getElementById('admin-btn').style.display = isAdmin ? '' : 'none';
+
+  const eyebrow = document.getElementById('hero-eyebrow');
+  if (eyebrow) eyebrow.textContent = new Date().toLocaleDateString(undefined, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
 
   // Theme
   await loadAndApplyTheme(user.id);
 
-  // Modules
+  // Modules + stats
   const { data: modRows } = await sb.from('user_modules')
     .select('module, sort_order').eq('user_id', user.id).order('sort_order');
-  renderModules(modRows || []);
+  const rows    = modRows || [];
+  const allowed = new Set(rows.map(r => r.module));
 
+  // Initial render (no stats yet)
+  renderModules(rows, {});
   document.getElementById('app').style.display = 'block';
+
+  // Fetch stats for each enabled module in parallel, then re-render with data
+  const statsByModule    = {};
+  const summaryFragments = [];
+  const allActivity      = [];
+
+  await Promise.all(ALL_MODULES.filter(m => allowed.has(m.id)).map(async m => {
+    try {
+      let stats;
+      if (m.fetchStats) {
+        stats = await m.fetchStats(sb, user.id);
+      } else if (m.computeStats && m.table) {
+        const { data: blob } = await sb.from(m.table).select('data').eq('user_id', user.id).maybeSingle();
+        stats = m.computeStats(blob?.data || null);
+      }
+      if (stats) {
+        statsByModule[m.id] = stats;
+        if (stats.summaryFragment) summaryFragments.push(stats.summaryFragment);
+        (stats.latestEntries || []).forEach(e => {
+          if (!e.when) return;
+          allActivity.push({ mod: m.id, target: e.target, note: e.note, when: relativeTime(e.when), _ts: new Date(e.when).getTime() || 0 });
+        });
+      }
+    } catch (_) { /* stats are non-critical */ }
+  }));
+
+  renderModules(rows, statsByModule);
+  renderHeroSummary(firstName, summaryFragments);
+  allActivity.sort((a, b) => b._ts - a._ts);
+  renderActivityTicker(allActivity);
 }
 
 // ── Profile panel ──

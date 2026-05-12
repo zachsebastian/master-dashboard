@@ -101,14 +101,32 @@
 
   <!-- Main dashboard view -->
   <div class="main" id="main-view">
+    <div class="hero-eyebrow" id="hero-eyebrow"></div>
     <div class="page-title" id="page-title">Your tools</div>
     <div class="page-subtitle" id="page-subtitle">Select a module to open it.</div>
+    <div class="launchpad-list" id="launchpad-list"></div>
     <div class="module-grid" id="module-grid"></div>
+    <div class="empty-state" id="empty-state" style="display:none">
+      <div class="empty-state-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="empty-state-title">No modules assigned yet</div>
+      <div class="empty-state-msg">Contact your administrator to get access to modules.</div>
+    </div>
+    <div class="activity-strip" id="activity-strip" style="display:none">
+      <div class="activity-label">Latest</div>
+      <div class="activity-items" id="activity-items"></div>
+    </div>
   </div>
 
   <!-- Admin full-page view -->
   <div id="admin-page" style="display:none">
-    <div class="main">
+    <div class="main main--compact">
       <button class="btn-sm" onclick="showMainPage()" style="margin-bottom:28px">← Dashboard</button>
       <div class="page-title">Admin</div>
       <div class="page-subtitle" style="margin-bottom:36px">Manage user access and permissions.</div>
