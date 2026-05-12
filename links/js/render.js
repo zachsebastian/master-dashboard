@@ -128,9 +128,10 @@ function renderToolbar() {
             <input type="range" id="zoom-slider" min="0.7" max="1.4" step="0.05" value="${zoom}" oninput="onZoomChange(+this.value)">
           </label>
         </div>
-        <button class="edit-mode-btn ${editMode ? 'active' : ''}" onclick="toggleEditMode()">
-          ${editMode ? 'Done' : 'Edit'}
-        </button>
+        ${editMode
+          ? `<button class="edit-mode-btn cancel" onclick="cancelEditMode()">Cancel</button>
+             <button class="edit-mode-btn active" onclick="toggleEditMode()">Done</button>`
+          : `<button class="edit-mode-btn" onclick="toggleEditMode()">Edit</button>`}
       </div>
     </div>`;
 }
@@ -363,9 +364,10 @@ function renderSearchView(app) {
       </div>
       <div class="toolbar-right">
         <span class="search-count">${results.length} result${results.length!==1?'s':''}</span>
-        <button class="edit-mode-btn ${editMode?'active':''}" onclick="toggleEditMode()">
-          ${editMode ? 'Done' : 'Edit'}
-        </button>
+        ${editMode
+          ? `<button class="edit-mode-btn cancel" onclick="cancelEditMode()">Cancel</button>
+             <button class="edit-mode-btn active" onclick="toggleEditMode()">Done</button>`
+          : `<button class="edit-mode-btn" onclick="toggleEditMode()">Edit</button>`}
       </div>
     </div>
     <div class="search-results">

@@ -146,6 +146,9 @@
   border-color: var(--blue);
   color: #fff;
 }
+.edit-mode-btn.cancel {
+  color: var(--text-3);
+}
 
 /* ── Grid ── */
 .links-grid {

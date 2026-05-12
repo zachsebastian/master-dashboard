@@ -40,8 +40,42 @@ function setListPage(groupId, page) {
 }
 
 // ── Edit mode ──
+let _editSnapshot = null;
+
 function toggleEditMode() {
+  if (!editMode) {
+    // Entering edit mode — snapshot names so Cancel can restore them
+    _editSnapshot = state.cards.map(c => ({
+      id: c.id, name: c.name,
+      groups: c.groups.map(g => ({ id: g.id, name: g.name }))
+    }));
+  } else {
+    _editSnapshot = null;
+  }
   editMode = !editMode;
+  render();
+}
+
+function cancelEditMode() {
+  if (_editSnapshot) {
+    _editSnapshot.forEach(snap => {
+      const card = state.cards.find(c => c.id === snap.id);
+      if (!card) return;
+      if (card.name !== snap.name) {
+        card.name = snap.name;
+        sb.from('link_cards').update({ name: snap.name }).eq('id', snap.id);
+      }
+      snap.groups.forEach(gSnap => {
+        const group = card.groups.find(g => g.id === gSnap.id);
+        if (group && group.name !== gSnap.name) {
+          group.name = gSnap.name;
+          sb.from('link_groups').update({ name: gSnap.name }).eq('id', gSnap.id);
+        }
+      });
+    });
+    _editSnapshot = null;
+  }
+  editMode = false;
   render();
 }
 
@@ -301,7 +335,7 @@ function _refreshLibraryPicker() {
     <div class="library-grid">
       ${iconLibrary.map(icon => `
         <div class="library-icon-wrap">
-          <button class="library-icon-btn" onclick="selectLibraryIcon(${JSON.stringify(icon.icon_data)})" title="${esc(icon.name)}">
+          <button class="library-icon-btn" onclick="selectLibraryIcon('${icon.id}')" title="${esc(icon.name)}">
             <img src="${esc(icon.icon_data)}" alt="">
           </button>
           <button class="library-icon-del" onclick="removeLibraryIcon('${icon.id}')" title="Remove">×</button>
@@ -337,11 +371,13 @@ async function onLibraryUpload(e) {
   _refreshLibraryPicker();
 }
 
-function selectLibraryIcon(iconData) {
+function selectLibraryIcon(iconId) {
+  const icon = iconLibrary.find(i => i.id === iconId);
+  if (!icon) return;
   const img = document.getElementById('iem-icon-preview');
-  if (img) { img.src = iconData; img.style.display = ''; }
+  if (img) { img.src = icon.icon_data; img.style.display = ''; }
   const modal = document.getElementById('item-edit-modal');
-  if (modal) { modal.dataset.pendingIcon = iconData; delete modal.dataset.clearIcon; }
+  if (modal) { modal.dataset.pendingIcon = icon.icon_data; delete modal.dataset.clearIcon; }
   document.getElementById('iem-library-picker').style.display = 'none';
 }
 
