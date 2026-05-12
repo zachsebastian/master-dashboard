@@ -303,6 +303,7 @@
 .card-tab.active { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
 .card-tab.add-tab-btn { color: var(--text-3); font-size: 15px; padding: 2px 8px; }
 .card-tab.add-tab-btn:hover { color: var(--blue); background: var(--blue-bg); }
+.card-tab.dragging { opacity: 0.35; }
 
 .tab-name {
   outline: none;

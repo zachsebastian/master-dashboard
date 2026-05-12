@@ -605,33 +605,73 @@ async function onItemDrop(e, targetItemId) {
 }
 
 // ── Tab drag-and-drop (reorder within same card) ──
-let _dragTabId = null;
+let _dragTabId      = null;
+let _dragTabOverId  = null;
+let _tabDropDone    = false;
 
 function onTabDragStart(e, groupId) {
-  _dragTabId = groupId;
+  _dragTabId     = groupId;
+  _dragTabOverId = null;
+  _tabDropDone   = false;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', groupId);
   e.stopPropagation();
+  requestAnimationFrame(() =>
+    document.querySelector(`.card-tab[data-group-id="${groupId}"]`)?.classList.add('dragging')
+  );
 }
 
 function onTabDragOver(e, groupId) {
   if (!_dragTabId || _dragTabId === groupId) return;
   e.preventDefault();
   e.stopPropagation();
+  if (_dragTabOverId === groupId) return;
+  _dragTabOverId = groupId;
+
+  const dragEl   = document.querySelector(`.card-tab[data-group-id="${_dragTabId}"]`);
+  const targetEl = document.querySelector(`.card-tab[data-group-id="${groupId}"]`);
+  if (!dragEl || !targetEl) return;
+
+  const tabs = [...dragEl.closest('.card-tabs').querySelectorAll('.card-tab[data-group-id]')];
+  const before = new Map(tabs.map(t => [t, t.getBoundingClientRect()]));
+
+  const allIds = tabs.map(t => t.dataset.groupId);
+  if (allIds.indexOf(_dragTabId) < allIds.indexOf(groupId)) {
+    targetEl.insertAdjacentElement('afterend', dragEl);
+  } else {
+    targetEl.insertAdjacentElement('beforebegin', dragEl);
+  }
+
+  tabs.forEach(t => {
+    const prev = before.get(t);
+    const curr = t.getBoundingClientRect();
+    const dx = prev.left - curr.left;
+    if (Math.abs(dx) < 1) return;
+    t.style.transition = 'none';
+    t.style.transform  = `translateX(${dx}px)`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      t.style.transition = 'transform 0.15s ease';
+      t.style.transform  = '';
+    }));
+  });
 }
 
 function onTabDrop(e, targetGroupId) {
   e.preventDefault();
   e.stopPropagation();
-  if (!_dragTabId || _dragTabId === targetGroupId) return;
+  if (!_dragTabId) return;
+  _tabDropDone = true;
+
+  const dragEl = document.querySelector(`.card-tab[data-group-id="${_dragTabId}"]`);
+  if (!dragEl) { _dragTabId = null; return; }
+
+  const newOrder = [...dragEl.closest('.card-tabs').querySelectorAll('.card-tab[data-group-id]')]
+    .map(t => t.dataset.groupId);
 
   for (const c of state.cards) {
-    const fromIdx = c.groups.findIndex(g => g.id === _dragTabId);
-    const toIdx   = c.groups.findIndex(g => g.id === targetGroupId);
-    if (fromIdx === -1 || toIdx === -1) continue;
-
-    const [moved] = c.groups.splice(fromIdx, 1);
-    c.groups.splice(toIdx, 0, moved);
+    if (!c.groups.some(g => g.id === _dragTabId)) continue;
+    const groupMap = new Map(c.groups.map(g => [g.id, g]));
+    c.groups = newOrder.map(id => groupMap.get(id)).filter(Boolean);
     Promise.all(c.groups.map((g, i) =>
       sb.from('link_groups').update({ sort_order: i }).eq('id', g.id)
     ));
@@ -640,4 +680,16 @@ function onTabDrop(e, targetGroupId) {
     break;
   }
   _dragTabId = null;
+}
+
+function onTabDragEnd(e) {
+  document.querySelectorAll('.card-tab').forEach(t => {
+    t.classList.remove('dragging');
+    t.style.transform  = '';
+    t.style.transition = '';
+  });
+  if (!_tabDropDone) render();
+  _dragTabId     = null;
+  _dragTabOverId = null;
+  _tabDropDone   = false;
 }

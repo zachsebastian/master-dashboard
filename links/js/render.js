@@ -215,11 +215,13 @@ function renderTabs(card, activeIdx) {
     <div class="card-tabs">
       ${card.groups.map((g, i) => `
         <button class="card-tab${i===activeIdx?' active':''}"
+          data-group-id="${g.id}"
           onclick="setActiveGroup('${card.id}',${i})"
           ${editMode ? `draggable="true"
             ondragstart="onTabDragStart(event,'${g.id}')"
             ondragover="onTabDragOver(event,'${g.id}')"
-            ondrop="onTabDrop(event,'${g.id}')"` : ''}>
+            ondrop="onTabDrop(event,'${g.id}')"
+            ondragend="onTabDragEnd(event)"` : ''}>
           ${editMode ? `
             <span class="tab-name" contenteditable="true" spellcheck="false"
               onclick="event.stopPropagation()"
