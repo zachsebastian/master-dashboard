@@ -161,17 +161,17 @@ function renderModules(modRows, statsByModule) {
             const imgHtml = src
               ? `<img src="${escHtml(src)}" alt="" onerror="this.style.display='none'">`
               : `<span class="qa-icon-letter">${escHtml((item.name || '?')[0].toUpperCase())}</span>`;
-            return `<a class="qa-icon" href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+            return `<div class="qa-icon" role="link" tabindex="0" onclick="event.stopPropagation();event.preventDefault();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')" onkeydown="if(event.key==='Enter'){event.stopPropagation();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')}">
               ${imgHtml}
               <span class="qa-icon-label">${escHtml(item.name)}</span>
-            </a>`;
+            </div>`;
           }).join('')}
-        </div>` : '<div></div>';
+        </div>` : '';
       const statsHtml = (stats.primary || stats.secondary) ? `
         <div class="launchpad-row-stats">
           ${stats.primary   ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
           ${stats.secondary ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
-        </div>` : '<div></div>';
+        </div>` : '';
       return `
         <a class="launchpad-row" href="${m.href}" data-module-id="${m.id}" data-module-type="launchpad" data-accent="${m.id}"
            draggable="true" ondragstart="onModuleDragStart(event)" ondragover="onModuleDragOver(event)"

@@ -314,8 +314,9 @@ function safeUrl(url) {
 }
 
 // ── Click tracking ──
-function trackLinkClick(itemId) {
-  sb.rpc('increment_link_click', { item_id: itemId });
+async function trackLinkClick(itemId) {
+  const { error } = await sb.rpc('increment_link_click', { item_id: itemId });
+  if (error) console.error('trackLinkClick failed:', error);
 }
 
 // ── Save indicator ──

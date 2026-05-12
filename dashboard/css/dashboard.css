@@ -118,7 +118,7 @@
 .launchpad-row-stat-label { font-size: 10.5px; color: var(--text-3); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 500; margin-top: 6px; }
 
 /* ── Launchpad quick-access icon circles ── */
-.launchpad-quick-access { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.launchpad-quick-access { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-right: 12px; }
 .qa-icon {
   position: relative;
   width: 34px; height: 34px;
