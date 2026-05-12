@@ -315,10 +315,14 @@ function resizeImage(dataUrl, maxPx) {
 }
 
 // ── Card drag-and-drop ──
-let _dragCardId   = null;
+let _dragCardId    = null;
+let _dragOverCardId = null;
+let _dropCommitted = false;
 
 function onCardDragStart(e, cardId) {
-  _dragCardId = cardId;
+  _dragCardId    = cardId;
+  _dragOverCardId = null;
+  _dropCommitted = false;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', cardId);
   requestAnimationFrame(() => {
@@ -330,34 +334,73 @@ function onCardDragOver(e, cardId) {
   if (!_dragCardId || _dragCardId === cardId) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.link-card.drag-over').forEach(el => el.classList.remove('drag-over'));
-  document.querySelector(`[data-card-id="${cardId}"]`)?.classList.add('drag-over');
+  if (_dragOverCardId === cardId) return; // already handled this target
+  _dragOverCardId = cardId;
+
+  const grid    = document.getElementById('links-grid');
+  if (!grid) return;
+  const dragEl  = grid.querySelector(`[data-card-id="${_dragCardId}"]`);
+  const targetEl = grid.querySelector(`[data-card-id="${cardId}"]`);
+  if (!dragEl || !targetEl) return;
+
+  // Snapshot positions before the DOM move (FLIP: First)
+  const cards = [...grid.querySelectorAll('.link-card[data-card-id]')];
+  const before = new Map(cards.map(c => [c, c.getBoundingClientRect()]));
+
+  // Move drag card before or after target depending on current order
+  const allIds = cards.map(c => c.dataset.cardId);
+  if (allIds.indexOf(_dragCardId) < allIds.indexOf(cardId)) {
+    targetEl.insertAdjacentElement('afterend', dragEl);
+  } else {
+    targetEl.insertAdjacentElement('beforebegin', dragEl);
+  }
+
+  // FLIP: Invert + Play — animate each card from its old position to its new one
+  cards.forEach(c => {
+    const prev = before.get(c);
+    const curr = c.getBoundingClientRect();
+    const dx = prev.left - curr.left;
+    const dy = prev.top  - curr.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    c.style.transition = 'none';
+    c.style.transform  = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      c.style.transition = 'transform 0.2s ease';
+      c.style.transform  = '';
+    }));
+  });
 }
 
-function onCardDragLeave(e) {
-  if (!e.currentTarget.contains(e.relatedTarget)) {
-    e.currentTarget.classList.remove('drag-over');
-  }
-}
+function onCardDragLeave(e) { /* no-op — live reorder replaces highlight */ }
 
 function onCardDragEnd(e) {
-  document.querySelectorAll('.link-card').forEach(el => el.classList.remove('dragging', 'drag-over'));
-  _dragCardId = null;
+  document.querySelectorAll('.link-card').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+    el.style.transform  = '';
+    el.style.transition = '';
+  });
+  if (!_dropCommitted) render(); // cancelled drag — restore original order
+  _dragCardId    = null;
+  _dragOverCardId = null;
+  _dropCommitted = false;
 }
 
 function onCardDrop(e, targetCardId) {
   e.preventDefault();
-  if (!_dragCardId || _dragCardId === targetCardId) return;
-  document.querySelectorAll('.link-card').forEach(el => el.classList.remove('dragging', 'drag-over'));
+  if (!_dragCardId) return;
+  _dropCommitted = true;
 
-  const fromIdx = state.cards.findIndex(c => c.id === _dragCardId);
-  const toIdx   = state.cards.findIndex(c => c.id === targetCardId);
-  if (fromIdx === -1 || toIdx === -1) return;
+  // Derive new order directly from current DOM (live reorder already moved elements)
+  const grid = document.getElementById('links-grid');
+  const newOrder = grid
+    ? [...grid.querySelectorAll('.link-card[data-card-id]')].map(c => c.dataset.cardId)
+    : state.cards.map(c => c.id);
 
-  const [moved] = state.cards.splice(fromIdx, 1);
-  state.cards.splice(toIdx, 0, moved);
-  reorderCards(state.cards.map(c => c.id));
-  _dragCardId = null;
+  const cardMap = new Map(state.cards.map(c => [c.id, c]));
+  state.cards = newOrder.map(id => cardMap.get(id)).filter(Boolean);
+  reorderCards(state.cards.map(c => c.id)); // saves to DB + calls render()
+  _dragCardId    = null;
+  _dragOverCardId = null;
 }
 
 // ── Item drag-and-drop ──
