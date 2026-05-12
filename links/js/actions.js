@@ -288,19 +288,41 @@ function openIconLibraryPicker() {
 function _refreshLibraryPicker() {
   const picker = document.getElementById('iem-library-picker');
   if (!picker || picker.style.display === 'none') return;
+  const uploadBtn = `
+    <label class="library-upload-btn" title="Upload image file">
+      + Add to library
+      <input type="file" accept="image/*" style="display:none" onchange="onLibraryUpload(event)">
+    </label>`;
   if (!iconLibrary.length) {
-    picker.innerHTML = '<div class="library-empty">No icons yet — upload one to save it here.</div>';
+    picker.innerHTML = `<div class="library-empty">No icons yet.</div>${uploadBtn}`;
     return;
   }
-  picker.innerHTML = `<div class="library-grid">${
-    iconLibrary.map(icon => `
-      <div class="library-icon-wrap">
-        <button class="library-icon-btn" onclick="selectLibraryIcon(${JSON.stringify(icon.icon_data)})" title="${esc(icon.name)}">
-          <img src="${esc(icon.icon_data)}" alt="">
-        </button>
-        <button class="library-icon-del" onclick="removeLibraryIcon('${icon.id}')" title="Remove">×</button>
-      </div>`).join('')
-  }</div>`;
+  picker.innerHTML = `
+    <div class="library-grid">
+      ${iconLibrary.map(icon => `
+        <div class="library-icon-wrap">
+          <button class="library-icon-btn" onclick="selectLibraryIcon(${JSON.stringify(icon.icon_data)})" title="${esc(icon.name)}">
+            <img src="${esc(icon.icon_data)}" alt="">
+          </button>
+          <button class="library-icon-del" onclick="removeLibraryIcon('${icon.id}')" title="Remove">×</button>
+        </div>`).join('')}
+    </div>
+    ${uploadBtn}`;
+}
+
+async function onLibraryUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const data = await resizeImage(ev.target.result, 64);
+    const name = file.name.replace(/\.[^.]+$/, ''); // strip extension
+    const { data: row } = await sb.from('link_icon_library').insert({
+      user_id: _currentUser.id, name, icon_data: data,
+    }).select('id, name, icon_data').single();
+    if (row) { iconLibrary.unshift(row); _refreshLibraryPicker(); }
+  };
+  reader.readAsDataURL(file);
 }
 
 function selectLibraryIcon(iconData) {
