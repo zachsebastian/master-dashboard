@@ -72,6 +72,7 @@
   border-color: rgba(0,0,0,0.18);
 }
 html[data-theme="dark"] .module-card:hover { border-color: rgba(255,255,255,0.18); }
+.module-card.dragging { opacity: 0.35; cursor: grabbing; }
 
 .module-icon {
   width: 40px; height: 40px;

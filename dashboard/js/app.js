@@ -85,8 +85,8 @@ async function onSignedIn(user) {
 
   // Modules
   const { data: modRows } = await sb.from('user_modules')
-    .select('module').eq('user_id', user.id);
-  renderModules(new Set((modRows || []).map(r => r.module)));
+    .select('module, sort_order').eq('user_id', user.id).order('sort_order');
+  renderModules(modRows || []);
 
   document.getElementById('app').style.display = 'block';
 }
