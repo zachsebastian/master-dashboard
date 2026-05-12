@@ -4,7 +4,6 @@ function render() {
   if (!app) return;
   applyZoom();
   searchQuery.trim() ? renderSearchView(app) : renderGridView(app);
-  rebalanceIconGrids();
 }
 
 function applyZoom() {
@@ -53,7 +52,6 @@ function renderToolbar() {
           <label class="slider-label" title="Zoom">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
             <input type="range" id="zoom-slider" min="0.7" max="1.4" step="0.05" value="${zoom}" oninput="onZoomChange(+this.value)">
-            <span class="slider-val" id="zoom-val">${Math.round(zoom * 100)}%</span>
           </label>
         </div>
         <button class="edit-mode-btn ${editMode ? 'active' : ''}" onclick="toggleEditMode()">
@@ -99,12 +97,11 @@ function renderCard(card) {
         ${editMode ? renderCardActions(card) : ''}
       </div>
 
-      ${editMode ? renderGroupsStacked(card) : `
-        ${renderTabs(card, activeIdx)}
-        <div class="card-body">
-          ${activeGroup ? renderGroupBody(card, activeGroup) : `<div class="empty-group">No tabs</div>`}
-        </div>
-        ${activeGroup && card.mode === 'list' ? renderListPagination(activeGroup) : ''}`}
+      ${renderTabs(card, activeIdx)}
+
+      <div class="card-body">
+        ${activeGroup ? renderGroupBody(card, activeGroup) : `<div class="empty-group">No tabs</div>`}
+      </div>
     </div>`;
 }
 
@@ -134,34 +131,9 @@ function renderCardActions(card) {
     </div>`;
 }
 
-// ── Edit mode: all groups stacked ──
-function renderGroupsStacked(card) {
-  return `
-    <div class="groups-stacked">
-      ${card.groups.map(g => `
-        <div class="group-section">
-          <div class="group-section-hdr">
-            <span class="group-section-name" contenteditable="true" spellcheck="false"
-              onclick="event.stopPropagation()"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-              onblur="updateGroup('${g.id}',{name:this.textContent.trim()||'Tab'})">${esc(g.name)}</span>
-            <div class="group-section-actions">
-              <button class="tab-action-btn" title="Move to another card" onclick="showMoveGroupMenu('${g.id}')">↗</button>
-              <button class="tab-action-btn" title="Delete tab" onclick="confirmDeleteGroup('${g.id}')">×</button>
-            </div>
-          </div>
-          ${renderGroupBody(card, g)}
-        </div>`).join('')}
-      <div style="padding:6px 10px">
-        <button class="add-item-btn" onclick="addGroup('${card.id}')">+ Add tab</button>
-      </div>
-    </div>`;
-}
-
 // ── Tabs ──
 function renderTabs(card, activeIdx) {
-  if (!card.groups.length) return '';
-  if (card.groups.length <= 1) return ''; // single sub-card — no tab bar needed
+  if (!card.groups.length && !editMode) return '';
   return `
     <div class="card-tabs">
       ${card.groups.map((g, i) => `
@@ -169,8 +141,7 @@ function renderTabs(card, activeIdx) {
           onclick="setActiveGroup('${card.id}',${i})"
           ${editMode ? `draggable="true"
             ondragstart="onTabDragStart(event,'${g.id}')"
-            ondragover="onTabDragOver(event,'${card.id}',${i},'${g.id}')"
-            ondragleave="onTabDragLeave(event)"
+            ondragover="onTabDragOver(event,'${g.id}')"
             ondrop="onTabDrop(event,'${g.id}')"` : ''}>
           ${editMode ? `
             <span class="tab-name" contenteditable="true" spellcheck="false"
@@ -194,22 +165,13 @@ function renderGroupBody(card, group) {
     : renderLinkList(card, group);
 }
 
-const PAGE_SIZE = 6;
-
 function renderLinkList(card, group) {
   if (!group.items.length && !editMode) {
     return `<div class="empty-group">No links yet</div>`;
   }
-
-  const page      = editMode ? 0 : (activePages[group.id] || 0);
-  const totalPages = Math.ceil(group.items.length / PAGE_SIZE);
-  const safePage  = Math.min(page, totalPages - 1);
-  const items     = editMode ? group.items : group.items.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
-
   return `
-    <ul class="link-list" data-group-id="${group.id}"
-      ${editMode ? `ondragover="onListDragOver(event,'${group.id}')" ondragleave="onListDragLeave(event)" ondrop="onListDrop(event,'${group.id}')"` : ''}>
-      ${items.map(item => `
+    <ul class="link-list" data-group-id="${group.id}">
+      ${group.items.map(item => `
         <li class="link-item${editMode?' edit-item':''}" data-item-id="${item.id}"
           ${editMode ? `draggable="true"
             ondragstart="onItemDragStart(event,'${item.id}')"
@@ -229,25 +191,7 @@ function renderLinkList(card, group) {
             : `<a class="link-anchor" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer">${esc(item.name)}</a>`}
         </li>`).join('')}
       ${editMode ? `<li class="add-item-row"><button class="add-item-btn" onclick="addItem('${group.id}')">+ Add link</button></li>` : ''}
-    </ul>
-  `;
-}
-
-function renderListPagination(group) {
-  const page = activePages[group.id] || 0;
-  const totalPages = Math.ceil(group.items.length / PAGE_SIZE);
-  if (totalPages <= 1) return '';
-  const safePage = Math.min(page, totalPages - 1);
-  return `
-    <div class="list-page-arrows">
-      <button class="list-page-arrow prev${safePage === 0 ? ' hidden' : ''}" onclick="setListPage('${group.id}',${safePage - 1})" title="Previous page">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <span class="list-page-indicator">${safePage + 1} / ${totalPages}</span>
-      <button class="list-page-arrow next${safePage === totalPages - 1 ? ' hidden' : ''}" onclick="setListPage('${group.id}',${safePage + 1})" title="Next page">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-    </div>`;
+    </ul>`;
 }
 
 function renderIconGrid(card, group) {
@@ -255,8 +199,7 @@ function renderIconGrid(card, group) {
     return `<div class="empty-group">No links yet</div>`;
   }
   return `
-    <div class="icon-grid" data-group-id="${group.id}"
-      ${editMode ? `ondragover="onListDragOver(event,'${group.id}')" ondragleave="onListDragLeave(event)" ondrop="onListDrop(event,'${group.id}')"` : ''}>
+    <div class="icon-grid" data-group-id="${group.id}">
       ${group.items.map(item => `
         <div class="icon-item-wrap" data-item-id="${item.id}"
           ${editMode ? `draggable="true"

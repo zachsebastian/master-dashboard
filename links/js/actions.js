@@ -1,46 +1,3 @@
-// ── Icon grid rebalancing ──
-function rebalanceIconGrids() {
-  requestAnimationFrame(() => {
-    const lz = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--lz')) || 1;
-    const minW = 76 * lz;
-    const gap  = 8  * lz;
-    const padX = 12 * lz * 2;
-
-    document.querySelectorAll('.icon-grid').forEach(grid => {
-      const n = grid.querySelectorAll('.icon-item-wrap[data-item-id]').length;
-      if (n === 0) { grid.style.gridTemplateColumns = ''; return; }
-
-      const containerW = grid.clientWidth - padX;
-      const maxCols = Math.max(1, Math.floor((containerW + gap) / (minW + gap)));
-
-      // Only rebalance when items span more than one row
-      if (n <= maxCols) { grid.style.gridTemplateColumns = ''; return; }
-
-      // Find column count (≤ maxCols) with fewest empty spots in the last row
-      let bestCols = maxCols;
-      let bestEmpty = maxCols - ((n % maxCols) || maxCols);
-
-      for (let c = maxCols - 1; c >= Math.max(1, Math.ceil(n / 2)); c--) {
-        const empty = c - ((n % c) || c);
-        if (empty < bestEmpty) { bestEmpty = empty; bestCols = c; }
-        if (empty === 0) break;
-      }
-
-      grid.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
-    });
-  });
-}
-
-// ── List pagination ──
-function setListPage(groupId, page) {
-  activePages[groupId] = page;
-  const card = findCardForGroup(groupId);
-  if (!card) return;
-  const sy = window.scrollY;
-  render();
-  window.scrollTo(0, sy);
-}
-
 // ── Edit mode ──
 function toggleEditMode() {
   editMode = !editMode;
@@ -92,9 +49,6 @@ function onColsChange(val) {
 function onZoomChange(val) {
   state.settings.zoom = val;
   document.documentElement.style.setProperty('--lz', val);
-  const el = document.getElementById('zoom-val');
-  if (el) el.textContent = Math.round(val * 100) + '%';
-  rebalanceIconGrids();
   clearTimeout(_settingsTimer);
   _settingsTimer = setTimeout(saveSettings, 800);
 }
@@ -442,90 +396,10 @@ function onTabDragStart(e, groupId) {
   e.stopPropagation();
 }
 
-let _tabHoverTimer = null;
-
-function onTabDragOver(e, cardId, groupIdx, groupId) {
-  if (_dragItemId) {
-    // Item drag — hover over a tab to switch to it after a short delay
-    e.preventDefault();
-    e.stopPropagation();
-    if ((activeGroups[cardId] || 0) !== groupIdx) {
-      if (!e.currentTarget.dataset.hoverPending) {
-        e.currentTarget.dataset.hoverPending = '1';
-        clearTimeout(_tabHoverTimer);
-        _tabHoverTimer = setTimeout(() => {
-          delete e.currentTarget.dataset.hoverPending;
-          activeGroups[cardId] = groupIdx;
-          const sy = window.scrollY;
-          render();
-          window.scrollTo(0, sy);
-        }, 600);
-      }
-    }
-    return;
-  }
-  // Tab reorder drag
+function onTabDragOver(e, groupId) {
   if (!_dragTabId || _dragTabId === groupId) return;
   e.preventDefault();
   e.stopPropagation();
-}
-
-function onTabDragLeave(e) {
-  clearTimeout(_tabHoverTimer);
-  delete e.currentTarget.dataset.hoverPending;
-}
-
-// ── List / icon-grid drop zone (drop into group, not onto a specific item) ──
-function onListDragOver(e, groupId) {
-  if (!_dragItemId) return;
-  if (e.target.closest('[data-item-id]')) return;
-  e.preventDefault();
-  e.stopPropagation();
-  e.currentTarget.classList.add('drop-target');
-}
-
-function onListDragLeave(e) {
-  if (!e.currentTarget.contains(e.relatedTarget)) {
-    e.currentTarget.classList.remove('drop-target');
-  }
-}
-
-async function onListDrop(e, groupId) {
-  if (!_dragItemId) return;
-  if (e.target.closest('[data-item-id]')) return;
-  e.preventDefault();
-  e.stopPropagation();
-
-  const tgtGroup = findGroup(groupId);
-  if (!tgtGroup) { _dragItemId = null; return; }
-
-  let srcGroup = null;
-  for (const c of state.cards) {
-    for (const g of c.groups) {
-      if (g.items.find(i => i.id === _dragItemId)) { srcGroup = g; break; }
-    }
-    if (srcGroup) break;
-  }
-  if (!srcGroup || srcGroup.id === groupId) {
-    e.currentTarget.classList.remove('drop-target');
-    _dragItemId = null;
-    return;
-  }
-
-  const item = srcGroup.items.find(i => i.id === _dragItemId);
-  srcGroup.items = srcGroup.items.filter(i => i.id !== _dragItemId);
-  item.groupId   = groupId;
-  item.sortOrder = tgtGroup.items.length;
-  tgtGroup.items.push(item);
-
-  await Promise.all([
-    sb.from('link_items').update({ group_id: groupId, sort_order: item.sortOrder }).eq('id', item.id),
-    ...srcGroup.items.map((i, idx) => sb.from('link_items').update({ sort_order: idx }).eq('id', i.id)),
-  ]);
-
-  _dragItemId = null;
-  render();
-  showSaved();
 }
 
 function onTabDrop(e, targetGroupId) {
