@@ -289,9 +289,9 @@ function _refreshLibraryPicker() {
   const picker = document.getElementById('iem-library-picker');
   if (!picker || picker.style.display === 'none') return;
   const uploadBtn = `
-    <label class="library-upload-btn" title="Upload image file">
+    <label class="library-upload-btn">
       + Add to library
-      <input type="file" accept="image/*" style="display:none" onchange="onLibraryUpload(event)">
+      <input type="file" accept="image/*" multiple style="display:none" onchange="onLibraryUpload(event)">
     </label>`;
   if (!iconLibrary.length) {
     picker.innerHTML = `<div class="library-empty">No icons yet.</div>${uploadBtn}`;
@@ -305,24 +305,36 @@ function _refreshLibraryPicker() {
             <img src="${esc(icon.icon_data)}" alt="">
           </button>
           <button class="library-icon-del" onclick="removeLibraryIcon('${icon.id}')" title="Remove">×</button>
+          <span class="library-icon-name">${esc(icon.name)}</span>
         </div>`).join('')}
     </div>
     ${uploadBtn}`;
 }
 
 async function onLibraryUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    const data = await resizeImage(ev.target.result, 64);
-    const name = file.name.replace(/\.[^.]+$/, ''); // strip extension
-    const { data: row } = await sb.from('link_icon_library').insert({
-      user_id: _currentUser.id, name, icon_data: data,
-    }).select('id, name, icon_data').single();
-    if (row) { iconLibrary.unshift(row); _refreshLibraryPicker(); }
-  };
-  reader.readAsDataURL(file);
+  const files = [...e.target.files];
+  if (!files.length) return;
+
+  const btn = e.target.closest('label');
+  if (btn) btn.textContent = 'Uploading…';
+
+  for (const file of files) {
+    await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const data = await resizeImage(ev.target.result, 96);
+        const name = file.name.replace(/\.[^.]+$/, '');
+        const { data: row, error } = await sb.from('link_icon_library').insert({
+          user_id: _currentUser.id, name, icon_data: data,
+        }).select('id, name, icon_data').single();
+        if (row) iconLibrary.unshift(row);
+        if (error) console.error('Icon library upload failed:', error);
+        resolve();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  _refreshLibraryPicker();
 }
 
 function selectLibraryIcon(iconData) {
