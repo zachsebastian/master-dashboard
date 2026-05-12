@@ -315,8 +315,7 @@ function safeUrl(url) {
 
 // ── Click tracking ──
 function trackLinkClick(itemId) {
-  if (!_currentUser) return;
-  sb.rpc('increment_link_click', { item_id: itemId, uid: _currentUser.id });
+  sb.rpc('increment_link_click', { item_id: itemId });
 }
 
 // ── Save indicator ──
