@@ -1,6 +1,7 @@
 // ── Hero helpers ──
 let _weather    = null; // populated by app.js after wttr.in fetch
 let _heroTimer  = null;
+let _profileFirstName = null; // fetched from profiles table at boot
 
 function _greeting() {
   const h = new Date().getHours();
@@ -17,6 +18,7 @@ function _fmtDate(d) {
   return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 }
 function _firstName() {
+  if (_profileFirstName) return _profileFirstName;
   if (!_currentUser) return '';
   const meta = _currentUser.user_metadata || {};
   const full  = meta.full_name || meta.name || '';

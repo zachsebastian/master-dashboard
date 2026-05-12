@@ -59,6 +59,10 @@ async function initAuth() {
     `
   });
 
+  const { data: profile } = await sb.from('profiles')
+    .select('first_name').eq('id', session.user.id).maybeSingle();
+  if (profile?.first_name?.trim()) _profileFirstName = profile.first_name.trim();
+
   await Promise.all([loadState(), fetchWeather()]);
   render();
 
