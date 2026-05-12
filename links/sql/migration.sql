@@ -45,6 +45,18 @@ alter table link_items enable row level security;
 create policy "Users manage own link_items"
   on link_items using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Icon library: reusable custom icons
+create table if not exists link_icon_library (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users not null,
+  name       text not null default '',
+  icon_data  text not null,              -- base64 data URL
+  created_at timestamptz default now()
+);
+alter table link_icon_library enable row level security;
+create policy "Users manage own link_icon_library"
+  on link_icon_library using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Settings: per-user grid preferences
 create table if not exists link_settings (
   user_id    uuid references auth.users primary key,

@@ -201,12 +201,14 @@ function openItemEdit(itemId) {
           </div>
           <div class="icon-btn-row">
             <button class="btn-sm" onclick="fetchFaviconForEdit()">Fetch favicon</button>
-            <label class="btn-sm upload-label">Upload icon
+            <label class="btn-sm upload-label">Upload
               <input type="file" accept="image/*" style="display:none" onchange="onIconUpload(event)">
             </label>
+            <button class="btn-sm" onclick="openIconLibraryPicker()">Library</button>
             <button class="btn-sm" onclick="clearIconInEdit()">Clear</button>
           </div>
         </div>
+        <div id="iem-library-picker" class="library-picker" style="display:none"></div>
 
         ${card.mode === 'icon-grid' ? `
           <div class="toggle-row">
@@ -264,8 +266,55 @@ function onIconUpload(e) {
     if (img) { img.src = data; img.style.display = ''; }
     const modal = document.getElementById('item-edit-modal');
     if (modal) modal.dataset.pendingIcon = data;
+    // Auto-save to icon library
+    const name = document.getElementById('iem-name')?.value.trim() || '';
+    const { data: row } = await sb.from('link_icon_library').insert({
+      user_id: _currentUser.id, name, icon_data: data,
+    }).select('id, name, icon_data').single();
+    if (row) { iconLibrary.unshift(row); _refreshLibraryPicker(); }
   };
   reader.readAsDataURL(file);
+}
+
+// ── Icon library picker ──
+function openIconLibraryPicker() {
+  const picker = document.getElementById('iem-library-picker');
+  if (!picker) return;
+  const opening = picker.style.display === 'none';
+  picker.style.display = opening ? '' : 'none';
+  if (opening) _refreshLibraryPicker();
+}
+
+function _refreshLibraryPicker() {
+  const picker = document.getElementById('iem-library-picker');
+  if (!picker || picker.style.display === 'none') return;
+  if (!iconLibrary.length) {
+    picker.innerHTML = '<div class="library-empty">No icons yet — upload one to save it here.</div>';
+    return;
+  }
+  picker.innerHTML = `<div class="library-grid">${
+    iconLibrary.map(icon => `
+      <div class="library-icon-wrap">
+        <button class="library-icon-btn" onclick="selectLibraryIcon(${JSON.stringify(icon.icon_data)})" title="${esc(icon.name)}">
+          <img src="${esc(icon.icon_data)}" alt="">
+        </button>
+        <button class="library-icon-del" onclick="removeLibraryIcon('${icon.id}')" title="Remove">×</button>
+      </div>`).join('')
+  }</div>`;
+}
+
+function selectLibraryIcon(iconData) {
+  const img = document.getElementById('iem-icon-preview');
+  if (img) { img.src = iconData; img.style.display = ''; }
+  const modal = document.getElementById('item-edit-modal');
+  if (modal) { modal.dataset.pendingIcon = iconData; delete modal.dataset.clearIcon; }
+  document.getElementById('iem-library-picker').style.display = 'none';
+}
+
+async function removeLibraryIcon(id) {
+  iconLibrary = iconLibrary.filter(i => i.id !== id);
+  await sb.from('link_icon_library').delete().eq('id', id);
+  _refreshLibraryPicker();
 }
 
 function clearIconInEdit() {

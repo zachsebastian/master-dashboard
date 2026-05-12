@@ -715,6 +715,67 @@
 .icon-btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .upload-label { cursor: pointer; }
 
+/* ── Icon library picker ── */
+.library-picker {
+  margin-top: 8px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  padding: 10px;
+  background: var(--surface-2);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 8px;
+}
+.library-icon-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+.library-icon-btn {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.1s, background 0.1s;
+}
+.library-icon-btn:hover { border-color: var(--blue); background: var(--blue-bg); }
+.library-icon-btn img { width: 100%; height: 100%; object-fit: contain; }
+.library-icon-del {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--red, #e53e3e);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.library-icon-wrap:hover .library-icon-del { display: flex; }
+.library-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 16px 0;
+}
+
 /* Toggle switch */
 .toggle-row {
   display: flex; align-items: center;

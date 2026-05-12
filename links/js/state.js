@@ -12,6 +12,7 @@ let editMode     = false;
 let searchQuery  = '';
 let activeGroups = {}; // cardId -> active group index
 let activePages  = {}; // groupId -> page index (0-based)
+let iconLibrary  = []; // { id, name, icon_data }
 let _saveTimer   = null;
 let _settingsTimer = null;
 
@@ -19,12 +20,14 @@ let _settingsTimer = null;
 async function loadState() {
   const uid = _currentUser.id;
 
-  const [sRes, cRes, gRes, iRes] = await Promise.all([
+  const [sRes, cRes, gRes, iRes, libRes] = await Promise.all([
     sb.from('link_settings').select('*').eq('user_id', uid).maybeSingle(),
     sb.from('link_cards').select('*').eq('user_id', uid).order('sort_order'),
     sb.from('link_groups').select('*').eq('user_id', uid).order('sort_order'),
     sb.from('link_items').select('*').eq('user_id', uid).order('sort_order'),
+    sb.from('link_icon_library').select('id, name, icon_data').eq('user_id', uid).order('created_at', { ascending: false }),
   ]);
+  iconLibrary = libRes.data || [];
 
   if (sRes.data) {
     state.settings.gridCols = sRes.data.grid_cols;
