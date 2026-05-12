@@ -73,6 +73,7 @@ function render() {
   if (!app) return;
   applyZoom();
   searchQuery.trim() ? renderSearchView(app) : renderGridView(app);
+  rebalanceIconGrids();
 }
 
 function applyZoom() {
@@ -174,6 +175,7 @@ function renderCard(card) {
       <div class="card-body">
         ${activeGroup ? renderGroupBody(card, activeGroup) : `<div class="empty-group">No tabs</div>`}
       </div>
+      ${activeGroup && card.mode === 'list' ? renderListPagination(activeGroup) : ''}
     </div>`;
 }
 
@@ -206,6 +208,7 @@ function renderCardActions(card) {
 // ── Tabs ──
 function renderTabs(card, activeIdx) {
   if (!card.groups.length && !editMode) return '';
+  if (card.groups.length <= 1 && !editMode) return '';
   return `
     <div class="card-tabs">
       ${card.groups.map((g, i) => `
@@ -231,6 +234,8 @@ function renderTabs(card, activeIdx) {
 }
 
 // ── Group body (list or icon-grid) ──
+const PAGE_SIZE = 6;
+
 function renderGroupBody(card, group) {
   return card.mode === 'icon-grid'
     ? renderIconGrid(card, group)
@@ -241,9 +246,13 @@ function renderLinkList(card, group) {
   if (!group.items.length && !editMode) {
     return `<div class="empty-group">No links yet</div>`;
   }
+  const page = editMode ? 0 : (activePages[group.id] || 0);
+  const totalPages = Math.ceil(group.items.length / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  const items = editMode ? group.items : group.items.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
   return `
     <ul class="link-list" data-group-id="${group.id}">
-      ${group.items.map(item => `
+      ${items.map(item => `
         <li class="link-item${editMode?' edit-item':''}" data-item-id="${item.id}"
           ${editMode ? `draggable="true"
             ondragstart="onItemDragStart(event,'${item.id}')"
@@ -261,6 +270,23 @@ function renderLinkList(card, group) {
         </li>`).join('')}
       ${editMode ? `<li class="add-item-row"><button class="add-item-btn" onclick="addItem('${group.id}')">+ Add link</button></li>` : ''}
     </ul>`;
+}
+
+function renderListPagination(group) {
+  const page = activePages[group.id] || 0;
+  const totalPages = Math.ceil(group.items.length / PAGE_SIZE);
+  if (totalPages <= 1) return '';
+  const safePage = Math.min(page, totalPages - 1);
+  return `
+    <div class="list-page-arrows">
+      <button class="list-page-arrow prev${safePage === 0 ? ' hidden' : ''}" onclick="setListPage('${group.id}',${safePage - 1})" title="Previous page">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="list-page-indicator">${safePage + 1} / ${totalPages}</span>
+      <button class="list-page-arrow next${safePage === totalPages - 1 ? ' hidden' : ''}" onclick="setListPage('${group.id}',${safePage + 1})" title="Next page">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>`;
 }
 
 function renderIconGrid(card, group) {

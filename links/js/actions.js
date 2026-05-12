@@ -1,3 +1,44 @@
+// ── Icon grid rebalancing ──
+function rebalanceIconGrids() {
+  requestAnimationFrame(() => {
+    const lz = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--lz')) || 1;
+    const minW = 76 * lz;
+    const gap  = 8  * lz;
+    const padX = 12 * lz * 2;
+
+    document.querySelectorAll('.icon-grid').forEach(grid => {
+      const n = grid.querySelectorAll('.icon-item-wrap[data-item-id]').length;
+      if (n === 0) { grid.style.gridTemplateColumns = ''; return; }
+
+      const containerW = grid.clientWidth - padX;
+      const maxCols = Math.max(1, Math.floor((containerW + gap) / (minW + gap)));
+
+      if (n <= maxCols) { grid.style.gridTemplateColumns = ''; return; }
+
+      let bestCols = maxCols;
+      let bestEmpty = maxCols - ((n % maxCols) || maxCols);
+
+      for (let c = maxCols - 1; c >= Math.max(1, Math.ceil(n / 2)); c--) {
+        const empty = c - ((n % c) || c);
+        if (empty < bestEmpty) { bestEmpty = empty; bestCols = c; }
+        if (empty === 0) break;
+      }
+
+      grid.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`;
+    });
+  });
+}
+
+// ── List pagination ──
+function setListPage(groupId, page) {
+  activePages[groupId] = page;
+  const card = findCardForGroup(groupId);
+  if (!card) return;
+  const sy = window.scrollY;
+  render();
+  window.scrollTo(0, sy);
+}
+
 // ── Edit mode ──
 function toggleEditMode() {
   editMode = !editMode;

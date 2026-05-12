@@ -151,7 +151,7 @@
 .links-grid {
   display: grid;
   gap: calc(16px * var(--lz, 1));
-  align-items: start;
+  align-items: stretch;
 }
 
 /* ── Cards ── */
@@ -165,6 +165,7 @@
   position: relative;
   transition: box-shadow 0.2s ease, border-color 0.15s, transform 0.2s ease;
   min-height: 120px;
+  height: 100%;
   overflow: hidden;
 }
 .link-card:hover:not(.edit-active) {
@@ -324,6 +325,37 @@
   padding: calc(6px * var(--lz, 1)) 0;
   overflow-y: auto;
   max-height: calc(300px * var(--lz, 1));
+}
+
+/* ── List pagination ── */
+.list-page-arrows {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(4px * var(--lz, 1)) calc(8px * var(--lz, 1));
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  flex-shrink: 0;
+}
+.list-page-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(28px * var(--lz, 1));
+  height: calc(28px * var(--lz, 1));
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.list-page-arrow:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-md); }
+.list-page-arrow.hidden { visibility: hidden; pointer-events: none; }
+.list-page-indicator {
+  font-size: calc(11px * var(--lz, 1));
+  color: var(--text-3);
+  user-select: none;
 }
 
 /* ── Link list ── */

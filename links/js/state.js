@@ -11,6 +11,7 @@ let _currentUser = null;
 let editMode     = false;
 let searchQuery  = '';
 let activeGroups = {}; // cardId -> active group index
+let activePages  = {}; // groupId -> page index (0-based)
 let _saveTimer   = null;
 let _settingsTimer = null;
 
