@@ -319,7 +319,7 @@ function renderIconGrid(card, group) {
                  <span class="icon-label">${esc(item.name)}</span>
                </div>
                <button class="icon-del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')" title="Delete">×</button>`
-            : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')"
+            : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')">
                  <div class="icon-img-wrap">
                    ${faviconEl(item, 'icon-img', 'icon-img-mono')}
                  </div>
