@@ -21,6 +21,7 @@ function initModuleHeader(config) {
           <div class="brand-name">${config.name}${config.subtitle ? ` <span>${config.subtitle}</span>` : ''}</div>
           ${config.hasSidebar ? `<button class="sidebar-toggle-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()">‹ Hide sidebar</button>` : ''}
         </div>
+        <a class="btn" href="/" style="text-decoration:none">← Home</a>
         ${config.leftActions || ''}
         <div id="save-wrap" class="save-wrap"><div id="save-dot" class="save-dot"></div></div>
       </div>
@@ -34,7 +35,6 @@ function initModuleHeader(config) {
           <div class="theme-track" id="theme-track"><div class="theme-thumb"></div></div>
           <span id="theme-label">Light</span>
         </div>
-        <a class="btn" href="/" style="text-decoration:none">← Home</a>
         <button class="btn" onclick="signOut()">Sign Out</button>
       </div>
     </div>
