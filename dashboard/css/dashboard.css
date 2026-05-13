@@ -152,6 +152,13 @@
 }
 .qa-icon:hover .qa-icon-label { opacity: 1; }
 
+.launchpad-week-label {
+  color: var(--text-3);
+  font-size: 11px;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
 .launchpad-row-arrow {
   width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

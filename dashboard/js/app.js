@@ -47,7 +47,7 @@ async function onSignedIn(user) {
 
   // Fetch profile
   const { data: profile } = await sb.from('profiles')
-    .select('first_name, last_name, email')
+    .select('first_name, last_name, email, anthropic_api_key')
     .eq('user_id', user.id)
     .maybeSingle();
   currentProfile = profile;
@@ -136,6 +136,9 @@ function toggleProfilePanel() {
     document.getElementById('pp-last').value  = currentProfile?.last_name  || '';
     document.getElementById('pp-name-status').textContent  = '';
     document.getElementById('pp-reset-status').textContent = '';
+    document.getElementById('pp-apikey-status').textContent = '';
+    const keyField = document.getElementById('pp-anthropic-key');
+    if (keyField) keyField.value = currentProfile?.anthropic_api_key || '';
     setTimeout(() => {
       document.addEventListener('click', function _close(e) {
         const panel = document.getElementById('profile-panel');
@@ -169,6 +172,25 @@ async function saveProfileName() {
     setTimeout(() => { status.textContent = ''; }, 2500);
   }
   btn.disabled = false; btn.textContent = 'Save Changes';
+}
+
+async function saveAnthropicKey() {
+  const keyField = document.getElementById('pp-anthropic-key');
+  const status   = document.getElementById('pp-apikey-status');
+  const btn      = document.getElementById('pp-apikey-save-btn');
+  const key      = (keyField?.value || '').trim();
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.from('profiles').update({
+    anthropic_api_key: key || null, updated_at: new Date().toISOString()
+  }).eq('user_id', currentUser.id);
+  if (error) {
+    status.textContent = error.message; status.style.color = 'var(--red)';
+  } else {
+    currentProfile = { ...currentProfile, anthropic_api_key: key || null };
+    status.textContent = '✓ Saved'; status.style.color = 'var(--green)';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  }
+  btn.disabled = false; btn.textContent = 'Save Key';
 }
 
 async function sendPasswordReset() {

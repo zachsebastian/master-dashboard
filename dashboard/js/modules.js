@@ -118,6 +118,96 @@ const ALL_MODULES = [
       };
     },
   },
+  {
+    id: 'today',
+    name: 'Today List',
+    type: 'dashboard',
+    iconBg: 'var(--green-bg)',
+    iconColor: 'var(--green)',
+    accentVar: '--green',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+    desc: 'Set 3–5 priorities for the day. Auto-pulled from your projects. Resets daily.',
+    href: '/today/',
+
+    async fetchStats(sb, userId) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: items } = await sb.from('today_items')
+        .select('id, completed')
+        .eq('user_id', userId)
+        .eq('item_date', today);
+      const all = items || [];
+      const completed = all.filter(i => i.completed).length;
+      const total = all.length;
+      return {
+        primary:   { value: `${completed}/${total}`, label: 'Done Today' },
+        secondary: null,
+        spark: null,
+        latestEntries: [],
+        summaryFragment: total === 0 ? 'No priorities set' : `${completed} of ${total} done today`,
+      };
+    },
+  },
+  {
+    id: 'digest',
+    name: 'Weekly Digest',
+    type: 'launchpad',
+    iconBg: 'var(--blue-bg)',
+    iconColor: 'var(--blue)',
+    accentVar: '--blue',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>`,
+    desc: 'Auto-generated summary of the past 7 days across all your modules.',
+    href: '/digest/',
+
+    async fetchStats(sb, userId) {
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 6 * 86400000);
+      const weekStart = weekAgo.toISOString().split('T')[0];
+      const weekEnd   = today.toISOString().split('T')[0];
+      const fmt = d => d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      const weekLabel = `${fmt(weekAgo)} – ${fmt(today)}`;
+      const { count: completions } = await sb.from('today_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('completed', true)
+        .gte('item_date', weekStart)
+        .lte('item_date', weekEnd);
+      return {
+        primary:   { value: completions || 0, label: 'Completions' },
+        secondary: null,
+        weekLabel,
+        spark: null,
+        latestEntries: [],
+        summaryFragment: `${completions || 0} completion${(completions || 0) === 1 ? '' : 's'} this week`,
+      };
+    },
+  },
+  {
+    id: 'scratchpad',
+    name: 'Scratchpad',
+    type: 'launchpad',
+    iconBg: 'var(--surface-2)',
+    iconColor: 'var(--text-2)',
+    accentVar: '--text',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+    desc: 'Frictionless place to dump thoughts, ideas, and notes throughout the day.',
+    href: '/scratchpad/',
+
+    async fetchStats(sb, userId) {
+      const [unreviewedRes, totalRes] = await Promise.all([
+        sb.from('scratch_notes').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('reviewed', false),
+        sb.from('scratch_notes').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+      ]);
+      const unreviewed = unreviewedRes.count || 0;
+      return {
+        primary:      { value: unreviewed, label: 'Unreviewed' },
+        secondary:    null,
+        spark:        null,
+        quickCapture: true,
+        latestEntries: [],
+        summaryFragment: unreviewed > 0 ? `${unreviewed} unreviewed note${unreviewed === 1 ? '' : 's'}` : 'All notes reviewed',
+      };
+    },
+  },
 ];
 
 // ── Drag state ──
@@ -180,9 +270,9 @@ function renderModules(modRows, statsByModule) {
           <div class="launchpad-row-icon">${m.icon}</div>
           <div class="launchpad-row-body">
             <div class="launchpad-row-name">${m.name}</div>
-            <div class="launchpad-row-desc">${m.desc}</div>
+            <div class="launchpad-row-desc">${escHtml(m.desc)}${stats.weekLabel ? ` <span class="launchpad-week-label">${escHtml(stats.weekLabel)}</span>` : ''}</div>
           </div>
-          ${quickHtml}
+          ${stats.quickCapture ? `<div class="launchpad-quick-access"><div class="qa-icon" role="button" tabindex="0" title="New note" onclick="event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'" onkeydown="if(event.key==='Enter'){event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="qa-icon-label">New note</span></div></div>` : quickHtml}
           ${statsHtml}
           <div class="launchpad-row-arrow">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>

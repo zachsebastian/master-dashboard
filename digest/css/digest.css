@@ -1,0 +1,311 @@
+/* ── Digest layout ── */
+.digest-wrap {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+/* ── Page header ── */
+.digest-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.digest-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.digest-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.digest-week-range {
+  font-size: 13px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* ── Week mode toggle ── */
+.digest-week-toggle {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 2px;
+}
+
+.digest-week-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  white-space: nowrap;
+}
+
+.digest-week-btn.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── AI generate button ── */
+.digest-ai-btn {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s;
+  margin-bottom: 20px;
+}
+
+.digest-ai-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--blue);
+}
+
+.digest-ai-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.digest-ai-btn .ai-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-md);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── AI summary card ── */
+.ai-summary-card {
+  background: var(--blue-bg);
+  border: 1px solid var(--blue);
+  border-radius: var(--r-lg);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  display: none;
+}
+
+.ai-summary-card.visible {
+  display: block;
+}
+
+.ai-summary-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: var(--blue);
+  margin-bottom: 8px;
+}
+
+.ai-summary-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.ai-no-key-msg {
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 12px 0 4px;
+}
+
+/* ── Data sections ── */
+.digest-section {
+  margin-bottom: 32px;
+}
+
+.digest-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.digest-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-3);
+}
+
+.digest-section-count {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+
+/* ── Day groups (today items) ── */
+.digest-day-group {
+  margin-bottom: 16px;
+}
+
+.digest-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+/* ── Digest items ── */
+.digest-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.digest-item:last-child {
+  border-bottom: none;
+}
+
+.digest-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.digest-item-dot.green  { background: var(--green); }
+.digest-item-dot.blue   { background: var(--blue); }
+.digest-item-dot.purple { background: var(--purple); }
+
+.digest-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.digest-item-label {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.digest-item-note {
+  color: var(--text-2);
+  line-height: 1.5;
+  font-size: 12.5px;
+}
+
+.digest-empty-section {
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* ── Reflection section ── */
+.reflection-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 2px solid var(--border);
+}
+
+.reflection-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+.reflection-field {
+  margin-bottom: 20px;
+}
+
+.reflection-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.reflection-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.reflection-textarea:focus {
+  border-color: var(--blue);
+}
+
+.reflection-save-btn {
+  padding: 9px 20px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.reflection-save-btn:hover { opacity: 0.88; }
+.reflection-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.reflection-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s;
+  margin-left: 12px;
+  vertical-align: middle;
+}
+
+.reflection-save-status.visible { opacity: 1; }

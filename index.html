@@ -82,6 +82,13 @@
             <span id="pp-name-status" style="font-size:12px;"></span>
           </div>
           <div class="profile-divider"></div>
+          <div class="profile-section-label">Anthropic API Key</div>
+          <input class="form-input" id="pp-anthropic-key" type="password" placeholder="sk-ant-…" style="margin-bottom:0;font-family:monospace;font-size:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+            <button class="btn-sm" id="pp-apikey-save-btn" onclick="saveAnthropicKey()" style="font-weight:600">Save Key</button>
+            <span id="pp-apikey-status" style="font-size:12px;"></span>
+          </div>
+          <div class="profile-divider"></div>
           <div class="profile-section-label">Password</div>
           <button class="btn-sm" id="pp-reset-btn" onclick="sendPasswordReset()" style="width:100%;justify-content:center;">Send Password Reset Email</button>
           <div id="pp-reset-status" style="font-size:12px;margin-top:8px;min-height:18px;"></div>
