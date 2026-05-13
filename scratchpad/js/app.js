@@ -42,20 +42,10 @@ async function initAuth() {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
 
-  const { data: modRows } = await sb.from('user_modules')
-    .select('module').eq('user_id', session.user.id);
-  const userModules = new Set((modRows || []).map(r => r.module));
-
   initModuleHeader({
     name: 'Scratch',
     subtitle: 'Pad',
-    leftActions: [
-      userModules.has('links')    ? `<a class="btn" href="/links/">Links</a>`       : '',
-      userModules.has('projects') ? `<a class="btn" href="/projects/">Projects</a>` : '',
-      userModules.has('metrics')  ? `<a class="btn" href="/metrics/">Metrics</a>`   : '',
-      userModules.has('today')    ? `<a class="btn" href="/today/">Today</a>`        : '',
-      userModules.has('digest')   ? `<a class="btn" href="/digest/">Digest</a>`      : '',
-    ].join('')
+    leftActions: ''
   });
 
   await loadNotes();
