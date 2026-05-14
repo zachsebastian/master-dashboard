@@ -125,36 +125,82 @@ function _renderAiHistoryForWeek(weekStart) {
     </div>`;
 }
 
-// ── Current-week AI history (shown below the live summary card) ──
-function _renderCurrentWeekAiHistory() {
-  const { start } = getWeekRange();
-  // All entries except the most recent one (which is shown in the live card)
-  const entries = _aiSummaryHistory.filter(h => h.week_start === start);
-  if (entries.length < 2) return '';
-  const older = entries.slice(1); // first is newest, skip it
-  return `
-    <div class="rh-current-ai-history">
-      <button class="rh-current-ai-toggle" onclick="toggleCurrentAiHistory()">
-        Previous generations (${older.length})
-        <svg class="rh-chevron" id="rh-current-ai-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l4 4 4-4"/></svg>
-      </button>
-      <div id="rh-current-ai-body" style="display:none">
-        ${older.map(h => `
-          <div class="rh-ai-block rh-ai-block--history">
-            <div class="rh-ai-date">${esc(_fmtGenerated(h.generated_at))}</div>
-            <div class="rh-ai-text">${esc(h.summary)}</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+// ── AI History Modal ──
+function toggleAiHistoryPanel() {
+  let modal = document.getElementById('ai-history-modal');
+  if (modal) {
+    _closeAiHistoryModal();
+    return;
+  }
+  _openAiHistoryModal();
 }
 
-function toggleCurrentAiHistory() {
-  const body    = document.getElementById('rh-current-ai-body');
-  const chevron = document.getElementById('rh-current-ai-chevron');
+function _openAiHistoryModal() {
+  const btn = document.getElementById('digest-ai-history-btn');
+  if (btn) btn.classList.add('active');
+
+  const modal = document.createElement('div');
+  modal.id = 'ai-history-modal';
+  modal.className = 'ai-hist-overlay';
+  modal.innerHTML = `
+    <div class="ai-hist-modal">
+      <div class="ai-hist-header">
+        <div class="ai-hist-title">AI Summary History</div>
+        <button class="ai-hist-close" onclick="_closeAiHistoryModal()">✕</button>
+      </div>
+      <div class="ai-hist-body" id="ai-hist-body">
+        ${_renderAiHistoryList()}
+      </div>
+    </div>`;
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) _closeAiHistoryModal();
+  });
+
+  document.body.appendChild(modal);
+}
+
+function _closeAiHistoryModal() {
+  const modal = document.getElementById('ai-history-modal');
+  if (modal) modal.remove();
+  const btn = document.getElementById('digest-ai-history-btn');
+  if (btn) btn.classList.remove('active');
+}
+
+function _renderAiHistoryList() {
+  if (!_aiSummaryHistory.length) {
+    return `<div class="ai-hist-empty">No summaries generated yet.</div>`;
+  }
+  return _aiSummaryHistory.map((h, i) => `
+    <button class="ai-hist-row" onclick="_openAiHistoryDetail(${i})">
+      <div class="ai-hist-row-left">
+        <div class="ai-hist-row-week">${esc(_fmtWeekLabel(h.week_start))}</div>
+        <div class="ai-hist-row-date">${esc(_fmtGenerated(h.generated_at))}</div>
+      </div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>`).join('');
+}
+
+function _openAiHistoryDetail(i) {
+  const h    = _aiSummaryHistory[i];
+  if (!h) return;
+  const body = document.getElementById('ai-hist-body');
   if (!body) return;
-  const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+  body.innerHTML = `
+    <button class="ai-hist-back" onclick="_backToAiHistoryList()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      Back
+    </button>
+    <div class="ai-hist-detail-meta">
+      <div class="ai-hist-row-week">${esc(_fmtWeekLabel(h.week_start))}</div>
+      <div class="ai-hist-row-date">${esc(_fmtGenerated(h.generated_at))}</div>
+    </div>
+    <div class="ai-hist-detail-text">${esc(h.summary)}</div>`;
+}
+
+function _backToAiHistoryList() {
+  const body = document.getElementById('ai-hist-body');
+  if (body) body.innerHTML = _renderAiHistoryList();
 }
 
 function _renderReflectionHistory() {
@@ -289,8 +335,14 @@ function render() {
         </div>
       </div>
 
-      <!-- AI button -->
-      <button class="digest-ai-btn" id="digest-ai-btn">${esc(aiLabel)}</button>
+      <!-- AI buttons row -->
+      <div class="digest-ai-row">
+        <button class="digest-ai-btn" id="digest-ai-btn">${esc(aiLabel)}</button>
+        <button class="digest-ai-history-btn" id="digest-ai-history-btn" onclick="toggleAiHistoryPanel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          History${_aiSummaryHistory.length ? ` (${_aiSummaryHistory.length})` : ''}
+        </button>
+      </div>
 
       <!-- AI no-key message -->
       <div class="ai-no-key-msg" id="ai-no-key-msg" style="display:none">
@@ -300,8 +352,6 @@ function render() {
       <!-- AI summary card -->
       ${renderAiCard()}
 
-      <!-- Previous AI generations for this week -->
-      ${_renderCurrentWeekAiHistory()}
 
       <!-- Today List section -->
       <div class="digest-section">
@@ -527,6 +577,15 @@ function _handleAiResult(result) {
       <div class="ai-summary-label">✨ AI Summary</div>
       <div class="ai-summary-text">${esc(result.text)}</div>`;
   }
+  // Update history button count
+  const historyBtn = document.getElementById('digest-ai-history-btn');
+  if (historyBtn) {
+    const countLabel = _aiSummaryHistory.length ? ' (' + _aiSummaryHistory.length + ')' : '';
+    historyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> History` + countLabel;
+  }
+  // Refresh modal list if it's currently open
+  const histBody = document.getElementById('ai-hist-body');
+  if (histBody) histBody.innerHTML = _renderAiHistoryList();
 }
 
 // ── Show error in AI card ──

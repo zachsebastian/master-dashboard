@@ -79,7 +79,6 @@
   gap: 8px;
   color: var(--text);
   transition: background 0.15s, border-color 0.15s;
-  margin-bottom: 20px;
 }
 
 .digest-ai-btn:hover {
@@ -531,32 +530,170 @@
   gap: 4px;
 }
 
-/* Current-week previous generations toggle */
-.rh-current-ai-history {
+/* AI button row */
+.digest-ai-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 20px;
 }
 
-.rh-current-ai-toggle {
+.digest-ai-row .digest-ai-btn {
+  margin-bottom: 0;
+}
+
+.digest-ai-history-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.digest-ai-history-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.digest-ai-history-btn.active {
+  background: var(--surface-2);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* ── AI History Modal ── */
+.ai-hist-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ai-hist-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+
+.ai-hist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ai-hist-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-hist-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-3);
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  transition: background 0.12s, color 0.12s;
+}
+.ai-hist-close:hover { background: var(--surface-2); color: var(--text); }
+
+.ai-hist-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.ai-hist-empty {
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  padding: 20px;
+}
+
+.ai-hist-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: 12px;
+  transition: background 0.12s;
+  border-bottom: 1px solid var(--border);
+}
+.ai-hist-row:last-child { border-bottom: none; }
+.ai-hist-row:hover { background: var(--surface-2); }
+
+.ai-hist-row-left { flex: 1; min-width: 0; }
+
+.ai-hist-row-week {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.ai-hist-row-date {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.ai-hist-row svg { flex-shrink: 0; color: var(--text-3); }
+
+.ai-hist-back {
   display: flex;
   align-items: center;
   gap: 6px;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-3);
-  padding: 0;
+  padding: 12px 20px 8px;
   transition: color 0.12s;
 }
+.ai-hist-back:hover { color: var(--text); }
 
-.rh-current-ai-toggle:hover { color: var(--text-2); }
+.ai-hist-detail-meta {
+  padding: 4px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
 
-#rh-current-ai-body {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.ai-hist-detail-text {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  padding: 0 20px 20px;
 }
 
 /* ── AI pre-analysis Q&A form ── */

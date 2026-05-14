@@ -205,7 +205,7 @@ async function toggleItem(id) {
     .eq('id', id);
 
   // Write-back: keep the originating project task in sync
-  if (item.source === 'project' && item.source_ref_id && item.source_task_id) {
+  if (item.source === 'project' && item.source_ref_id) {
     await _syncProjectTask(item, next);
   }
 }
@@ -217,7 +217,7 @@ async function _syncProjectTask(item, completing) {
   // Load all dashboard rows so we can find the project
   const { data: dashRows } = await sb
     .from('dashboards')
-    .select('id, data')
+    .select('data')
     .eq('user_id', uid);
 
   if (!dashRows?.length) return;
@@ -230,11 +230,19 @@ async function _syncProjectTask(item, completing) {
   for (const row of dashRows) {
     const project = (row.data?.projects || []).find(p => p.id === item.source_ref_id);
     if (project) {
-      const task = (project.tasks || []).find(t => t.id === item.source_task_id);
+      // Match by task id if available, fall back to text match for older items
+      const task = item.source_task_id
+        ? (project.tasks || []).find(t => t.id === item.source_task_id)
+        : (project.tasks || []).find(t => t.text.trim() === item.text.trim());
       if (task) {
         targetRow     = row;
         targetProject = project;
         targetTask    = task;
+        // Backfill source_task_id so future toggles use the fast id-based path
+        if (!item.source_task_id) {
+          item.source_task_id = task.id;
+          sb.from('today_items').update({ source_task_id: task.id }).eq('id', item.id);
+        }
         break;
       }
     }
@@ -288,8 +296,8 @@ async function _syncProjectTask(item, completing) {
 
   await sb
     .from('dashboards')
-    .update({ data: targetRow.data })
-    .eq('id', targetRow.id);
+    .update({ data: targetRow.data, updated_at: new Date().toISOString() })
+    .eq('user_id', uid);
 }
 
 async function deleteItem(id) {
