@@ -168,16 +168,73 @@ async function saveAnthropicKey() {
   const status   = document.getElementById('profpage-apikey-status');
   const btn      = document.getElementById('profpage-apikey-btn');
   const key      = (keyField?.value || '').trim();
-  btn.disabled = true; btn.textContent = 'Saving…';
+
+  if (!key) {
+    // Clearing the key — just save null without validating
+    btn.disabled = true; btn.textContent = 'Saving…';
+    await sb.from('profiles').update({ anthropic_api_key: null, updated_at: new Date().toISOString() }).eq('user_id', currentUser.id);
+    currentProfile = { ...currentProfile, anthropic_api_key: null };
+    status.textContent = 'Key cleared.'; status.style.color = 'var(--text-3)';
+    btn.disabled = false; btn.textContent = 'Save Key';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+    return;
+  }
+
+  if (!key.startsWith('sk-ant-')) {
+    status.textContent = '✗ Keys must start with sk-ant-'; status.style.color = 'var(--red)';
+    return;
+  }
+
+  // Validate against Anthropic before saving
+  btn.disabled = true; btn.textContent = 'Validating…';
+  status.textContent = '';
+
+  let valid = false;
+  let errMsg = '';
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':                                 key,
+        'anthropic-version':                         '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type':                              'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Hi' }],
+      }),
+    });
+    if (resp.status === 401) {
+      errMsg = '✗ Invalid API key — Anthropic rejected it';
+    } else if (resp.status === 403) {
+      errMsg = '✗ API key lacks permissions';
+    } else {
+      valid = true; // 200, 429 rate limit, 529 overload — key is real
+    }
+  } catch (e) {
+    errMsg = '✗ Could not reach Anthropic to validate — check your connection';
+  }
+
+  if (!valid) {
+    status.textContent = errMsg; status.style.color = 'var(--red)';
+    btn.disabled = false; btn.textContent = 'Save Key';
+    return;
+  }
+
+  // Key is valid — save to Supabase
+  btn.textContent = 'Saving…';
   const { error } = await sb.from('profiles').update({
-    anthropic_api_key: key || null, updated_at: new Date().toISOString()
+    anthropic_api_key: key, updated_at: new Date().toISOString()
   }).eq('user_id', currentUser.id);
+
   if (error) {
     status.textContent = error.message; status.style.color = 'var(--red)';
   } else {
-    currentProfile = { ...currentProfile, anthropic_api_key: key || null };
-    status.textContent = '✓ Saved'; status.style.color = 'var(--green)';
-    setTimeout(() => { status.textContent = ''; }, 2500);
+    currentProfile = { ...currentProfile, anthropic_api_key: key };
+    status.textContent = '✓ Valid key saved'; status.style.color = 'var(--green)';
+    setTimeout(() => { status.textContent = ''; }, 3000);
   }
   btn.disabled = false; btn.textContent = 'Save Key';
 }
