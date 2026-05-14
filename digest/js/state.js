@@ -198,26 +198,8 @@ async function saveReflection(wins, blockers, carry_forwards) {
 
 // ── Build summary text from digest data ──
 function _buildSummaryText(data) {
-  const { weekRange, todayItems, projects, metrics } = data;
+  const { weekRange, projects, metrics } = data;
   const lines = [`Week of ${weekRange.label}`, ''];
-
-  // Completed tasks
-  lines.push(`COMPLETED TASKS (${todayItems.length} total):`);
-  if (todayItems.length) {
-    // Group by date
-    const byDate = {};
-    for (const item of todayItems) {
-      if (!byDate[item.item_date]) byDate[item.item_date] = [];
-      byDate[item.item_date].push(item.text);
-    }
-    for (const [date, texts] of Object.entries(byDate)) {
-      lines.push(`  ${date}:`);
-      for (const t of texts) lines.push(`    - ${t}`);
-    }
-  } else {
-    lines.push('  (none)');
-  }
-  lines.push('');
 
   // Projects
   lines.push(`PROJECTS UPDATED (${projects.length}):`);

@@ -311,9 +311,8 @@ function render() {
   if (!app) return;
 
   const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [] };
-  const { weekRange, todayItems, projects, metrics } = data;
+  const { weekRange, projects, metrics } = data;
 
-  const taskCount    = todayItems.length;
   const projectCount = projects.length;
   const metricCount  = metrics.length;
 
@@ -352,15 +351,6 @@ function render() {
       <!-- AI summary card -->
       ${renderAiCard()}
 
-
-      <!-- Today List section -->
-      <div class="digest-section">
-        <div class="digest-section-header">
-          <span class="digest-section-title">Today List · ${taskCount} completed</span>
-          <span class="digest-section-count">${taskCount}</span>
-        </div>
-        ${renderTodaySection(todayItems)}
-      </div>
 
       <!-- Projects section -->
       <div class="digest-section">
