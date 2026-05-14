@@ -18,14 +18,6 @@ async function signOut() {
   window.location.href = '/';
 }
 
-// ── Global keyboard shortcut: Cmd+/ or Ctrl+/ focuses textarea ──
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === '/') {
-    e.preventDefault();
-    document.getElementById('scratch-textarea')?.focus();
-  }
-});
-
 // ── Boot ──
 async function initAuth() {
   renderLoading();

@@ -66,12 +66,11 @@ function render() {
         <textarea
           id="scratch-textarea"
           class="scratch-textarea"
-          placeholder="What's on your mind? (⌘/ to focus)"
+          placeholder="What's on your mind?"
           rows="3"
         ></textarea>
         <div class="scratch-input-actions">
-          <span class="scratch-shortcut-hint">⌘/ to focus</span>
-          <button class="btn btn-primary" id="scratch-submit">Capture</button>
+<button class="btn btn-primary" id="scratch-submit">Capture</button>
         </div>
       </div>
       ${listHtml}
