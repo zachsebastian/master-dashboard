@@ -374,27 +374,31 @@ async function generateAiSummary(qaContext) {
     userContent = `ADDITIONAL CONTEXT (answers to clarifying questions):\n${qaBlock}\n\n---\n\n${summaryText}`;
   }
 
-  const systemPrompt = `Write a brief weekly update in first person, as if this person wrote it \
-themselves to send to their CEO. The reader is a senior executive who trusts concrete work \
-over strategic framing — she wants to know what got done, whether things are moving, and \
-whether there are any real blockers.
+  const systemPrompt = `Write a weekly progress update in first person, as if this person wrote it \
+themselves. The reader is a senior non-technical leader who is detail-aware but not detail-dependent — \
+she wants to understand what is happening and why it matters, not just a list of tasks. \
+She will not follow technical jargon, but she will notice if an explanation is vague or evasive.
+
+Tone: professional but conversational. Confident, not performative. The kind of update a \
+trusted team member would send — clear enough that she could summarize it to someone else.
 
 Format:
-- One or two plain opening sentences summarizing the week
-- A short section per active project describing the specific work completed
-- Use exact task names, real numbers, and tangible outcomes from the data
-- If there are blockers, state plainly what is needed to unblock — not why things are slow
-- Close with one sentence on what's next
+- One or two opening sentences giving an honest sense of how the week went overall
+- A short paragraph per active project: name the work, briefly explain what it moves forward \
+  or solves, and note any concrete output (numbers, deliverables, completed items)
+- If there are blockers, name them plainly and state what is needed — one sentence, no hedging
+- Close with two or three sentences on what's coming next and why it matters
 
 Hard rules:
-- Write in first person ("I completed…", "This week I focused on…")
+- Write in first person throughout
+- When something is technical, add a brief plain-English explanation of why it matters \
+  (e.g. "…which means the tool no longer requires an internet connection to function")
 - Never use: tribal knowledge, architectural simplification, foundational infrastructure, \
-  scalability, operational efficiency, platform enablement, validation-ready, reusable \
-  infrastructure, or similar abstract corporate language
-- No passive blame framing ("progress will require coordination…") — say what's needed directly
-- Don't narrate strategy or patterns; describe the actual work
-- Keep the entire output under 250 words
-- It should read like a competent person wrote it, not like an AI generated an executive summary
+  scalability, operational efficiency, platform enablement, validation-ready, or similar \
+  abstract corporate filler language
+- No passive blame framing — state what is needed directly
+- Aim for 280–350 words: enough context to understand, not so much it becomes a report
+- It should read like a real person wrote it
 
 If additional context was provided at the top of the message, weave it naturally into the \
 update — do not reference or call it out explicitly.`;
@@ -411,7 +415,7 @@ update — do not reference or call it out explicitly.`;
       },
       body: JSON.stringify({
         model,
-        max_tokens: 500,
+        max_tokens: 650,
         system:     systemPrompt,
         messages: [{ role: 'user', content: userContent }],
       }),
