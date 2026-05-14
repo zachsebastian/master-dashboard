@@ -242,12 +242,15 @@ function _bindEvents() {
       if (result.error) {
         aiBtn.disabled = false;
         aiBtn.textContent = '✨ Generate AI Summary';
+        const detail = result.message
+          ? `${result.error}${result.status ? ` (${result.status})` : ''}: ${result.message}`
+          : result.error;
         const card = document.getElementById('ai-summary-card');
         if (card) {
           card.classList.add('visible');
           card.innerHTML = `
             <div class="ai-summary-label">Error</div>
-            <div class="ai-summary-text" style="color:var(--red)">Failed to generate summary. Please check your API key and try again.</div>`;
+            <div class="ai-summary-text" style="color:var(--red);font-size:13px">${esc(detail)}</div>`;
         }
         return;
       }
