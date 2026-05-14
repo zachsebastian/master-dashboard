@@ -129,6 +129,38 @@
   color: var(--blue);
 }
 
+/* ── Reviewed section ── */
+.scratch-reviewed-section {
+  margin-top: 32px;
+}
+
+.scratch-reviewed-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.scratch-list--reviewed .scratch-note {
+  opacity: 0.45;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+
+.scratch-list--reviewed .scratch-note:hover {
+  opacity: 0.85;
+}
+
+.scratch-empty-section {
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  padding: 16px 0 4px;
+}
+
 /* ── Hover action buttons ── */
 .scratch-note-actions {
   display: flex;

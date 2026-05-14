@@ -103,12 +103,79 @@ function _fmtWeekLabel(weekStart) {
   return `${fmt(start)} – ${fmt(end)}, ${year}`;
 }
 
-function _renderReflectionHistory() {
-  if (!_reflectionHistory.length) return '';
+// ── Format a generated_at timestamp concisely ──
+function _fmtGenerated(isoStr) {
+  const d = new Date(isoStr);
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
-  const cards = _reflectionHistory.map((r, i) => {
-    const label   = _fmtWeekLabel(r.week_start);
-    const hasData = r.wins || r.blockers || r.carry_forwards || r.ai_summary;
+// ── Render all AI summaries for a given week_start from history ──
+function _renderAiHistoryForWeek(weekStart) {
+  const entries = _aiSummaryHistory.filter(h => h.week_start === weekStart);
+  if (!entries.length) return '';
+  return `
+    <div class="rh-ai-history">
+      <div class="rh-field-label">✨ AI Summaries (${entries.length})</div>
+      ${entries.map((h, i) => `
+        <div class="rh-ai-block rh-ai-block--history">
+          <div class="rh-ai-date">${esc(_fmtGenerated(h.generated_at))}</div>
+          <div class="rh-ai-text">${esc(h.summary)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── Current-week AI history (shown below the live summary card) ──
+function _renderCurrentWeekAiHistory() {
+  const { start } = getWeekRange();
+  // All entries except the most recent one (which is shown in the live card)
+  const entries = _aiSummaryHistory.filter(h => h.week_start === start);
+  if (entries.length < 2) return '';
+  const older = entries.slice(1); // first is newest, skip it
+  return `
+    <div class="rh-current-ai-history">
+      <button class="rh-current-ai-toggle" onclick="toggleCurrentAiHistory()">
+        Previous generations (${older.length})
+        <svg class="rh-chevron" id="rh-current-ai-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l4 4 4-4"/></svg>
+      </button>
+      <div id="rh-current-ai-body" style="display:none">
+        ${older.map(h => `
+          <div class="rh-ai-block rh-ai-block--history">
+            <div class="rh-ai-date">${esc(_fmtGenerated(h.generated_at))}</div>
+            <div class="rh-ai-text">${esc(h.summary)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function toggleCurrentAiHistory() {
+  const body    = document.getElementById('rh-current-ai-body');
+  const chevron = document.getElementById('rh-current-ai-chevron');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+function _renderReflectionHistory() {
+  const { start: currentStart } = getWeekRange();
+
+  // Include past weeks from reflections OR from ai_summary_history
+  const historyWeekStarts = new Set([
+    ..._reflectionHistory.map(r => r.week_start),
+    ..._aiSummaryHistory.map(h => h.week_start).filter(ws => ws < currentStart),
+  ]);
+
+  if (!historyWeekStarts.size) return '';
+
+  // Sort descending
+  const sortedWeeks = [...historyWeekStarts].sort((a, b) => b.localeCompare(a));
+
+  const cards = sortedWeeks.map((weekStart, i) => {
+    const r         = _reflectionHistory.find(r => r.week_start === weekStart) || {};
+    const label     = _fmtWeekLabel(weekStart);
+    const aiEntries = _aiSummaryHistory.filter(h => h.week_start === weekStart);
+    const hasData   = r.wins || r.blockers || r.carry_forwards || aiEntries.length;
     if (!hasData) return '';
 
     return `
@@ -116,10 +183,10 @@ function _renderReflectionHistory() {
         <button class="rh-card-header" onclick="toggleRhCard(${i})">
           <span class="rh-card-week">${esc(label)}</span>
           <span class="rh-card-chips">
-            ${r.wins          ? `<span class="rh-chip rh-chip--green">Wins</span>` : ''}
-            ${r.blockers      ? `<span class="rh-chip rh-chip--red">Blockers</span>` : ''}
-            ${r.carry_forwards? `<span class="rh-chip">Carry-fwds</span>` : ''}
-            ${r.ai_summary    ? `<span class="rh-chip rh-chip--ai">✨ AI</span>` : ''}
+            ${r.wins           ? `<span class="rh-chip rh-chip--green">Wins</span>`    : ''}
+            ${r.blockers       ? `<span class="rh-chip rh-chip--red">Blockers</span>`  : ''}
+            ${r.carry_forwards ? `<span class="rh-chip">Carry-fwds</span>`             : ''}
+            ${aiEntries.length ? `<span class="rh-chip rh-chip--ai">✨ ${aiEntries.length}</span>` : ''}
           </span>
           <svg class="rh-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l4 4 4-4"/></svg>
         </button>
@@ -139,12 +206,7 @@ function _renderReflectionHistory() {
               <div class="rh-field-label">Carry forwards</div>
               <div class="rh-field-text">${esc(r.carry_forwards)}</div>
             </div>` : ''}
-          ${r.ai_summary ? `
-            <div class="rh-ai-block">
-              <div class="rh-ai-label">✨ AI Analysis</div>
-              <div class="rh-ai-text">${esc(r.ai_summary)}</div>
-              ${r.ai_generated_at ? `<div class="rh-ai-date">Generated ${new Date(r.ai_generated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>` : ''}
-            </div>` : ''}
+          ${_renderAiHistoryForWeek(weekStart)}
         </div>
       </div>`;
   }).filter(Boolean).join('');
@@ -238,6 +300,9 @@ function render() {
       <!-- AI summary card -->
       ${renderAiCard()}
 
+      <!-- Previous AI generations for this week -->
+      ${_renderCurrentWeekAiHistory()}
+
       <!-- Today List section -->
       <div class="digest-section">
         <div class="digest-section-header">
@@ -312,7 +377,7 @@ function _bindEvents() {
       _weekMode = mode;
       localStorage.setItem('digestWeekMode', mode);
       renderLoading();
-      await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory()]);
+      await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory(), loadAiSummaryHistory()]);
       render();
     });
   }

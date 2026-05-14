@@ -1,3 +1,6 @@
+// ── Tiny uid generator (matches projects module) ──
+function _uid() { return Math.random().toString(36).slice(2, 9); }
+
 // ── State ──
 let todayItems   = [];   // items where item_date = today
 let historyItems = [];   // items where item_date < today
@@ -144,6 +147,7 @@ async function autoPullFromProjects() {
       source:           'project',
       source_ref_id:    project.id,
       source_ref_name:  project.name,
+      source_task_id:   task.id,
       sort_order:       nextOrder++,
       item_date:        today,
     };
@@ -199,6 +203,93 @@ async function toggleItem(id) {
     .from('today_items')
     .update({ completed: next, sort_order: item.sort_order })
     .eq('id', id);
+
+  // Write-back: keep the originating project task in sync
+  if (item.source === 'project' && item.source_ref_id && item.source_task_id) {
+    await _syncProjectTask(item, next);
+  }
+}
+
+// ── Sync a project task when its today_item is checked/unchecked ──
+async function _syncProjectTask(item, completing) {
+  const uid = _currentUser.id;
+
+  // Load all dashboard rows so we can find the project
+  const { data: dashRows } = await sb
+    .from('dashboards')
+    .select('id, data')
+    .eq('user_id', uid);
+
+  if (!dashRows?.length) return;
+
+  // Find the row + project + task
+  let targetRow = null;
+  let targetProject = null;
+  let targetTask = null;
+
+  for (const row of dashRows) {
+    const project = (row.data?.projects || []).find(p => p.id === item.source_ref_id);
+    if (project) {
+      const task = (project.tasks || []).find(t => t.id === item.source_task_id);
+      if (task) {
+        targetRow     = row;
+        targetProject = project;
+        targetTask    = task;
+        break;
+      }
+    }
+  }
+
+  if (!targetRow || !targetProject || !targetTask) return;
+
+  if (completing) {
+    // Skip if already marked complete via a log entry
+    if (targetTask.completedInEntry) return;
+
+    const entryId = _uid();
+    const entry = {
+      id:         entryId,
+      date:       getTodayDate(),
+      note:       'Completed via Today List',
+      nextSteps:  '',
+      completion: 0,
+      status:     targetProject.status || 'in-progress',
+    };
+
+    targetTask.completedInEntry = entryId;
+    targetProject.entries = [...(targetProject.entries || []), entry];
+
+    // Recalculate project completion %
+    const tasks = targetProject.tasks || [];
+    const pct   = tasks.length ? Math.round(tasks.filter(t => t.completedInEntry).length / tasks.length * 100) : 0;
+    targetProject.completion = pct;
+    entry.completion         = pct;
+
+  } else {
+    // Uncompleting — only reverse if the entry was auto-created by Today List
+    if (!targetTask.completedInEntry) return;
+
+    const entryId    = targetTask.completedInEntry;
+    const entryIndex = (targetProject.entries || []).findIndex(
+      e => e.id === entryId && e.note === 'Completed via Today List'
+    );
+
+    targetTask.completedInEntry = null;
+
+    if (entryIndex !== -1) {
+      targetProject.entries.splice(entryIndex, 1);
+    }
+
+    // Recalculate project completion %
+    const tasks = targetProject.tasks || [];
+    const pct   = tasks.length ? Math.round(tasks.filter(t => t.completedInEntry).length / tasks.length * 100) : 0;
+    targetProject.completion = pct;
+  }
+
+  await sb
+    .from('dashboards')
+    .update({ data: targetRow.data })
+    .eq('id', targetRow.id);
 }
 
 async function deleteItem(id) {

@@ -518,6 +518,47 @@
   margin-top: 2px;
 }
 
+/* ── AI summary history (past generations) ── */
+.rh-ai-block--history {
+  background: var(--surface-2);
+  border-color: var(--border);
+  margin-top: 6px;
+}
+
+.rh-ai-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Current-week previous generations toggle */
+.rh-current-ai-history {
+  margin-bottom: 20px;
+}
+
+.rh-current-ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  padding: 0;
+  transition: color 0.12s;
+}
+
+.rh-current-ai-toggle:hover { color: var(--text-2); }
+
+#rh-current-ai-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ── AI pre-analysis Q&A form ── */
 .ai-qa-intro {
   font-size: 13px;

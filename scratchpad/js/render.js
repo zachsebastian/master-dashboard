@@ -53,12 +53,29 @@ function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const listHtml = notes.length
-    ? `<div class="scratch-list">${notes.map(renderNote).join('')}</div>`
-    : `<div class="scratch-empty">
+  const unreviewed = notes.filter(n => !n.reviewed);
+  const reviewed   = notes.filter(n =>  n.reviewed);
+
+  let listHtml;
+  if (!notes.length) {
+    listHtml = `<div class="scratch-empty">
          <div class="scratch-empty-title">No notes yet</div>
          <div>Capture a thought above to get started.</div>
        </div>`;
+  } else {
+    const unreviewedHtml = unreviewed.length
+      ? `<div class="scratch-list">${unreviewed.map(renderNote).join('')}</div>`
+      : `<div class="scratch-empty-section">Nothing unreviewed — you're all caught up.</div>`;
+
+    const reviewedHtml = reviewed.length
+      ? `<div class="scratch-reviewed-section">
+           <div class="scratch-reviewed-header">Reviewed</div>
+           <div class="scratch-list scratch-list--reviewed">${reviewed.map(renderNote).join('')}</div>
+         </div>`
+      : '';
+
+    listHtml = unreviewedHtml + reviewedHtml;
+  }
 
   app.innerHTML = `
     <div class="scratch-wrap">

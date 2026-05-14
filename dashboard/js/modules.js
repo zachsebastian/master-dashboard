@@ -160,24 +160,50 @@ const ALL_MODULES = [
 
     async fetchStats(sb, userId) {
       const today = new Date();
-      const weekAgo = new Date(today.getTime() - 6 * 86400000);
-      const weekStart = weekAgo.toISOString().split('T')[0];
-      const weekEnd   = today.toISOString().split('T')[0];
-      const fmt = d => d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      const weekLabel = `${fmt(weekAgo)} – ${fmt(today)}`;
-      const { count: completions } = await sb.from('today_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('completed', true)
-        .gte('item_date', weekStart)
-        .lte('item_date', weekEnd);
+      today.setHours(0, 0, 0, 0);
+
+      // Mirror the mode the user has selected inside the digest module
+      const mode = localStorage.getItem('digestWeekMode') || 'rolling';
+      let start, end, weekLabel;
+
+      if (mode === 'rolling') {
+        start     = new Date(today.getTime() - 6 * 86400000);
+        end       = new Date(today);
+        weekLabel = 'Rolling 7d';
+      } else if (mode === 'mon') {
+        const diff = (today.getDay() === 0 ? -6 : 1 - today.getDay());
+        start = new Date(today); start.setDate(today.getDate() + diff);
+        end   = new Date(start); end.setDate(start.getDate() + 6);
+        weekLabel = 'Mon–Sun';
+      } else {
+        start = new Date(today); start.setDate(today.getDate() - today.getDay());
+        end   = new Date(start); end.setDate(start.getDate() + 6);
+        weekLabel = 'Sun–Sat';
+      }
+
+      const startStr = start.toISOString().split('T')[0];
+      const endStr   = end.toISOString().split('T')[0];
+
+      // Count project tasks whose completing log entry falls within the range
+      const { data: dashRows } = await sb.from('dashboards').select('data').eq('user_id', userId);
+      let completions = 0;
+      for (const row of (dashRows || [])) {
+        for (const project of (row.data?.projects || [])) {
+          for (const task of (project.tasks || [])) {
+            if (!task.completedInEntry) continue;
+            const entry = (project.entries || []).find(e => e.id === task.completedInEntry);
+            if (entry && entry.date >= startStr && entry.date <= endStr) completions++;
+          }
+        }
+      }
+
       return {
-        primary:   { value: completions || 0, label: 'Completions' },
+        primary:   { value: completions, label: 'Completions' },
         secondary: null,
         weekLabel,
         spark: null,
         latestEntries: [],
-        summaryFragment: `${completions || 0} completion${(completions || 0) === 1 ? '' : 's'} this week`,
+        summaryFragment: `${completions} completion${completions === 1 ? '' : 's'} this week`,
       };
     },
   },

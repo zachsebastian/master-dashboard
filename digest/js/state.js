@@ -6,7 +6,8 @@ let _reflection        = { wins: '', blockers: '', carry_forwards: '', ai_summar
 let _reflectionHistory = []; // past weeks, sorted descending
 let _aiSummary         = null;
 let _anthropicKey      = null;
-let _aiQuestions       = null; // null = not fetched | [] = no Qs | [...] = pending answers
+let _aiQuestions       = null;       // null = not fetched | [] = no Qs | [...] = pending answers
+let _aiSummaryHistory  = [];         // all generations across all weeks, desc
 
 // ── Week range ──
 function getWeekRange() {
@@ -153,6 +154,21 @@ async function loadReflectionHistory() {
 
   _reflectionHistory = data || [];
   return _reflectionHistory;
+}
+
+// ── Load AI summary history (all generations, all weeks) ──
+async function loadAiSummaryHistory() {
+  const uid = _currentUser.id;
+
+  const { data } = await sb
+    .from('ai_summary_history')
+    .select('id, week_start, summary, generated_at')
+    .eq('user_id', uid)
+    .order('week_start',   { ascending: false })
+    .order('generated_at', { ascending: false });
+
+  _aiSummaryHistory = data || [];
+  return _aiSummaryHistory;
 }
 
 // ── Save (upsert) reflection ──
@@ -448,6 +464,16 @@ update — do not reference or call it out explicitly.`;
 
   _reflection.ai_summary      = text;
   _reflection.ai_generated_at = new Date().toISOString();
+
+  // Append to permanent history log
+  const generatedAt = new Date().toISOString();
+  await sb.from('ai_summary_history').insert({
+    user_id:      uid,
+    week_start:   start,
+    summary:      text,
+    generated_at: generatedAt,
+  });
+  _aiSummaryHistory.unshift({ week_start: start, summary: text, generated_at: generatedAt });
 
   return { text };
 }

@@ -5,8 +5,9 @@ const MODULE_TABLE = {
 };
 
 function showAdminPage() {
-  document.getElementById('main-view').style.display = 'none';
-  document.getElementById('admin-page').style.display = 'block';
+  document.getElementById('main-view').style.display    = 'none';
+  document.getElementById('profile-page').style.display = 'none';
+  document.getElementById('admin-page').style.display   = 'block';
   renderAdminPage();
 }
 
