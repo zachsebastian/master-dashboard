@@ -192,6 +192,30 @@ function _buildSummaryText(data) {
   return lines.join('\n');
 }
 
+// ── Discover best available model for this API key ──
+async function _pickModel(apiKey) {
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key':                                 apiKey,
+        'anthropic-version':                         '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    const ids = (json.data || []).map(m => m.id);
+    // Prefer fastest/cheapest: haiku > sonnet > opus
+    for (const pref of ['haiku', 'sonnet', 'opus']) {
+      const match = ids.find(id => id.toLowerCase().includes(pref));
+      if (match) return match;
+    }
+    return ids[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Generate AI summary via Anthropic API ──
 async function generateAiSummary() {
   const uid = _currentUser.id;
@@ -213,6 +237,12 @@ async function generateAiSummary() {
     return { error: 'no_data' };
   }
 
+  // Discover which model to use from this key's available models
+  const model = await _pickModel(_anthropicKey);
+  if (!model) {
+    return { error: 'no_model', message: 'No models available on this API key. Check that your Anthropic account has active billing.' };
+  }
+
   const summaryText = _buildSummaryText(_digestData);
 
   let resp;
@@ -220,18 +250,16 @@ async function generateAiSummary() {
     resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key':                             _anthropicKey,
-        'anthropic-version':                     '2023-06-01',
+        'x-api-key':                                 _anthropicKey,
+        'anthropic-version':                         '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type':                          'application/json',
+        'content-type':                              'application/json',
       },
       body: JSON.stringify({
-        model:      'claude-3-haiku-20240307',
+        model,
         max_tokens: 400,
         system:     'You are a personal work assistant. Summarize the user\'s week concisely and positively in 3-5 sentences. Focus on what they accomplished.',
-        messages: [
-          { role: 'user', content: summaryText },
-        ],
+        messages: [{ role: 'user', content: summaryText }],
       }),
     });
   } catch (e) {

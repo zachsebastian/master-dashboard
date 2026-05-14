@@ -185,36 +185,29 @@ async function saveAnthropicKey() {
     return;
   }
 
-  // Validate against Anthropic before saving
+  // Validate against Anthropic before saving — use GET /v1/models (free, no model needed)
   btn.disabled = true; btn.textContent = 'Validating…';
   status.textContent = '';
 
   let valid = false;
   let errMsg = '';
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const resp = await fetch('https://api.anthropic.com/v1/models', {
       headers: {
         'x-api-key':                                 key,
         'anthropic-version':                         '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type':                              'application/json',
       },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'Hi' }],
-      }),
     });
     if (resp.status === 401) {
       errMsg = '✗ Invalid API key — Anthropic rejected it';
     } else if (resp.status === 403) {
       errMsg = '✗ API key lacks permissions';
     } else {
-      valid = true; // 200, 429 rate limit, 529 overload — key is real
+      valid = true;
     }
   } catch (e) {
-    errMsg = '✗ Could not reach Anthropic to validate — check your connection';
+    errMsg = '✗ Could not reach Anthropic — check your connection';
   }
 
   if (!valid) {
