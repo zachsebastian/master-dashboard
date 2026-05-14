@@ -234,6 +234,7 @@ const _PHANTOM_QUOTES = [
 function _phantomHtml() {
   const { q, a } = _PHANTOM_QUOTES[new Date().getDay()];
   return `<div class="module-card module-card--phantom" data-phantom="true" aria-hidden="true">
+    <div class="phantom-eyebrow">Today's thought</div>
     <div class="phantom-quote">"${escHtml(q)}"</div>
     <div class="phantom-author">— ${escHtml(a)}</div>
   </div>`;
