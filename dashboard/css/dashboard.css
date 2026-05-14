@@ -118,6 +118,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
 }
 .launchpad-row-stats { display: flex; gap: 24px; flex-shrink: 0; }
+.launchpad-row-stat { text-align: center; }
 .launchpad-row-stat-value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1; }
 .launchpad-row-stat-label { font-size: 10.5px; color: var(--text-3); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 500; margin-top: 6px; }
 
@@ -197,6 +198,7 @@
 .module-desc  { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-bottom: 22px; max-width: 380px; }
 .module-foot  { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .module-stats { display: flex; gap: 26px; }
+.module-stat { text-align: center; }
 .module-stat-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; line-height: 1; }
 .module-stat-label { font-size: 10.5px; color: var(--text-3); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 500; margin-top: 6px; }
 .module-spark svg { display: block; }

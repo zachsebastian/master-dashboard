@@ -350,8 +350,8 @@ function renderModules(modRows, statsByModule) {
           </div>` : '';
         const statsHtml = (stats.primary || stats.secondary) ? `
           <div class="launchpad-row-stats">
-            ${stats.primary   ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
-            ${stats.secondary ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
+            ${stats.primary   ? `<div class="launchpad-row-stat"><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
+            ${stats.secondary ? `<div class="launchpad-row-stat"><div class="launchpad-row-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
           </div>` : '';
         return `
           <a class="launchpad-row" href="${m.href}" data-module-id="${m.id}" data-module-type="launchpad" data-accent="${m.id}"
@@ -362,7 +362,7 @@ function renderModules(modRows, statsByModule) {
               <div class="launchpad-row-name">${m.name}</div>
               <div class="launchpad-row-desc">${escHtml(m.desc)}${stats.weekLabel ? ` <span class="launchpad-week-label">${escHtml(stats.weekLabel)}</span>` : ''}</div>
             </div>
-            ${stats.quickCapture ? `<div class="launchpad-quick-access"><div class="qa-icon" role="button" tabindex="0" title="New note" onclick="event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'" onkeydown="if(event.key==='Enter'){event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="qa-icon-label">New note</span></div></div>` : quickHtml}
+            ${stats.quickCapture ? `<div class="launchpad-quick-access"><div class="qa-icon" role="button" tabindex="0" title="New note" onclick="event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'" onkeydown="if(event.key==='Enter'){event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="qa-icon-label">New note</span></div></div>` : (quickHtml || '<div></div>')}
             ${statsHtml}
             <div class="launchpad-row-arrow">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -374,8 +374,8 @@ function renderModules(modRows, statsByModule) {
         const num   = String(++dashIdx).padStart(2, '0');
         const statsHtml = `
           <div class="module-stats">
-            ${stats.primary   ? `<div><div class="module-stat-value">${escHtml(String(stats.primary.value))}</div><div class="module-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
-            ${stats.secondary ? `<div><div class="module-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="module-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
+            ${stats.primary   ? `<div class="module-stat"><div class="module-stat-value">${escHtml(String(stats.primary.value))}</div><div class="module-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
+            ${stats.secondary ? `<div class="module-stat"><div class="module-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="module-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
           </div>`;
         const sparkHtml = stats.spark ? renderSparkline(stats.spark, m.accentVar) : '';
         return `
