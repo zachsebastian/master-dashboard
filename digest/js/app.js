@@ -40,7 +40,7 @@ async function initAuth() {
     leftActions: '',
   });
 
-  await Promise.all([loadDigestData(), loadReflection()]);
+  await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory()]);
   render();
 
   sb.auth.onAuthStateChange(event => {

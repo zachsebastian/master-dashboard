@@ -1,10 +1,11 @@
 // ── State ──
-let _currentUser  = null;
-let _weekMode     = localStorage.getItem('digestWeekMode') || 'rolling'; // 'rolling' | 'mon' | 'sun'
-let _digestData   = null;
-let _reflection   = { wins: '', blockers: '', carry_forwards: '' };
-let _aiSummary    = null;
-let _anthropicKey = null;
+let _currentUser       = null;
+let _weekMode          = localStorage.getItem('digestWeekMode') || 'rolling'; // 'rolling' | 'mon' | 'sun'
+let _digestData        = null;
+let _reflection        = { wins: '', blockers: '', carry_forwards: '', ai_summary: null, ai_generated_at: null };
+let _reflectionHistory = []; // past weeks, sorted descending
+let _aiSummary         = null;
+let _anthropicKey      = null;
 
 // ── Week range ──
 function getWeekRange() {
@@ -119,17 +120,38 @@ async function loadReflection() {
 
   const { data } = await sb
     .from('weekly_reflections')
-    .select('wins, blockers, carry_forwards')
+    .select('wins, blockers, carry_forwards, ai_summary, ai_generated_at')
     .eq('user_id', uid)
     .eq('week_start', start)
     .maybeSingle();
 
   _reflection = {
-    wins:           data?.wins           || '',
-    blockers:       data?.blockers       || '',
-    carry_forwards: data?.carry_forwards || '',
+    wins:             data?.wins             || '',
+    blockers:         data?.blockers         || '',
+    carry_forwards:   data?.carry_forwards   || '',
+    ai_summary:       data?.ai_summary       || null,
+    ai_generated_at:  data?.ai_generated_at  || null,
   };
+  // Restore any persisted AI summary for this week
+  if (_reflection.ai_summary) _aiSummary = _reflection.ai_summary;
   return _reflection;
+}
+
+// ── Load past reflections (all weeks before current) ──
+async function loadReflectionHistory() {
+  const uid = _currentUser.id;
+  const { start } = getWeekRange();
+
+  const { data } = await sb
+    .from('weekly_reflections')
+    .select('week_start, wins, blockers, carry_forwards, ai_summary, ai_generated_at')
+    .eq('user_id', uid)
+    .lt('week_start', start)
+    .order('week_start', { ascending: false })
+    .limit(24); // up to ~6 months back
+
+  _reflectionHistory = data || [];
+  return _reflectionHistory;
 }
 
 // ── Save (upsert) reflection ──
@@ -273,6 +295,22 @@ async function generateAiSummary() {
 
   const summaryText = _buildSummaryText(_digestData);
 
+  const systemPrompt = `You are a personal productivity coach and work analyst. \
+Write a rich, detailed analysis of the user's week in 3 focused paragraphs:
+
+1. ACCOMPLISHMENTS — Go deep on what was specifically completed. Name the actual \
+tasks and projects. Describe the work, not just the volume.
+
+2. MOMENTUM & PATTERNS — What's moving well? What's slow? Are there any patterns \
+in how they're working (e.g. certain projects advancing faster, tasks piling up \
+in an area)? Reference specific project names and blockers where relevant.
+
+3. WEEK AHEAD — Based on the current next steps and open blockers listed, what \
+should they prioritize? What's at risk? Be direct and specific.
+
+Be honest, motivating, and use the exact project and task names from the data. \
+Avoid generic productivity advice. Write as if you know this person's work well.`;
+
   let resp;
   try {
     resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -285,8 +323,8 @@ async function generateAiSummary() {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 400,
-        system:     'You are a personal work assistant. Summarize the user\'s week concisely and positively in 3-5 sentences. Focus on what they accomplished.',
+        max_tokens: 900,
+        system:     systemPrompt,
         messages: [{ role: 'user', content: summaryText }],
       }),
     });
@@ -302,5 +340,22 @@ async function generateAiSummary() {
   const json = await resp.json();
   const text = json?.content?.[0]?.text || '';
   _aiSummary = text;
+
+  // Persist the analysis to weekly_reflections for this week
+  const { start } = getWeekRange();
+  await sb.from('weekly_reflections').upsert({
+    user_id:          uid,
+    week_start:       start,
+    wins:             _reflection.wins,
+    blockers:         _reflection.blockers,
+    carry_forwards:   _reflection.carry_forwards,
+    ai_summary:       text,
+    ai_generated_at:  new Date().toISOString(),
+    updated_at:       new Date().toISOString(),
+  }, { onConflict: 'user_id,week_start' });
+
+  _reflection.ai_summary      = text;
+  _reflection.ai_generated_at = new Date().toISOString();
+
   return { text };
 }

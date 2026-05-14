@@ -94,6 +94,78 @@ function renderProjectsSection(projects) {
     </div>`).join('');
 }
 
+// ── Render past reflections history ──
+function _fmtWeekLabel(weekStart) {
+  const start = new Date(weekStart + 'T00:00:00');
+  const end   = new Date(start.getTime() + 6 * 86400000);
+  const fmt   = d => d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const year  = end.getFullYear();
+  return `${fmt(start)} – ${fmt(end)}, ${year}`;
+}
+
+function _renderReflectionHistory() {
+  if (!_reflectionHistory.length) return '';
+
+  const cards = _reflectionHistory.map((r, i) => {
+    const label   = _fmtWeekLabel(r.week_start);
+    const hasData = r.wins || r.blockers || r.carry_forwards || r.ai_summary;
+    if (!hasData) return '';
+
+    return `
+      <div class="rh-card" id="rh-card-${i}">
+        <button class="rh-card-header" onclick="toggleRhCard(${i})">
+          <span class="rh-card-week">${esc(label)}</span>
+          <span class="rh-card-chips">
+            ${r.wins          ? `<span class="rh-chip rh-chip--green">Wins</span>` : ''}
+            ${r.blockers      ? `<span class="rh-chip rh-chip--red">Blockers</span>` : ''}
+            ${r.carry_forwards? `<span class="rh-chip">Carry-fwds</span>` : ''}
+            ${r.ai_summary    ? `<span class="rh-chip rh-chip--ai">✨ AI</span>` : ''}
+          </span>
+          <svg class="rh-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l4 4 4-4"/></svg>
+        </button>
+        <div class="rh-card-body" id="rh-body-${i}" style="display:none">
+          ${r.wins ? `
+            <div class="rh-field">
+              <div class="rh-field-label">Wins</div>
+              <div class="rh-field-text">${esc(r.wins)}</div>
+            </div>` : ''}
+          ${r.blockers ? `
+            <div class="rh-field">
+              <div class="rh-field-label">Blockers &amp; challenges</div>
+              <div class="rh-field-text">${esc(r.blockers)}</div>
+            </div>` : ''}
+          ${r.carry_forwards ? `
+            <div class="rh-field">
+              <div class="rh-field-label">Carry forwards</div>
+              <div class="rh-field-text">${esc(r.carry_forwards)}</div>
+            </div>` : ''}
+          ${r.ai_summary ? `
+            <div class="rh-ai-block">
+              <div class="rh-ai-label">✨ AI Analysis</div>
+              <div class="rh-ai-text">${esc(r.ai_summary)}</div>
+              ${r.ai_generated_at ? `<div class="rh-ai-date">Generated ${new Date(r.ai_generated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>` : ''}
+            </div>` : ''}
+        </div>
+      </div>`;
+  }).filter(Boolean).join('');
+
+  if (!cards) return '';
+
+  return `
+    <div class="rh-section">
+      <div class="rh-section-title">Past Reflections</div>
+      <div class="rh-list">${cards}</div>
+    </div>`;
+}
+
+function toggleRhCard(i) {
+  const body    = document.getElementById(`rh-body-${i}`);
+  const card    = document.getElementById(`rh-card-${i}`);
+  const isOpen  = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  card.classList.toggle('open', !isOpen);
+}
+
 // ── Render metrics section ──
 function renderMetricsSection(metrics) {
   if (!metrics || !metrics.length) {
@@ -219,6 +291,9 @@ function render() {
         </span>
       </div>
 
+      <!-- Past reflections history -->
+      ${_renderReflectionHistory()}
+
     </div>`;
 
   _bindEvents();
@@ -237,7 +312,7 @@ function _bindEvents() {
       _weekMode = mode;
       localStorage.setItem('digestWeekMode', mode);
       renderLoading();
-      await Promise.all([loadDigestData(), loadReflection()]);
+      await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory()]);
       render();
     });
   }

@@ -355,3 +355,165 @@
 }
 
 .reflection-save-status.visible { opacity: 1; }
+
+/* ── Past reflections history ── */
+.rh-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 2px solid var(--border);
+}
+
+.rh-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.rh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rh-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.rh-card:hover {
+  border-color: var(--border-md);
+}
+
+.rh-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.12s;
+}
+
+.rh-card-header:hover {
+  background: var(--surface-2);
+}
+
+.rh-card-week {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.rh-card-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.rh-chip {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+
+.rh-chip--green {
+  background: var(--green-bg, #edfaf2);
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.rh-chip--red {
+  background: var(--red-bg, #fff0ef);
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.rh-chip--ai {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
+.rh-chevron {
+  flex-shrink: 0;
+  color: var(--text-3);
+  transition: transform 0.2s;
+}
+
+.rh-card.open .rh-chevron {
+  transform: rotate(180deg);
+}
+
+.rh-card-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rh-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+}
+
+.rh-field-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+
+.rh-ai-block {
+  background: var(--blue-bg);
+  border: 1px solid var(--blue);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rh-ai-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--blue);
+}
+
+.rh-ai-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.rh-ai-date {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
