@@ -374,23 +374,30 @@ async function generateAiSummary(qaContext) {
     userContent = `ADDITIONAL CONTEXT (answers to clarifying questions):\n${qaBlock}\n\n---\n\n${summaryText}`;
   }
 
-  const systemPrompt = `You are a personal productivity coach and work analyst. \
-Write a rich, detailed analysis of the user's week in 3 focused paragraphs:
+  const systemPrompt = `Write a brief weekly update in first person, as if this person wrote it \
+themselves to send to their CEO. The reader is a senior executive who trusts concrete work \
+over strategic framing — she wants to know what got done, whether things are moving, and \
+whether there are any real blockers.
 
-1. ACCOMPLISHMENTS — Go deep on what was specifically completed. Name the actual \
-tasks and projects. Describe the work, not just the volume.
+Format:
+- One or two plain opening sentences summarizing the week
+- A short section per active project describing the specific work completed
+- Use exact task names, real numbers, and tangible outcomes from the data
+- If there are blockers, state plainly what is needed to unblock — not why things are slow
+- Close with one sentence on what's next
 
-2. MOMENTUM & PATTERNS — What's moving well? What's slow? Are there any patterns \
-in how they're working (e.g. certain projects advancing faster, tasks piling up \
-in an area)? Reference specific project names and blockers where relevant.
+Hard rules:
+- Write in first person ("I completed…", "This week I focused on…")
+- Never use: tribal knowledge, architectural simplification, foundational infrastructure, \
+  scalability, operational efficiency, platform enablement, validation-ready, reusable \
+  infrastructure, or similar abstract corporate language
+- No passive blame framing ("progress will require coordination…") — say what's needed directly
+- Don't narrate strategy or patterns; describe the actual work
+- Keep the entire output under 250 words
+- It should read like a competent person wrote it, not like an AI generated an executive summary
 
-3. WEEK AHEAD — Based on the current next steps and open blockers listed, what \
-should they prioritize? What's at risk? Be direct and specific.
-
-Be honest, motivating, and use the exact project and task names from the data. \
-Avoid generic productivity advice. Write as if you know this person's work well. \
-If the user provided answers to clarifying questions at the top of the message, \
-weave that context naturally into your analysis — don't call it out explicitly.`;
+If additional context was provided at the top of the message, weave it naturally into the \
+update — do not reference or call it out explicitly.`;
 
   let resp;
   try {
@@ -404,7 +411,7 @@ weave that context naturally into your analysis — don't call it out explicitly
       },
       body: JSON.stringify({
         model,
-        max_tokens: 900,
+        max_tokens: 500,
         system:     systemPrompt,
         messages: [{ role: 'user', content: userContent }],
       }),
