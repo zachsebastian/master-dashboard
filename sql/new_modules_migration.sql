@@ -12,6 +12,7 @@ create table if not exists today_items (
   created_at      timestamptz default now()
 );
 alter table today_items enable row level security;
+drop policy if exists "Users manage own today_items" on today_items;
 create policy "Users manage own today_items"
   on today_items using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -28,6 +29,7 @@ create table if not exists weekly_reflections (
   unique (user_id, week_start)
 );
 alter table weekly_reflections enable row level security;
+drop policy if exists "Users manage own weekly_reflections" on weekly_reflections;
 create policy "Users manage own weekly_reflections"
   on weekly_reflections using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -41,6 +43,7 @@ create table if not exists scratch_notes (
   created_at timestamptz default now()
 );
 alter table scratch_notes enable row level security;
+drop policy if exists "Users manage own scratch_notes" on scratch_notes;
 create policy "Users manage own scratch_notes"
   on scratch_notes using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
