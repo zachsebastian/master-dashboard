@@ -59,6 +59,9 @@ async function loadStateFromSupabase() {
 
   if (data) {
     state = data.data;
+    // Always open to the summary dashboard, not the last-viewed project
+    state.view          = 'summary';
+    state.activeProject = null;
     // Recalculate completions from tasks on every load
     state.projects.forEach(p => {
       const tasks = p.tasks || [];

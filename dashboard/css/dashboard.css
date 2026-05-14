@@ -136,7 +136,7 @@
   flex-shrink: 0;
   transition: box-shadow 0.15s, transform 0.15s;
 }
-.qa-icon:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.qa-icon:hover { box-shadow: var(--shadow-md); }
 .qa-icon img { width: 16px; height: 16px; object-fit: contain; border-radius: 2px; }
 .qa-icon-letter { font-size: 12px; font-weight: 600; color: var(--text-2); }
 .qa-icon-label {
@@ -400,3 +400,75 @@
   box-shadow: var(--shadow-sm);
 }
 .profile-page-card .section-title { margin-bottom: 14px; }
+
+/* ── Scratchpad quick-capture modal ── */
+.sc-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  animation: sc-fade-in 0.15s ease;
+}
+@keyframes sc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.sc-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  width: min(480px, 92vw);
+  display: flex; flex-direction: column;
+  animation: sc-slide-up 0.15s ease;
+}
+@keyframes sc-slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.sc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sc-title {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
+  color: var(--text);
+}
+.sc-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); padding: 4px;
+  border-radius: 6px; display: flex; align-items: center;
+  transition: color 0.12s, background 0.12s;
+}
+.sc-close:hover { color: var(--text); background: var(--surface-2); }
+.sc-textarea {
+  width: 100%; padding: 14px 18px;
+  background: transparent; border: none; outline: none; resize: none;
+  font-family: inherit; font-size: 14px; line-height: 1.6;
+  color: var(--text);
+  box-sizing: border-box;
+}
+.sc-textarea::placeholder { color: var(--text-3); }
+.sc-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--border);
+  gap: 12px;
+}
+.sc-status {
+  font-size: 13px;
+  flex: 1;
+}
+.sc-actions {
+  display: flex; gap: 8px;
+}
+/* Normalize both buttons to the same size inside the modal */
+.sc-actions .btn,
+.sc-actions .btn-primary {
+  width: auto;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 0;
+}
+/* Keep Save Note blue on hover — override the generic .btn:hover gray; no transition delay */
+.sc-actions .btn-primary { transition: none; }
+.sc-actions .btn-primary:hover {
+  background: var(--blue);
+  opacity: 0.85;
+}
