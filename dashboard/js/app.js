@@ -43,6 +43,7 @@ async function init() {
 async function onSignedIn(user) {
   currentUser = user;
   document.getElementById('admin-page').style.display = 'none';
+  document.getElementById('profile-page').style.display = 'none';
   hideBanner();
 
   // Fetch profile
@@ -126,37 +127,25 @@ async function onSignedIn(user) {
   renderActivityTicker(allActivity);
 }
 
-// ── Profile panel ──
-function toggleProfilePanel() {
-  const panel = document.getElementById('profile-panel');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
-    document.getElementById('pp-first').value = currentProfile?.first_name || '';
-    document.getElementById('pp-last').value  = currentProfile?.last_name  || '';
-    document.getElementById('pp-name-status').textContent  = '';
-    document.getElementById('pp-reset-status').textContent = '';
-    document.getElementById('pp-apikey-status').textContent = '';
-    const keyField = document.getElementById('pp-anthropic-key');
-    if (keyField) keyField.value = currentProfile?.anthropic_api_key || '';
-    setTimeout(() => {
-      document.addEventListener('click', function _close(e) {
-        const panel = document.getElementById('profile-panel');
-        const btn   = document.getElementById('profile-btn');
-        if (panel && !panel.contains(e.target) && !btn.contains(e.target)) {
-          panel.style.display = 'none';
-          document.removeEventListener('click', _close);
-        }
-      });
-    }, 0);
-  }
+// ── Profile page ──
+function showProfilePage() {
+  document.getElementById('main-view').style.display   = 'none';
+  document.getElementById('admin-page').style.display  = 'none';
+  document.getElementById('profile-page').style.display = 'block';
+  // Populate fields
+  document.getElementById('profpage-first').value = currentProfile?.first_name || '';
+  document.getElementById('profpage-last').value  = currentProfile?.last_name  || '';
+  document.getElementById('profpage-apikey').value = currentProfile?.anthropic_api_key || '';
+  document.getElementById('profpage-name-status').textContent   = '';
+  document.getElementById('profpage-apikey-status').textContent = '';
+  document.getElementById('profpage-reset-status').textContent  = '';
 }
 
 async function saveProfileName() {
-  const first  = document.getElementById('pp-first').value.trim();
-  const last   = document.getElementById('pp-last').value.trim();
-  const status = document.getElementById('pp-name-status');
-  const btn    = document.getElementById('pp-save-btn');
+  const first  = document.getElementById('profpage-first').value.trim();
+  const last   = document.getElementById('profpage-last').value.trim();
+  const status = document.getElementById('profpage-name-status');
+  const btn    = document.getElementById('profpage-name-btn');
   if (!first || !last) { status.textContent = 'Both fields are required.'; status.style.color = 'var(--red)'; return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   const { error } = await sb.from('profiles').update({
@@ -171,13 +160,13 @@ async function saveProfileName() {
     status.textContent = '✓ Saved'; status.style.color = 'var(--green)';
     setTimeout(() => { status.textContent = ''; }, 2500);
   }
-  btn.disabled = false; btn.textContent = 'Save Changes';
+  btn.disabled = false; btn.textContent = 'Save Name';
 }
 
 async function saveAnthropicKey() {
-  const keyField = document.getElementById('pp-anthropic-key');
-  const status   = document.getElementById('pp-apikey-status');
-  const btn      = document.getElementById('pp-apikey-save-btn');
+  const keyField = document.getElementById('profpage-apikey');
+  const status   = document.getElementById('profpage-apikey-status');
+  const btn      = document.getElementById('profpage-apikey-btn');
   const key      = (keyField?.value || '').trim();
   btn.disabled = true; btn.textContent = 'Saving…';
   const { error } = await sb.from('profiles').update({
@@ -194,8 +183,8 @@ async function saveAnthropicKey() {
 }
 
 async function sendPasswordReset() {
-  const btn    = document.getElementById('pp-reset-btn');
-  const status = document.getElementById('pp-reset-status');
+  const btn    = document.getElementById('profpage-reset-btn');
+  const status = document.getElementById('profpage-reset-status');
   btn.disabled = true; btn.textContent = 'Sending…';
   const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, {
     redirectTo: window.location.origin + '/',

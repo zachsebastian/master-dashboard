@@ -11,8 +11,9 @@ function showAdminPage() {
 }
 
 function showMainPage() {
-  document.getElementById('admin-page').style.display = 'none';
-  document.getElementById('main-view').style.display = 'block';
+  document.getElementById('admin-page').style.display   = 'none';
+  document.getElementById('profile-page').style.display = 'none';
+  document.getElementById('main-view').style.display    = 'block';
 }
 
 async function renderAdminPage() {
@@ -20,7 +21,7 @@ async function renderAdminPage() {
   content.innerHTML = '<div style="color:var(--text-3);font-size:13px">Loading…</div>';
 
   const { data: profiles } = await sb.from('profiles')
-    .select('user_id, email, first_name, last_name, is_admin')
+    .select('user_id, email, first_name, last_name, is_admin, anthropic_api_key')
     .order('email');
   const { data: allMods } = await sb.from('user_modules').select('user_id, module');
 
@@ -62,8 +63,19 @@ async function renderAdminPage() {
         </div>
       </div>
       <div class="admin-permissions-panel" id="perms-${uid}">
-        <span class="permissions-label">Module access</span>
-        <div class="module-toggles">${buildBadges(p.user_id)}</div>
+        <div class="perms-row">
+          <span class="permissions-label">Module access</span>
+          <div class="module-toggles">${buildBadges(p.user_id)}</div>
+        </div>
+        <div class="perms-row">
+          <span class="permissions-label">Anthropic Key</span>
+          <input class="form-input" type="password" id="apikey-${uid}"
+            value="${p.anthropic_api_key ? p.anthropic_api_key : ''}"
+            placeholder="sk-ant-…"
+            style="margin:0;font-family:monospace;font-size:12px;flex:1;max-width:320px;">
+          <button class="btn-sm" onclick="saveUserApiKey('${p.user_id}','${uid}')">Save Key</button>
+          <span id="apikey-status-${uid}" style="font-size:12px;"></span>
+        </div>
       </div>`;
   }
 
@@ -84,6 +96,24 @@ async function renderAdminPage() {
       <div class="admin-row admin-row-header"><div>User</div><div>Actions</div></div>
       ${userRows}
     </div>`;
+}
+
+async function saveUserApiKey(userId, uid) {
+  const input    = document.getElementById(`apikey-${uid}`);
+  const statusEl = document.getElementById(`apikey-status-${uid}`);
+  const key      = (input?.value || '').trim();
+  const { error } = await sb.from('profiles').update({
+    anthropic_api_key: key || null,
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', userId);
+  if (error) {
+    statusEl.textContent = error.message;
+    statusEl.style.color = 'var(--red)';
+  } else {
+    statusEl.textContent = '✓ Saved';
+    statusEl.style.color = 'var(--green)';
+    setTimeout(() => { statusEl.textContent = ''; }, 2500);
+  }
 }
 
 async function toggleModule(userId, moduleId, el) {
