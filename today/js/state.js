@@ -50,20 +50,21 @@ async function carryForwardItems() {
   const toCarry = historyItems.filter(i => !i.completed);
   if (!toCarry.length) { _resetNeeded = false; return; }
 
-  // Determine next sort_order offset
+  // Determine next sort_order offset — assign orders up front so DB + local state match
   const maxOrder = todayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
   let nextOrder = maxOrder + 1;
+  const sortOrders = toCarry.map(() => nextOrder++);
 
-  await Promise.all(toCarry.map(item =>
+  await Promise.all(toCarry.map((item, i) =>
     sb.from('today_items')
-      .update({ item_date: today, sort_order: nextOrder++ })
+      .update({ item_date: today, sort_order: sortOrders[i] })
       .eq('id', item.id)
   ));
 
-  // Move them into todayItems locally
-  toCarry.forEach(item => {
+  // Mirror into local state
+  toCarry.forEach((item, i) => {
     item.item_date  = today;
-    item.sort_order = nextOrder++;
+    item.sort_order = sortOrders[i];
     todayItems.push(item);
   });
   historyItems = historyItems.filter(i => i.completed);

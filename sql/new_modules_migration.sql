@@ -5,7 +5,7 @@ create table if not exists today_items (
   text            text not null,
   completed       boolean not null default false,
   source          text not null default 'manual',  -- 'manual' | 'project'
-  source_ref_id   uuid,                             -- project id if source='project'
+  source_ref_id   text,                             -- project id if source='project' (short string, not uuid)
   source_ref_name text,                             -- project name for display
   sort_order      int not null default 0,
   item_date       date not null default current_date,
