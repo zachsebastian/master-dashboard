@@ -215,12 +215,39 @@ let _modDragId       = null;
 let _modDragEl       = null;
 let _modDropDone     = false;
 let _modSwapCooldown = false;
+let _modInDashZone   = false; // prevents launchpad card from oscillating in dashboard territory
+
+// ── Render cache (for re-rendering phantoms after drag) ──
+let _lastModRows = [];
+let _lastStats   = {};
+
+// ── Phantom quotes (rotate daily) ──
+const _PHANTOM_QUOTES = [
+  { q: 'Focus on being productive instead of busy.', a: 'Tim Ferriss' },
+  { q: 'Done is better than perfect.', a: 'Sheryl Sandberg' },
+  { q: 'The secret of getting ahead is getting started.', a: 'Mark Twain' },
+  { q: 'Small daily improvements lead to staggering long-term results.', a: 'Robin Sharma' },
+  { q: 'Work hard in silence, let success be your noise.', a: 'Frank Ocean' },
+  { q: 'You don\'t have to be great to start, but you have to start to be great.', a: 'Zig Ziglar' },
+  { q: 'The best time to plant a tree was 20 years ago. The second best time is now.', a: 'Chinese Proverb' },
+];
+function _phantomHtml() {
+  const { q, a } = _PHANTOM_QUOTES[new Date().getDay()];
+  return `<div class="module-card module-card--phantom" data-phantom="true" aria-hidden="true">
+    <div class="phantom-quote">"${escHtml(q)}"</div>
+    <div class="phantom-author">— ${escHtml(a)}</div>
+  </div>`;
+}
 
 // ── Rendering ──
 // All modules go into a single flex-wrap container in sort_order.
 // Launchpad rows have width:100% so they always occupy their own line.
-// Consecutive dashboard cards share a row via flex:1 1 440px.
+// Consecutive dashboard cards share a row via flex:1 1 440px + max-width:50%.
+// After any odd-length run of dashboard cards, a phantom card fills the empty slot.
 function renderModules(modRows, statsByModule) {
+  _lastModRows = modRows;
+  _lastStats   = statsByModule || {};
+
   const orderMap = {};
   modRows.forEach(r => { orderMap[r.module] = r.sort_order ?? 999; });
   const allowed = new Set(modRows.map(r => r.module));
@@ -238,11 +265,28 @@ function renderModules(modRows, statsByModule) {
   }
   if (empty) empty.style.display = 'none';
 
-  // Count dashboard cards for numbering (only those enabled)
+  // Build render list: inject phantom cards after odd-length dashboard runs
+  const renderItems = [];
+  let ri = 0;
+  while (ri < enabled.length) {
+    const m = enabled[ri];
+    if (m.type !== 'launchpad') {
+      let runEnd = ri;
+      while (runEnd + 1 < enabled.length && enabled[runEnd + 1].type !== 'launchpad') runEnd++;
+      for (let k = ri; k <= runEnd; k++) renderItems.push(enabled[k]);
+      if ((runEnd - ri + 1) % 2 === 1) renderItems.push(null); // null = phantom
+      ri = runEnd + 1;
+    } else {
+      renderItems.push(m);
+      ri++;
+    }
+  }
+
   let dashIdx = 0;
 
   if (outer) {
-    outer.innerHTML = enabled.map(m => {
+    outer.innerHTML = renderItems.map(m => {
+      if (m === null) return _phantomHtml(); // phantom slot
       if (m.type === 'launchpad') {
         // ── Launchpad row ──
         const stats = (statsByModule && statsByModule[m.id]) || {};
@@ -325,29 +369,77 @@ function onModuleDragOver(e) {
   if (_modSwapCooldown) return;
   const targetId = e.currentTarget.dataset.moduleId;
   if (!targetId || targetId === _modDragId || !_modDragEl) return;
-  // All modules share #module-outer — any card can be repositioned relative to any other
   if (_modDragEl.parentElement !== e.currentTarget.parentElement) return;
+
+  const dragType   = _modDragEl.dataset.moduleType;
+  const targetType = e.currentTarget.dataset.moduleType;
+
+  // ── Launchpad dragged over dashboard territory ──
+  // Position at the group boundary (before first / after last consecutive dashboard card)
+  // then freeze — prevents the oscillation boop from flexbox reflow.
+  if (dragType === 'launchpad' && targetType === 'dashboard') {
+    if (_modInDashZone) return; // already positioned, don't oscillate
+
+    const container = _modDragEl.parentElement;
+    // Exclude phantom cards from index calculations
+    const siblings = [...container.children].filter(el => !el.dataset.phantom);
+    const dragIdx  = siblings.indexOf(_modDragEl);
+    const targetIdx = siblings.indexOf(e.currentTarget);
+
+    let insertEl;
+    if (dragIdx > targetIdx) {
+      // Dragging upward → place before the first card in the group
+      let first = e.currentTarget;
+      while (first.previousElementSibling && first.previousElementSibling.dataset.moduleType === 'dashboard') {
+        first = first.previousElementSibling;
+      }
+      insertEl = first;
+    } else {
+      // Dragging downward → place after the last card in the group
+      let last = e.currentTarget;
+      while (last.nextElementSibling && last.nextElementSibling.dataset.moduleType === 'dashboard') {
+        last = last.nextElementSibling;
+      }
+      insertEl = last.nextSibling; // null = append to end
+    }
+
+    if (_modDragEl.nextSibling === insertEl) { _modInDashZone = true; return; }
+
+    const firstRects = new Map();
+    siblings.forEach(el => { if (el !== _modDragEl) firstRects.set(el, el.getBoundingClientRect()); });
+    container.insertBefore(_modDragEl, insertEl);
+    _modInDashZone   = true;
+    _modSwapCooldown = true;
+    setTimeout(() => { _modSwapCooldown = false; }, 200);
+    _flipAnimate(firstRects);
+    return;
+  }
+
+  // Hovering over a launchpad card resets the dash-zone lock
+  if (dragType === 'launchpad' && targetType === 'launchpad') {
+    _modInDashZone = false;
+  }
+
+  // ── Standard swap (same type, or dashboard over launchpad) ──
   const container = _modDragEl.parentElement;
-  const siblings  = [...container.children];
+  const siblings  = [...container.children].filter(el => !el.dataset.phantom);
   const dragIdx   = siblings.indexOf(_modDragEl);
   const targetIdx = siblings.indexOf(e.currentTarget);
   if (dragIdx === -1 || targetIdx === -1) return;
 
   const insertBefore = dragIdx < targetIdx ? e.currentTarget.nextSibling : e.currentTarget;
-  if (_modDragEl.nextSibling === insertBefore) return; // already in position, skip
+  if (_modDragEl.nextSibling === insertBefore) return;
 
-  // FLIP: record positions before move
-  const first = new Map();
-  siblings.forEach(el => { if (el !== _modDragEl) first.set(el, el.getBoundingClientRect()); });
-
+  const firstRects = new Map();
+  siblings.forEach(el => { if (el !== _modDragEl) firstRects.set(el, el.getBoundingClientRect()); });
   container.insertBefore(_modDragEl, insertBefore);
-
-  // Cooldown prevents feedback loop while displaced cards animate back
   _modSwapCooldown = true;
   setTimeout(() => { _modSwapCooldown = false; }, 200);
+  _flipAnimate(firstRects);
+}
 
-  // Animate displaced elements from their old positions to their new ones
-  first.forEach((rect, el) => {
+function _flipAnimate(firstRects) {
+  firstRects.forEach((rect, el) => {
     const newRect = el.getBoundingClientRect();
     const dx = rect.left - newRect.left;
     const dy = rect.top  - newRect.top;
@@ -370,6 +462,7 @@ function onModuleDrop(e) {
 
 function onModuleDragEnd(e) {
   e.currentTarget.classList.remove('dragging');
+  _modInDashZone = false;
   if (!_modDropDone) _commitModuleOrder();
   _modDragId       = null;
   _modDragEl       = null;
@@ -386,9 +479,19 @@ function _updateCardNumbers() {
 }
 
 async function _commitModuleOrder() {
-  _updateCardNumbers();
   if (!currentUser) return;
   const items = [...document.querySelectorAll('#module-outer > [data-module-id]')];
+
+  // Build updated modRows with new sort_orders, then re-render (fixes phantom positions)
+  const newOrderMap = {};
+  items.forEach((el, i) => { newOrderMap[el.dataset.moduleId] = i; });
+  const updatedRows = _lastModRows.map(r => ({
+    ...r,
+    sort_order: newOrderMap[r.module] ?? r.sort_order,
+  }));
+  renderModules(updatedRows, _lastStats);
+
+  // Persist to DB
   await Promise.all(items.map((el, i) =>
     sb.from('user_modules')
       .update({ sort_order: i })
