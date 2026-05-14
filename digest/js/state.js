@@ -6,6 +6,7 @@ let _reflection        = { wins: '', blockers: '', carry_forwards: '', ai_summar
 let _reflectionHistory = []; // past weeks, sorted descending
 let _aiSummary         = null;
 let _anthropicKey      = null;
+let _aiQuestions       = null; // null = not fetched | [] = no Qs | [...] = pending answers
 
 // ── Week range ──
 function getWeekRange() {
@@ -266,18 +267,88 @@ async function _pickModel(apiKey) {
   }
 }
 
-// ── Generate AI summary via Anthropic API ──
-async function generateAiSummary() {
+// ── Fetch pre-analysis clarifying questions ──
+async function fetchAiQuestions() {
   const uid = _currentUser.id;
 
-  // Fetch API key from profile
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('anthropic_api_key')
-    .eq('user_id', uid)
-    .maybeSingle();
+  // Fetch (and cache) key if not already loaded
+  if (!_anthropicKey) {
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('anthropic_api_key')
+      .eq('user_id', uid)
+      .maybeSingle();
+    _anthropicKey = profile?.anthropic_api_key?.trim() || null;
+  }
 
-  _anthropicKey = profile?.anthropic_api_key?.trim() || null;
+  if (!_anthropicKey) return { error: 'no_key' };
+  if (!_digestData)   return { error: 'no_data' };
+
+  const model = await _pickModel(_anthropicKey);
+  if (!model) return { error: 'no_model', message: 'No models available on this API key.' };
+
+  const summaryText = _buildSummaryText(_digestData);
+
+  let resp;
+  try {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':                                 _anthropicKey,
+        'anthropic-version':                         '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type':                              'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 300,
+        system: `You are reviewing a weekly productivity digest before writing a detailed analysis. \
+Identify up to 3 concise clarifying questions that would meaningfully improve your analysis — \
+things you genuinely cannot infer from the data alone (e.g. the reason behind a blocker, \
+context for an unexpected metric change, or ambiguity in a project's status).
+
+Return ONLY a valid JSON array of question strings. \
+If the data is self-explanatory and you have no questions, return an empty array [].
+
+Return absolutely nothing else — no explanation, no markdown fences, just the JSON array.`,
+        messages: [{ role: 'user', content: summaryText }],
+      }),
+    });
+  } catch (e) {
+    return { error: 'network', message: e.message };
+  }
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    return { error: 'api', status: resp.status, message: body };
+  }
+
+  const json = await resp.json();
+  const raw  = (json?.content?.[0]?.text || '').trim();
+  let questions = [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) questions = parsed.filter(q => typeof q === 'string' && q.trim());
+  } catch { /* malformed — treat as no questions */ }
+
+  _aiQuestions = questions;
+  return { questions };
+}
+
+// ── Generate AI summary via Anthropic API ──
+// qaContext: optional array of { q, a } objects from the pre-analysis Q&A
+async function generateAiSummary(qaContext) {
+  const uid = _currentUser.id;
+
+  // Reuse cached key if fetchAiQuestions already loaded it
+  if (!_anthropicKey) {
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('anthropic_api_key')
+      .eq('user_id', uid)
+      .maybeSingle();
+    _anthropicKey = profile?.anthropic_api_key?.trim() || null;
+  }
 
   if (!_anthropicKey) {
     return { error: 'no_key' };
@@ -295,6 +366,14 @@ async function generateAiSummary() {
 
   const summaryText = _buildSummaryText(_digestData);
 
+  // Prepend any Q&A context the user provided
+  const answeredQa = (qaContext || []).filter(qa => qa.a && qa.a.trim());
+  let userContent = summaryText;
+  if (answeredQa.length) {
+    const qaBlock = answeredQa.map(qa => `Q: ${qa.q}\nA: ${qa.a}`).join('\n\n');
+    userContent = `ADDITIONAL CONTEXT (answers to clarifying questions):\n${qaBlock}\n\n---\n\n${summaryText}`;
+  }
+
   const systemPrompt = `You are a personal productivity coach and work analyst. \
 Write a rich, detailed analysis of the user's week in 3 focused paragraphs:
 
@@ -309,7 +388,9 @@ in an area)? Reference specific project names and blockers where relevant.
 should they prioritize? What's at risk? Be direct and specific.
 
 Be honest, motivating, and use the exact project and task names from the data. \
-Avoid generic productivity advice. Write as if you know this person's work well.`;
+Avoid generic productivity advice. Write as if you know this person's work well. \
+If the user provided answers to clarifying questions at the top of the message, \
+weave that context naturally into your analysis — don't call it out explicitly.`;
 
   let resp;
   try {
@@ -325,7 +406,7 @@ Avoid generic productivity advice. Write as if you know this person's work well.
         model,
         max_tokens: 900,
         system:     systemPrompt,
-        messages: [{ role: 'user', content: summaryText }],
+        messages: [{ role: 'user', content: userContent }],
       }),
     });
   } catch (e) {

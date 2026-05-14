@@ -321,47 +321,47 @@ function _bindEvents() {
   const aiBtn = document.getElementById('digest-ai-btn');
   if (aiBtn) {
     aiBtn.addEventListener('click', async () => {
+      // If Q&A form is showing, ignore — user must submit or skip it
+      if (_aiQuestions && _aiQuestions.length) return;
+
       const noKeyMsg = document.getElementById('ai-no-key-msg');
       if (noKeyMsg) noKeyMsg.style.display = 'none';
 
       aiBtn.disabled = true;
-      aiBtn.innerHTML = `<span class="ai-spinner"></span> Generating…`;
+      aiBtn.innerHTML = `<span class="ai-spinner"></span> Reviewing your week…`;
 
-      const result = await generateAiSummary();
+      const qResult = await fetchAiQuestions();
 
-      if (result.error === 'no_key') {
+      if (qResult.error === 'no_key') {
         if (noKeyMsg) noKeyMsg.style.display = 'block';
         aiBtn.disabled = false;
-        aiBtn.textContent = '✨ Generate AI Summary';
+        aiBtn.textContent = _aiSummary ? 'Regenerate Summary' : '✨ Generate AI Summary';
         return;
       }
 
-      if (result.error) {
+      if (qResult.error) {
         aiBtn.disabled = false;
-        aiBtn.textContent = '✨ Generate AI Summary';
-        const detail = result.message
-          ? `${result.error}${result.status ? ` (${result.status})` : ''}: ${result.message}`
-          : result.error;
+        aiBtn.textContent = _aiSummary ? 'Regenerate Summary' : '✨ Generate AI Summary';
+        _showAiError(qResult);
+        return;
+      }
+
+      aiBtn.disabled = false;
+      aiBtn.textContent = _aiSummary ? 'Regenerate Summary' : '✨ Generate AI Summary';
+
+      if (qResult.questions && qResult.questions.length) {
+        // Show the Q&A form inside the card
         const card = document.getElementById('ai-summary-card');
         if (card) {
           card.classList.add('visible');
-          card.innerHTML = `
-            <div class="ai-summary-label">Error</div>
-            <div class="ai-summary-text" style="color:var(--red);font-size:13px">${esc(detail)}</div>`;
+          card.innerHTML = _renderAiQaForm(qResult.questions);
         }
-        return;
-      }
-
-      // Success — re-render AI card in place to avoid full page re-render
-      aiBtn.disabled = false;
-      aiBtn.textContent = 'Regenerate Summary';
-
-      const card = document.getElementById('ai-summary-card');
-      if (card) {
-        card.classList.add('visible');
-        card.innerHTML = `
-          <div class="ai-summary-label">✨ AI Summary</div>
-          <div class="ai-summary-text">${esc(result.text)}</div>`;
+      } else {
+        // No questions — go straight to generation
+        aiBtn.disabled = true;
+        aiBtn.innerHTML = `<span class="ai-spinner"></span> Generating…`;
+        const result = await generateAiSummary([]);
+        _handleAiResult(result);
       }
     });
   }
@@ -387,4 +387,92 @@ function _bindEvents() {
       }
     });
   }
+}
+
+// ── AI Q&A form HTML ──
+function _renderAiQaForm(questions) {
+  return `
+    <div class="ai-summary-label">✨ A couple of quick questions</div>
+    <div class="ai-qa-intro">To give you a sharper analysis, I have a few questions — answer what you can, skip the rest:</div>
+    <div class="ai-qa-list">
+      ${questions.map((q, i) => `
+        <div class="ai-qa-item">
+          <div class="ai-qa-question">${esc(q)}</div>
+          <textarea class="ai-qa-answer" id="ai-qa-${i}" placeholder="Your answer (or leave blank)…"></textarea>
+        </div>`).join('')}
+    </div>
+    <div class="ai-qa-actions">
+      <button class="ai-qa-submit-btn" onclick="submitAiQa()">Generate Summary →</button>
+      <button class="ai-qa-skip-btn" onclick="skipAiQa()">Skip questions</button>
+    </div>`;
+}
+
+// ── Submit Q&A answers then generate ──
+async function submitAiQa() {
+  const questions = _aiQuestions || [];
+  const qaContext = questions.map((q, i) => ({
+    q,
+    a: (document.getElementById(`ai-qa-${i}`)?.value || '').trim(),
+  }));
+  _aiQuestions = null;
+
+  const aiBtn = document.getElementById('digest-ai-btn');
+  const card  = document.getElementById('ai-summary-card');
+  if (aiBtn) { aiBtn.disabled = true; aiBtn.innerHTML = `<span class="ai-spinner"></span> Generating…`; }
+  if (card)  { card.innerHTML = ''; card.classList.remove('visible'); }
+
+  const result = await generateAiSummary(qaContext);
+  _handleAiResult(result);
+}
+
+// ── Skip questions and generate without context ──
+async function skipAiQa() {
+  _aiQuestions = null;
+  const aiBtn = document.getElementById('digest-ai-btn');
+  const card  = document.getElementById('ai-summary-card');
+  if (aiBtn) { aiBtn.disabled = true; aiBtn.innerHTML = `<span class="ai-spinner"></span> Generating…`; }
+  if (card)  { card.innerHTML = ''; card.classList.remove('visible'); }
+
+  const result = await generateAiSummary([]);
+  _handleAiResult(result);
+}
+
+// ── Shared result handler ──
+function _handleAiResult(result) {
+  const aiBtn    = document.getElementById('digest-ai-btn');
+  const noKeyMsg = document.getElementById('ai-no-key-msg');
+  const card     = document.getElementById('ai-summary-card');
+
+  if (result.error === 'no_key') {
+    if (noKeyMsg) noKeyMsg.style.display = 'block';
+    if (aiBtn)   { aiBtn.disabled = false; aiBtn.textContent = '✨ Generate AI Summary'; }
+    return;
+  }
+
+  if (result.error) {
+    if (aiBtn) { aiBtn.disabled = false; aiBtn.textContent = '✨ Generate AI Summary'; }
+    _showAiError(result);
+    return;
+  }
+
+  if (aiBtn) { aiBtn.disabled = false; aiBtn.textContent = 'Regenerate Summary'; }
+  if (card) {
+    card.classList.add('visible');
+    card.innerHTML = `
+      <div class="ai-summary-label">✨ AI Summary</div>
+      <div class="ai-summary-text">${esc(result.text)}</div>`;
+  }
+}
+
+// ── Show error in AI card ──
+function _showAiError(result) {
+  const card = document.getElementById('ai-summary-card');
+  if (!card) return;
+  const detail = result.message
+    ? `${result.error}${result.status ? ` (${result.status})` : ''}: ${result.message}`
+    : result.error;
+  card.classList.add('visible');
+  card.innerHTML = `
+    <div class="ai-summary-label">Error</div>
+    <div class="ai-summary-text" style="color:var(--red);font-size:13px">${esc(detail)}</div>`;
 }
