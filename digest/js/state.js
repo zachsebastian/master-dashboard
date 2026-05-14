@@ -67,11 +67,29 @@ async function loadDigestData() {
     if (Array.isArray(blob.metrics))  allMetrics  = allMetrics.concat(blob.metrics);
   }
 
-  // Filter projects with entries in the date range
+  // Filter projects with entries in the date range, enriching each entry
+  // with the tasks that were marked complete in that specific log update
   const projects = allProjects
     .map(p => {
-      const entries = (p.entries || []).filter(e => e.date >= start && e.date <= end);
-      return entries.length ? { name: p.name, status: p.status, entries } : null;
+      const allTasks = p.tasks || [];
+      const entries = (p.entries || [])
+        .filter(e => e.date >= start && e.date <= end)
+        .map(e => ({
+          date:           e.date,
+          note:           e.note || '',
+          nextSteps:      e.nextSteps || '',
+          completedTasks: allTasks
+            .filter(t => t.completedInEntry === e.id)
+            .map(t => t.text),
+        }));
+      if (!entries.length) return null;
+      return {
+        name:      p.name,
+        status:    p.status,
+        nextSteps: p.nextSteps || '',
+        blockers:  p.blockers  || [],
+        entries,
+      };
     })
     .filter(Boolean);
 
@@ -169,6 +187,16 @@ function _buildSummaryText(data) {
       lines.push(`  ${p.name}${p.status ? ` [${p.status}]` : ''}:`);
       for (const e of p.entries) {
         lines.push(`    ${e.date}: ${e.note || '(no note)'}`);
+        if (e.completedTasks.length) {
+          lines.push(`      Tasks completed in this update:`);
+          for (const t of e.completedTasks) lines.push(`        ✓ ${t}`);
+        }
+        if (e.nextSteps) lines.push(`      Next steps after this update: ${e.nextSteps}`);
+      }
+      if (p.nextSteps) lines.push(`    Current next steps: ${p.nextSteps}`);
+      if (p.blockers.length) {
+        lines.push(`    Current blockers:`);
+        for (const b of p.blockers) lines.push(`      ⚠ ${b}`);
       }
     }
   } else {

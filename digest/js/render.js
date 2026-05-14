@@ -61,14 +61,36 @@ function renderProjectsSection(projects) {
   return projects.map(p => `
     <div class="digest-day-group">
       <div class="digest-day-label">${esc(p.name)}${p.status ? ` · ${esc(p.status)}` : ''}</div>
+
       ${p.entries.map(e => `
         <div class="digest-item">
           <div class="digest-item-dot blue"></div>
           <div class="digest-item-text">
             <div class="digest-item-label">${esc(_fmtDayLabel(e.date))}</div>
-            ${e.note ? `<div class="digest-item-note">${esc(_snippet(e.note, 160))}</div>` : ''}
+            ${e.note ? `<div class="digest-item-note">${esc(_snippet(e.note, 200))}</div>` : ''}
+            ${e.completedTasks && e.completedTasks.length ? `
+              <div class="digest-task-list">
+                ${e.completedTasks.map(t => `
+                  <div class="digest-task-item">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>
+                    ${esc(t)}
+                  </div>`).join('')}
+              </div>` : ''}
           </div>
         </div>`).join('')}
+
+      ${p.nextSteps ? `
+        <div class="digest-project-meta">
+          <span class="digest-meta-label">Next steps</span>
+          <span class="digest-meta-value">${esc(_snippet(p.nextSteps, 200))}</span>
+        </div>` : ''}
+
+      ${p.blockers && p.blockers.length ? `
+        <div class="digest-project-meta digest-project-meta--blocker">
+          <span class="digest-meta-label">Blockers</span>
+          <div>${p.blockers.map(b => `<div class="digest-meta-value">⚠ ${esc(b)}</div>`).join('')}</div>
+        </div>` : ''}
+
     </div>`).join('');
 }
 
