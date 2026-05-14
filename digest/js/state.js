@@ -226,7 +226,7 @@ async function generateAiSummary() {
         'content-type':                          'application/json',
       },
       body: JSON.stringify({
-        model:      'claude-3-5-haiku-20241022',
+        model:      'claude-3-haiku-20240307',
         max_tokens: 400,
         system:     'You are a personal work assistant. Summarize the user\'s week concisely and positively in 3-5 sentences. Focus on what they accomplished.',
         messages: [
