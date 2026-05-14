@@ -154,7 +154,7 @@ const ALL_MODULES = [
     iconBg: 'var(--blue-bg)',
     iconColor: 'var(--blue)',
     accentVar: '--blue',
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>`,
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>`,
     desc: 'Auto-generated summary of the past 7 days across all your modules.',
     href: '/digest/',
 
@@ -217,98 +217,96 @@ let _modDropDone     = false;
 let _modSwapCooldown = false;
 
 // ── Rendering ──
+// All modules go into a single flex-wrap container in sort_order.
+// Launchpad rows have width:100% so they always occupy their own line.
+// Consecutive dashboard cards share a row via flex:1 1 440px.
 function renderModules(modRows, statsByModule) {
   const orderMap = {};
   modRows.forEach(r => { orderMap[r.module] = r.sort_order ?? 999; });
   const allowed = new Set(modRows.map(r => r.module));
 
-  const grid         = document.getElementById('module-grid');
-  const launchpadList = document.getElementById('launchpad-list');
-  const empty        = document.getElementById('empty-state');
-  const enabled      = ALL_MODULES
+  const outer = document.getElementById('module-outer');
+  const empty = document.getElementById('empty-state');
+  const enabled = ALL_MODULES
     .filter(m => allowed.has(m.id))
     .sort((a, b) => (orderMap[a.id] ?? 999) - (orderMap[b.id] ?? 999));
 
   if (enabled.length === 0) {
-    if (grid) grid.innerHTML = '';
-    if (launchpadList) launchpadList.innerHTML = '';
+    if (outer) outer.innerHTML = '';
     if (empty) empty.style.display = 'flex';
     return;
   }
   if (empty) empty.style.display = 'none';
 
-  const launchpads = enabled.filter(m => m.type === 'launchpad');
-  const dashboards = enabled.filter(m => m.type !== 'launchpad');
+  // Count dashboard cards for numbering (only those enabled)
+  let dashIdx = 0;
 
-  // Launchpad rows
-  if (launchpadList) {
-    launchpadList.innerHTML = launchpads.map(m => {
-      const stats = (statsByModule && statsByModule[m.id]) || {};
-      const qa = stats.quickAccess || [];
-      const quickHtml = qa.length ? `
-        <div class="launchpad-quick-access">
-          ${qa.map(item => {
-            const src = item.icon_url || _faviconSrc(item.url);
-            const imgHtml = src
-              ? `<img src="${escHtml(src)}" alt="" onerror="this.style.display='none'">`
-              : `<span class="qa-icon-letter">${escHtml((item.name || '?')[0].toUpperCase())}</span>`;
-            return `<div class="qa-icon" role="link" tabindex="0" onclick="event.stopPropagation();event.preventDefault();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')" onkeydown="if(event.key==='Enter'){event.stopPropagation();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')}">
-              ${imgHtml}
-              <span class="qa-icon-label">${escHtml(item.name)}</span>
-            </div>`;
-          }).join('')}
-        </div>` : '';
-      const statsHtml = (stats.primary || stats.secondary) ? `
-        <div class="launchpad-row-stats">
-          ${stats.primary   ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
-          ${stats.secondary ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
-        </div>` : '';
-      return `
-        <a class="launchpad-row" href="${m.href}" data-module-id="${m.id}" data-module-type="launchpad" data-accent="${m.id}"
-           draggable="true" ondragstart="onModuleDragStart(event)" ondragover="onModuleDragOver(event)"
-           ondrop="onModuleDrop(event)" ondragend="onModuleDragEnd(event)">
-          <div class="launchpad-row-icon">${m.icon}</div>
-          <div class="launchpad-row-body">
-            <div class="launchpad-row-name">${m.name}</div>
-            <div class="launchpad-row-desc">${escHtml(m.desc)}${stats.weekLabel ? ` <span class="launchpad-week-label">${escHtml(stats.weekLabel)}</span>` : ''}</div>
-          </div>
-          ${stats.quickCapture ? `<div class="launchpad-quick-access"><div class="qa-icon" role="button" tabindex="0" title="New note" onclick="event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'" onkeydown="if(event.key==='Enter'){event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="qa-icon-label">New note</span></div></div>` : quickHtml}
-          ${statsHtml}
-          <div class="launchpad-row-arrow">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </div>
-        </a>`;
-    }).join('');
-  }
-
-  // Dashboard cards
-  if (grid) {
-    grid.innerHTML = dashboards.map((m, i) => {
-      const stats = (statsByModule && statsByModule[m.id]) || {};
-      const num   = String(i + 1).padStart(2, '0');
-      const statsHtml = `
-        <div class="module-stats">
-          ${stats.primary   ? `<div><div class="module-stat-value">${escHtml(String(stats.primary.value))}</div><div class="module-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
-          ${stats.secondary ? `<div><div class="module-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="module-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
-        </div>`;
-      const sparkHtml = stats.spark ? renderSparkline(stats.spark, m.accentVar) : '';
-      return `
-        <a class="module-card" href="${m.href}" data-module-id="${m.id}" data-module-type="dashboard" data-accent="${m.id}"
-           draggable="true" ondragstart="onModuleDragStart(event)" ondragover="onModuleDragOver(event)"
-           ondrop="onModuleDrop(event)" ondragend="onModuleDragEnd(event)">
-          <div class="module-card-head">
-            <div class="module-card-icon">${m.icon}</div>
-            <div class="module-card-num">${num}</div>
-          </div>
-          <div class="module-name">${m.name}</div>
-          <div class="module-desc">${m.desc}</div>
-          <div class="module-foot">
+  if (outer) {
+    outer.innerHTML = enabled.map(m => {
+      if (m.type === 'launchpad') {
+        // ── Launchpad row ──
+        const stats = (statsByModule && statsByModule[m.id]) || {};
+        const qa = stats.quickAccess || [];
+        const quickHtml = qa.length ? `
+          <div class="launchpad-quick-access">
+            ${qa.map(item => {
+              const src = item.icon_url || _faviconSrc(item.url);
+              const imgHtml = src
+                ? `<img src="${escHtml(src)}" alt="" onerror="this.style.display='none'">`
+                : `<span class="qa-icon-letter">${escHtml((item.name || '?')[0].toUpperCase())}</span>`;
+              return `<div class="qa-icon" role="link" tabindex="0" onclick="event.stopPropagation();event.preventDefault();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')" onkeydown="if(event.key==='Enter'){event.stopPropagation();window.open('${escHtml(item.url)}','_blank','noopener,noreferrer')}">
+                ${imgHtml}
+                <span class="qa-icon-label">${escHtml(item.name)}</span>
+              </div>`;
+            }).join('')}
+          </div>` : '';
+        const statsHtml = (stats.primary || stats.secondary) ? `
+          <div class="launchpad-row-stats">
+            ${stats.primary   ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.primary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
+            ${stats.secondary ? `<div><div class="launchpad-row-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="launchpad-row-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
+          </div>` : '';
+        return `
+          <a class="launchpad-row" href="${m.href}" data-module-id="${m.id}" data-module-type="launchpad" data-accent="${m.id}"
+             draggable="true" ondragstart="onModuleDragStart(event)" ondragover="onModuleDragOver(event)"
+             ondrop="onModuleDrop(event)" ondragend="onModuleDragEnd(event)">
+            <div class="launchpad-row-icon">${m.icon}</div>
+            <div class="launchpad-row-body">
+              <div class="launchpad-row-name">${m.name}</div>
+              <div class="launchpad-row-desc">${escHtml(m.desc)}${stats.weekLabel ? ` <span class="launchpad-week-label">${escHtml(stats.weekLabel)}</span>` : ''}</div>
+            </div>
+            ${stats.quickCapture ? `<div class="launchpad-quick-access"><div class="qa-icon" role="button" tabindex="0" title="New note" onclick="event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'" onkeydown="if(event.key==='Enter'){event.stopPropagation();event.preventDefault();window.location.href='/scratchpad/?capture=1'}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="qa-icon-label">New note</span></div></div>` : quickHtml}
             ${statsHtml}
-            <div class="module-spark">${sparkHtml}</div>
-          </div>
-        </a>`;
+            <div class="launchpad-row-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </div>
+          </a>`;
+      } else {
+        // ── Dashboard card ──
+        const stats = (statsByModule && statsByModule[m.id]) || {};
+        const num   = String(++dashIdx).padStart(2, '0');
+        const statsHtml = `
+          <div class="module-stats">
+            ${stats.primary   ? `<div><div class="module-stat-value">${escHtml(String(stats.primary.value))}</div><div class="module-stat-label">${escHtml(stats.primary.label)}</div></div>` : ''}
+            ${stats.secondary ? `<div><div class="module-stat-value">${escHtml(String(stats.secondary.value))}</div><div class="module-stat-label">${escHtml(stats.secondary.label)}</div></div>` : ''}
+          </div>`;
+        const sparkHtml = stats.spark ? renderSparkline(stats.spark, m.accentVar) : '';
+        return `
+          <a class="module-card" href="${m.href}" data-module-id="${m.id}" data-module-type="dashboard" data-accent="${m.id}"
+             draggable="true" ondragstart="onModuleDragStart(event)" ondragover="onModuleDragOver(event)"
+             ondrop="onModuleDrop(event)" ondragend="onModuleDragEnd(event)">
+            <div class="module-card-head">
+              <div class="module-card-icon">${m.icon}</div>
+              <div class="module-card-num">${num}</div>
+            </div>
+            <div class="module-name">${m.name}</div>
+            <div class="module-desc">${m.desc}</div>
+            <div class="module-foot">
+              ${statsHtml}
+              <div class="module-spark">${sparkHtml}</div>
+            </div>
+          </a>`;
+      }
     }).join('');
-    if (!grid.innerHTML) grid.innerHTML = '';
   }
 }
 
@@ -327,7 +325,7 @@ function onModuleDragOver(e) {
   if (_modSwapCooldown) return;
   const targetId = e.currentTarget.dataset.moduleId;
   if (!targetId || targetId === _modDragId || !_modDragEl) return;
-  // Only allow reorder within the same container (launchpad stays launchpad, dashboard stays dashboard)
+  // All modules share #module-outer — any card can be repositioned relative to any other
   if (_modDragEl.parentElement !== e.currentTarget.parentElement) return;
   const container = _modDragEl.parentElement;
   const siblings  = [...container.children];
@@ -380,21 +378,22 @@ function onModuleDragEnd(e) {
 }
 
 function _updateCardNumbers() {
-  [...document.querySelectorAll('#module-grid .module-card')].forEach((card, i) => {
+  let i = 0;
+  document.querySelectorAll('#module-outer .module-card').forEach(card => {
     const num = card.querySelector('.module-card-num');
-    if (num) num.textContent = String(i + 1).padStart(2, '0');
+    if (num) num.textContent = String(++i).padStart(2, '0');
   });
 }
 
 async function _commitModuleOrder() {
   _updateCardNumbers();
   if (!currentUser) return;
-  const cards = [...document.querySelectorAll('#launchpad-list [data-module-id], #module-grid [data-module-id]')];
-  await Promise.all(cards.map((c, i) =>
+  const items = [...document.querySelectorAll('#module-outer > [data-module-id]')];
+  await Promise.all(items.map((el, i) =>
     sb.from('user_modules')
       .update({ sort_order: i })
       .eq('user_id', currentUser.id)
-      .eq('module', c.dataset.moduleId)
+      .eq('module', el.dataset.moduleId)
   ));
 }
 

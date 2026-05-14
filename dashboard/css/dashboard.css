@@ -77,9 +77,14 @@
   line-height: 1.55;
 }
 
+/* ── Module outer container: flat flex-wrap, all modules as direct children ── */
+/* Launchpad rows are width:100% so they always occupy a full line.           */
+/* Dashboard cards are flex:1 1 440px so consecutive ones share a row.        */
+.module-outer { display: flex; flex-wrap: wrap; column-gap: 14px; row-gap: 10px; margin-bottom: 36px; align-items: stretch; }
+
 /* ── Launchpad rows (full-width, sit above module grid) ── */
-.launchpad-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 .launchpad-row {
+  width: 100%;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto auto 28px;
   align-items: center;
@@ -167,14 +172,8 @@
 }
 .launchpad-row:hover .launchpad-row-arrow { background: var(--text); color: var(--surface); transform: translateX(2px); }
 
-/* ── Module grid (editorial dashboard cards) ── */
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
-  gap: 14px;
-  margin-bottom: 36px;
-}
 .module-card {
+  flex: 1 1 440px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
