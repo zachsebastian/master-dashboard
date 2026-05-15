@@ -89,8 +89,9 @@ async function autoPullFromProjects() {
   const slotsOpen = 5 - uncompletedCount;
   if (slotsOpen <= 0) return;
 
-  // Tasks already in today's list — skip these when pulling
+  // Tasks already in today's list — skip by task id OR text to catch items without source_task_id
   const existingTaskIds = new Set(todayItems.map(i => i.source_task_id).filter(Boolean));
+  const existingTexts   = new Set(todayItems.map(i => i.text.trim().toLowerCase()));
 
   // Fetch the dashboard blob
   const { data: dashRows, error } = await sb
@@ -110,7 +111,9 @@ async function autoPullFromProjects() {
     if (project.status !== 'in-progress') continue;
 
     const incompleteTasks = (project.tasks || []).filter(
-      t => t.completedInEntry == null && !existingTaskIds.has(t.id)
+      t => t.completedInEntry == null
+        && !existingTaskIds.has(t.id)
+        && !existingTexts.has(t.text.trim().toLowerCase())
     );
     if (!incompleteTasks.length) continue;
 
