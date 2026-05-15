@@ -311,7 +311,7 @@ function render() {
   if (!app) return;
 
   const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [] };
-  const { weekRange, projects, metrics } = data;
+  const { weekRange, todayItems, projects, metrics } = data;
 
   const projectCount = projects.length;
   const metricCount  = metrics.length;
@@ -351,6 +351,16 @@ function render() {
       <!-- AI summary card -->
       ${renderAiCard()}
 
+
+      <!-- Today List (manual items only) -->
+      ${todayItems.length ? `
+      <div class="digest-section">
+        <div class="digest-section-header">
+          <span class="digest-section-title">Other Completed Tasks · ${todayItems.length}</span>
+          <span class="digest-section-count">${todayItems.length}</span>
+        </div>
+        ${renderTodaySection(todayItems)}
+      </div>` : ''}
 
       <!-- Projects section -->
       <div class="digest-section">

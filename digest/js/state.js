@@ -45,12 +45,14 @@ async function loadDigestData() {
   const uid = _currentUser.id;
   const { start, end, label } = getWeekRange();
 
-  // Fetch today_items completed in range
+  // Fetch manually-added today_items completed in range (exclude project-pulled tasks
+  // since those already appear under their project in the digest)
   const { data: todayItems } = await sb
     .from('today_items')
-    .select('id, text, item_date, completed')
+    .select('id, text, item_date, completed, source')
     .eq('user_id', uid)
     .eq('completed', true)
+    .eq('source', 'manual')
     .gte('item_date', start)
     .lte('item_date', end)
     .order('item_date', { ascending: true });
@@ -198,8 +200,15 @@ async function saveReflection(wins, blockers, carry_forwards) {
 
 // ── Build summary text from digest data ──
 function _buildSummaryText(data) {
-  const { weekRange, projects, metrics } = data;
+  const { weekRange, todayItems, projects, metrics } = data;
   const lines = [`Week of ${weekRange.label}`, ''];
+
+  // Manual today-list tasks (not from projects)
+  if (todayItems && todayItems.length) {
+    lines.push(`OTHER COMPLETED TASKS (${todayItems.length}):`);
+    for (const t of todayItems) lines.push(`  ✓ ${t.text}`);
+    lines.push('');
+  }
 
   // Projects
   lines.push(`PROJECTS UPDATED (${projects.length}):`);
