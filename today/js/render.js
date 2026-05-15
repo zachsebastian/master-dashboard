@@ -213,14 +213,14 @@ function bindEvents() {
       carryBtn.disabled = true;
       carryBtn.textContent = 'Moving…';
       await carryForwardItems();
-      await autoPullFromProjects();
+      await autoPullFromProjects(true);
       render();
     });
   }
   if (archiveBtn) {
     archiveBtn.addEventListener('click', async () => {
       await archiveItems();
-      await autoPullFromProjects();
+      await autoPullFromProjects(true);
       render();
     });
   }

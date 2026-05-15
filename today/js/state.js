@@ -80,11 +80,14 @@ async function archiveItems() {
 }
 
 // ── Auto-pull from Projects ──
-async function autoPullFromProjects() {
+async function autoPullFromProjects(topUp = false) {
   const uid   = _currentUser.id;
   const today = getTodayDate();
 
-  // How many uncompleted slots are open (target: 5)
+  // On a normal boot, only pull if today's list is completely empty.
+  // After carry-forward/archive (topUp=true), fill up to 5.
+  if (!topUp && todayItems.length > 0) return;
+
   const uncompletedCount = todayItems.filter(i => !i.completed).length;
   const slotsOpen = 5 - uncompletedCount;
   if (slotsOpen <= 0) return;
