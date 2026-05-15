@@ -144,13 +144,25 @@
   display: block;
 }
 
+.ai-summary-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ai-summary-copy-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--blue);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 11px; font-weight: 600; color: var(--blue);
+  cursor: pointer; transition: background 0.12s;
+}
+.ai-summary-copy-btn:hover { background: rgba(74,159,212,0.12); }
+
 .ai-summary-label {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 700;
   color: var(--blue);
-  margin-bottom: 8px;
 }
 
 .ai-summary-text {

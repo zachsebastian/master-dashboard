@@ -300,7 +300,13 @@ function renderAiCard() {
   if (!_aiSummary) return `<div class="ai-summary-card" id="ai-summary-card"></div>`;
   return `
     <div class="ai-summary-card visible" id="ai-summary-card">
-      <div class="ai-summary-label">✨ AI Summary</div>
+      <div class="ai-summary-card-header">
+        <div class="ai-summary-label">✨ AI Summary</div>
+        <button class="ai-summary-copy-btn" id="ai-copy-btn" title="Copy to clipboard">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
       <div class="ai-summary-text">${esc(_aiSummary)}</div>
     </div>`;
 }
@@ -425,6 +431,19 @@ function render() {
 
 // ── Bind interactive events after render ──
 function _bindEvents() {
+  // Copy AI summary
+  const copyBtn = document.getElementById('ai-copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      if (!_aiSummary) return;
+      await navigator.clipboard.writeText(_aiSummary);
+      copyBtn.textContent = '✓ Copied';
+      setTimeout(() => {
+        copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+      }, 2000);
+    });
+  }
+
   // Week mode toggle
   const toggle = document.getElementById('digest-week-toggle');
   if (toggle) {
