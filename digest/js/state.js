@@ -1,6 +1,8 @@
 // ── State ──
 let _currentUser       = null;
-let _weekMode          = localStorage.getItem('digestWeekMode') || 'rolling'; // 'rolling' | 'mon' | 'sun'
+const _storedMode = localStorage.getItem('digestWeekMode');
+let _weekMode = (_storedMode === 'rolling' || _storedMode === 'sun') ? _storedMode : 'rolling'; // 'rolling' | 'sun' | 'custom'
+let _customRange       = { start: null, end: null }; // only used when _weekMode === 'custom'
 let _digestData        = null;
 let _reflection        = { wins: '', blockers: '', carry_forwards: '', ai_summary: null, ai_generated_at: null };
 let _reflectionHistory = []; // past weeks, sorted descending
@@ -15,22 +17,23 @@ function getWeekRange() {
   today.setHours(0, 0, 0, 0);
   let start, end;
 
-  if (_weekMode === 'rolling') {
-    start = new Date(today.getTime() - 6 * 86400000);
-    end   = new Date(today);
-  } else if (_weekMode === 'mon') {
-    const day  = today.getDay(); // 0=Sun
-    const diff = (day === 0 ? -6 : 1 - day);
-    start = new Date(today);
-    start.setDate(today.getDate() + diff);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-  } else { // sun
+  if (_weekMode === 'custom' && _customRange.start && _customRange.end) {
+    return {
+      start: _customRange.start,
+      end:   _customRange.end,
+      label: `${new Date(_customRange.start + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${new Date(_customRange.end + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`,
+    };
+  }
+
+  if (_weekMode === 'sun') {
     const day = today.getDay();
     start = new Date(today);
     start.setDate(today.getDate() - day);
     end = new Date(start);
     end.setDate(start.getDate() + 6);
+  } else { // rolling (default)
+    start = new Date(today.getTime() - 6 * 86400000);
+    end   = new Date(today);
   }
 
   return {
@@ -38,6 +41,12 @@ function getWeekRange() {
     end:   end.toISOString().split('T')[0],
     label: `${start.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`,
   };
+}
+
+function applyCustomRange(start, end) {
+  _customRange = { start, end };
+  _weekMode    = 'custom';
+  // Don't persist to localStorage — custom range is session-only
 }
 
 // ── Load all digest data ──

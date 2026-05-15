@@ -329,9 +329,18 @@ function render() {
         </div>
         <div class="digest-week-toggle" id="digest-week-toggle">
           <button class="digest-week-btn${_weekMode === 'rolling' ? ' active' : ''}" data-mode="rolling">Rolling 7d</button>
-          <button class="digest-week-btn${_weekMode === 'mon'     ? ' active' : ''}" data-mode="mon">Mon–Sun</button>
           <button class="digest-week-btn${_weekMode === 'sun'     ? ' active' : ''}" data-mode="sun">Sun–Sat</button>
+          <button class="digest-week-btn${_weekMode === 'custom'  ? ' active' : ''}" data-mode="custom">Custom</button>
         </div>
+      </div>
+
+      <!-- Custom date range picker (shown when Custom is active) -->
+      <div class="digest-custom-range" id="digest-custom-range" style="display:${_weekMode === 'custom' ? 'flex' : 'none'}">
+        <label class="digest-custom-label">From</label>
+        <input type="date" class="digest-custom-date" id="custom-start" value="${_customRange?.start || ''}">
+        <label class="digest-custom-label">To</label>
+        <input type="date" class="digest-custom-date" id="custom-end" value="${_customRange?.end || ''}">
+        <button class="digest-custom-apply btn btn-primary" id="custom-apply-btn">Apply</button>
       </div>
 
       <!-- AI buttons row -->
@@ -424,8 +433,38 @@ function _bindEvents() {
       if (!btn) return;
       const mode = btn.dataset.mode;
       if (!mode || mode === _weekMode) return;
+
+      if (mode === 'custom') {
+        // Just show the picker — don't reload data yet
+        _weekMode = 'custom';
+        const picker = document.getElementById('digest-custom-range');
+        if (picker) picker.style.display = 'flex';
+        // Update button active states
+        toggle.querySelectorAll('.digest-week-btn').forEach(b =>
+          b.classList.toggle('active', b.dataset.mode === 'custom')
+        );
+        return;
+      }
+
       _weekMode = mode;
       localStorage.setItem('digestWeekMode', mode);
+      const picker = document.getElementById('digest-custom-range');
+      if (picker) picker.style.display = 'none';
+      renderLoading();
+      await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory(), loadAiSummaryHistory()]);
+      render();
+    });
+  }
+
+  // Custom range apply
+  const applyBtn = document.getElementById('custom-apply-btn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async () => {
+      const start = document.getElementById('custom-start')?.value;
+      const end   = document.getElementById('custom-end')?.value;
+      if (!start || !end) { alert('Please select both a start and end date.'); return; }
+      if (end < start)    { alert('End date must be on or after start date.'); return; }
+      applyCustomRange(start, end);
       renderLoading();
       await Promise.all([loadDigestData(), loadReflection(), loadReflectionHistory(), loadAiSummaryHistory()]);
       render();

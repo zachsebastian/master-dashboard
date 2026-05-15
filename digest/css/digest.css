@@ -65,6 +65,35 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* ── Custom date range picker ── */
+.digest-custom-range {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 12px;
+}
+.digest-custom-label {
+  font-size: 12px; font-weight: 600; color: var(--text-3);
+}
+.digest-custom-date {
+  padding: 5px 9px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.digest-custom-apply {
+  padding: 5px 14px;
+  font-size: 12px;
+  width: auto;
+  margin-top: 0;
+}
+
 /* ── AI generate button ── */
 .digest-ai-btn {
   background: var(--surface);
