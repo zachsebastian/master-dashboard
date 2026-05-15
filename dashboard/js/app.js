@@ -101,7 +101,9 @@ async function onSignedIn(user) {
   const summaryFragments = [];
   const allActivity      = [];
 
-  await Promise.all(ALL_MODULES.filter(m => allowed.has(m.id)).map(async m => {
+  await Promise.all([
+    loadLikedQuotes(user.id),
+    ...ALL_MODULES.filter(m => allowed.has(m.id)).map(async m => {
     try {
       let stats;
       if (m.fetchStats) {
@@ -119,7 +121,8 @@ async function onSignedIn(user) {
         });
       }
     } catch (_) { /* stats are non-critical */ }
-  }));
+  }),
+  ]);
 
   renderModules(rows, statsByModule);
   renderHeroSummary(firstName, summaryFragments);

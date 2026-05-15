@@ -1,3 +1,78 @@
+// ── Scratchpad quick-capture modal ──
+function openScratchpadCapture() {
+  if (document.getElementById('scratch-capture-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'scratch-capture-overlay';
+  overlay.className = 'sc-overlay';
+  overlay.innerHTML = `
+    <div class="sc-modal" role="dialog" aria-modal="true" aria-label="New note">
+      <div class="sc-header">
+        <span class="sc-title">New Note</span>
+        <button class="sc-close" onclick="closeScratchpadCapture()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <textarea id="sc-textarea" class="sc-textarea" placeholder="What's on your mind?" rows="5"></textarea>
+      <div class="sc-footer">
+        <span id="sc-status" class="sc-status"></span>
+        <div class="sc-actions">
+          <button class="btn" onclick="closeScratchpadCapture()">Cancel</button>
+          <button class="btn btn-primary" id="sc-save-btn" onclick="saveScratchpadCapture()">Save Note</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeScratchpadCapture(); });
+  document.body.appendChild(overlay);
+
+  const ta = document.getElementById('sc-textarea');
+  ta.focus();
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeScratchpadCapture(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { saveScratchpadCapture(); }
+  });
+}
+
+function closeScratchpadCapture() {
+  const overlay = document.getElementById('scratch-capture-overlay');
+  if (overlay) overlay.remove();
+}
+
+async function saveScratchpadCapture() {
+  const ta     = document.getElementById('sc-textarea');
+  const btn    = document.getElementById('sc-save-btn');
+  const status = document.getElementById('sc-status');
+  if (!ta) return;
+
+  const text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  if (!_currentUser) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const { error } = await sb.from('scratch_notes').insert({
+    user_id:  _currentUser.id,
+    text:     text,
+    pinned:   false,
+    reviewed: false,
+  });
+
+  if (error) {
+    status.textContent = 'Failed to save. Try again.';
+    status.style.color = 'var(--red)';
+    btn.disabled = false;
+    btn.textContent = 'Save Note';
+    return;
+  }
+
+  status.textContent = '✓ Note saved';
+  status.style.color = 'var(--green)';
+  setTimeout(closeScratchpadCapture, 600);
+}
+
 // ── Theme ──
 async function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';

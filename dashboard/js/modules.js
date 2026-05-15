@@ -300,12 +300,160 @@ const _PHANTOM_QUOTES = [
   { q: 'Almost everything will work again if you unplug it for a few minutes — including you.', a: 'Anne Lamott' },
   { q: 'You are the sky. Everything else is just the weather.', a: 'Pema Chödrön' },
 ];
+
+// ── Liked quotes state ──
+let _likedQuotesSet = new Set();
+let _likedQuotesArr = [];
+
+async function loadLikedQuotes(userId) {
+  const { data, error } = await sb.from('liked_quotes')
+    .select('quote, author, liked_at')
+    .eq('user_id', userId)
+    .order('liked_at', { ascending: false });
+  if (error) { console.error('loadLikedQuotes:', error); return; }
+  _likedQuotesArr = data || [];
+  _likedQuotesSet = new Set(_likedQuotesArr.map(r => r.quote));
+}
+
+async function toggleLikeQuote(btn) {
+  const q = btn.dataset.q;
+  const a = btn.dataset.a;
+  const label = btn.querySelector('.phantom-save-label');
+
+  if (_likedQuotesSet.has(q)) {
+    _likedQuotesSet.delete(q);
+    _likedQuotesArr = _likedQuotesArr.filter(lq => lq.quote !== q);
+    btn.classList.remove('saved');
+    if (label) label.textContent = 'Save';
+    btn.title = 'Save this quote';
+    await sb.from('liked_quotes').delete().eq('user_id', currentUser.id).eq('quote', q);
+  } else {
+    _likedQuotesSet.add(q);
+    const row = { quote: q, author: a, liked_at: new Date().toISOString() };
+    _likedQuotesArr.unshift(row);
+    btn.classList.add('saved');
+    if (label) label.textContent = 'Saved';
+    btn.title = 'Quote saved';
+    await sb.from('liked_quotes').upsert(
+      { user_id: currentUser.id, quote: q, author: a },
+      { onConflict: 'user_id,quote' }
+    );
+  }
+
+  // Update the "View saved" counter without a full re-render
+  const actionsEl = btn.closest('.phantom-actions');
+  if (actionsEl) {
+    let viewBtn = actionsEl.querySelector('.phantom-saved-link');
+    if (_likedQuotesArr.length > 0) {
+      if (!viewBtn) {
+        viewBtn = document.createElement('button');
+        viewBtn.className = 'phantom-saved-link';
+        viewBtn.addEventListener('click', openLikedQuotesModal);
+        actionsEl.appendChild(viewBtn);
+      }
+      viewBtn.textContent = 'View saved';
+    } else if (viewBtn) {
+      viewBtn.remove();
+    }
+  }
+}
+
+function openLikedQuotesModal() {
+  if (document.getElementById('lq-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'lq-overlay';
+  overlay.className = 'lq-overlay';
+
+  const rows = _likedQuotesArr.length
+    ? _likedQuotesArr.map((r, i) => `
+        <div class="lq-row">
+          <div class="lq-row-text">
+            <div class="lq-row-quote">“${escHtml(r.quote)}”</div>
+            <div class="lq-row-author">— ${escHtml(r.author)}</div>
+          </div>
+          <button class="lq-remove-btn" data-index="${i}" title="Remove">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+          </button>
+        </div>`).join('')
+    : '<div class="lq-empty">No saved quotes yet.</div>';
+
+  overlay.innerHTML = `
+    <div class="lq-modal" role="dialog" aria-modal="true" aria-label="Saved quotes">
+      <div class="lq-header">
+        <span class="lq-title">Saved Quotes</span>
+        <button class="sc-close" onclick="document.getElementById('lq-overlay').remove()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="lq-body" id="lq-body">${rows}</div>
+    </div>`;
+
+  overlay.addEventListener('mousedown', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.remove(); });
+
+  // Remove button handler
+  overlay.addEventListener('click', async e => {
+    const btn = e.target.closest('.lq-remove-btn');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.index, 10);
+    const removed = _likedQuotesArr[idx];
+    if (!removed) return;
+    _likedQuotesSet.delete(removed.quote);
+    _likedQuotesArr.splice(idx, 1);
+    await sb.from('liked_quotes').delete().eq('user_id', currentUser.id).eq('quote', removed.quote);
+    // Refresh modal body
+    const body = document.getElementById('lq-body');
+    if (body) body.innerHTML = _likedQuotesArr.length
+      ? _likedQuotesArr.map((r, i) => `
+          <div class="lq-row">
+            <div class="lq-row-text">
+              <div class="lq-row-quote">“${escHtml(r.quote)}”</div>
+              <div class="lq-row-author">— ${escHtml(r.author)}</div>
+            </div>
+            <button class="lq-remove-btn" data-index="${i}" title="Remove">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+          </div>`).join('')
+      : '<div class="lq-empty">No saved quotes yet.</div>';
+    // Sync the save button on the card if visible
+    const cardBtn = document.querySelector('.phantom-save-btn');
+    if (cardBtn && cardBtn.dataset.q === removed.quote) {
+      cardBtn.classList.remove('saved');
+      const lbl = cardBtn.querySelector('.phantom-save-label');
+      if (lbl) lbl.textContent = 'Save';
+    }
+    // Sync "View saved" link count
+    const viewLink = document.querySelector('.phantom-saved-link');
+    if (viewLink) {
+      if (_likedQuotesArr.length > 0) viewLink.textContent = 'View saved';
+      else viewLink.remove();
+    }
+  });
+
+  document.body.appendChild(overlay);
+}
+
+let _pickedQuote = null;
 function _phantomHtml() {
-  const { q, a } = _PHANTOM_QUOTES[Math.floor(Math.random() * _PHANTOM_QUOTES.length)];
+  if (!_pickedQuote) _pickedQuote = _PHANTOM_QUOTES[Math.floor(Math.random() * _PHANTOM_QUOTES.length)];
+  const { q, a } = _pickedQuote;
+  const isSaved = _likedQuotesSet.has(q);
   return `<div class="module-card module-card--phantom" data-phantom="true" aria-hidden="true">
     <div class="phantom-eyebrow">Today's thought</div>
     <div class="phantom-quote">"${escHtml(q)}"</div>
     <div class="phantom-author">— ${escHtml(a)}</div>
+    <div class="phantom-actions">
+      <button class="phantom-save-btn${isSaved ? ' saved' : ''}"
+              data-q="${escHtml(q)}" data-a="${escHtml(a)}"
+              onclick="toggleLikeQuote(this)"
+              title="${isSaved ? 'Quote saved' : 'Save this quote'}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="phantom-save-label">${isSaved ? 'Saved' : 'Save'}</span>
+      </button>
+      ${_likedQuotesArr.length > 0 ? `<button class="phantom-saved-link" onclick="openLikedQuotesModal()">View saved</button>` : ''}
+    </div>
   </div>`;
 }
 

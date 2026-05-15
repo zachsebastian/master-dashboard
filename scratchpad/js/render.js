@@ -133,6 +133,7 @@ function bindRenderEvents() {
       if (!id) return;
 
       if (action === 'delete') {
+        if (!confirm('Delete this note? This can\'t be undone.')) return;
         await deleteNote(id);
         render();
       } else if (action === 'pin') {

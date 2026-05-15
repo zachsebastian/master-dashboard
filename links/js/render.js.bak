@@ -1,74 +1,3 @@
-// ── Hero helpers ──
-let _weather    = null; // populated by app.js after wttr.in fetch
-let _heroTimer  = null;
-let _profileFirstName = null; // fetched from profiles table at boot
-
-function _greeting() {
-  const h = new Date().getHours();
-  if (h < 5)  return 'Working late';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Good evening';
-}
-function _fmtTime(d) {
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-function _fmtDate(d) {
-  return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-}
-function _firstName() {
-  if (_profileFirstName) return _profileFirstName;
-  if (!_currentUser) return '';
-  const meta = _currentUser.user_metadata || {};
-  const full  = meta.full_name || meta.name || '';
-  if (full) return full.split(' ')[0];
-  const prefix = (_currentUser.email || '').split('@')[0].split(/[._]/)[0];
-  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
-}
-
-function faviconEl(item, imgClass, monoClass) {
-  const letter = esc((item.name || '?').charAt(0).toUpperCase());
-  const src = item.iconUrl || faviconUrl(item.url);
-  if (!src) return `<span class="${monoClass}">${letter}</span>`;
-  return `<img class="${imgClass}" src="${esc(src)}" onerror="this.outerHTML='<span class=\\'${monoClass}\\'>${letter}</span>'">`;
-}
-
-function renderHero() {
-  const name = _firstName();
-  const now  = new Date();
-  const weatherPart = _weather
-    ? `<span class="hero-sep">·</span><span class="hero-weather-inline">${esc(String(_weather.tempF))}° ${esc(_weather.condition)}${_weather.location ? ' · ' + esc(_weather.location) : ''}</span>`
-    : '';
-  return `
-    <div class="links-hero">
-      <div class="hero-content">
-        <div class="hero-greeting">
-          <span class="hero-greeting-verb" data-hero-greeting>${esc(_greeting())}</span>${name ? `<span class="hero-comma">,</span> <span class="hero-name">${esc(name)}</span>` : ''}<span class="hero-period">.</span>
-        </div>
-        <div class="hero-meta">
-          <span data-hero-date>${esc(_fmtDate(now))}</span>
-          <span class="hero-sep">·</span>
-          <span data-hero-time>${esc(_fmtTime(now))}</span>
-          ${weatherPart}
-        </div>
-      </div>
-    </div>`;
-}
-
-function startHeroClock() {
-  clearInterval(_heroTimer);
-  _heroTimer = setInterval(() => {
-    const d = new Date();
-    const tEl = document.querySelector('[data-hero-time]');
-    const gEl = document.querySelector('[data-hero-greeting]');
-    const dEl = document.querySelector('[data-hero-date]');
-    if (tEl) tEl.textContent = _fmtTime(d);
-    if (gEl) gEl.textContent = _greeting();
-    if (dEl) dEl.textContent = _fmtDate(d);
-  }, 30000);
-}
-
 // ── Top-level render ──
 function render() {
   const app = document.getElementById('app');
@@ -84,20 +13,16 @@ function applyZoom() {
 
 // ── Grid view ──
 function renderGridView(app) {
-  clearInterval(_heroTimer);
   const cols = state.settings.gridCols;
   app.innerHTML = `
-    ${renderHero()}
     ${renderToolbar()}
-    <div id="links-grid" class="links-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))"
-         ondragover="onGridDragOver(event)" ondrop="onGridDrop(event)">
+    <div id="links-grid" class="links-grid" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">
       ${state.cards.map(c => renderCard(c)).join('')}
       ${editMode ? `<button class="add-card-tile" onclick="addCard()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Card
       </button>` : state.cards.length === 0 ? renderEmptyPage() : ''}
     </div>`;
-  startHeroClock();
 }
 
 function renderToolbar() {
@@ -117,9 +42,6 @@ function renderToolbar() {
             oninput="onSearch(this.value)"
             onkeydown="if(event.key==='Escape')clearSearch()">
         </div>
-        <button class="search-btn" onclick="openScratchpadCapture()" title="New note">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-        </button>
       </div>
       <div class="toolbar-right">
         <div class="grid-controls">
@@ -131,12 +53,12 @@ function renderToolbar() {
           <label class="slider-label" title="Zoom">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
             <input type="range" id="zoom-slider" min="0.7" max="1.4" step="0.05" value="${zoom}" oninput="onZoomChange(+this.value)">
+            <span class="slider-val" id="zoom-val">${Math.round(zoom * 100)}%</span>
           </label>
         </div>
-        ${editMode
-          ? `<button class="edit-mode-btn cancel" onclick="cancelEditMode()">Cancel</button>
-             <button class="edit-mode-btn active" onclick="toggleEditMode()">Done</button>`
-          : `<button class="edit-mode-btn" onclick="toggleEditMode()">Edit</button>`}
+        <button class="edit-mode-btn ${editMode ? 'active' : ''}" onclick="toggleEditMode()">
+          ${editMode ? 'Done' : 'Edit'}
+        </button>
       </div>
     </div>`;
 }
@@ -177,12 +99,12 @@ function renderCard(card) {
         ${editMode ? renderCardActions(card) : ''}
       </div>
 
-      ${renderTabs(card, activeIdx)}
-
-      <div class="card-body">
-        ${activeGroup ? renderGroupBody(card, activeGroup) : `<div class="empty-group">No tabs</div>`}
-      </div>
-      ${activeGroup && card.mode === 'list' ? renderListPagination(activeGroup) : ''}
+      ${editMode ? renderGroupsStacked(card) : `
+        ${renderTabs(card, activeIdx)}
+        <div class="card-body">
+          ${activeGroup ? renderGroupBody(card, activeGroup) : `<div class="empty-group">No tabs</div>`}
+        </div>
+        ${activeGroup && card.mode === 'list' ? renderListPagination(activeGroup) : ''}`}
     </div>`;
 }
 
@@ -212,22 +134,44 @@ function renderCardActions(card) {
     </div>`;
 }
 
+// ── Edit mode: all groups stacked ──
+function renderGroupsStacked(card) {
+  return `
+    <div class="groups-stacked">
+      ${card.groups.map(g => `
+        <div class="group-section">
+          <div class="group-section-hdr">
+            <span class="group-section-name" contenteditable="true" spellcheck="false"
+              onclick="event.stopPropagation()"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+              onblur="updateGroup('${g.id}',{name:this.textContent.trim()||'Tab'})">${esc(g.name)}</span>
+            <div class="group-section-actions">
+              <button class="tab-action-btn" title="Move to another card" onclick="showMoveGroupMenu('${g.id}')">↗</button>
+              <button class="tab-action-btn" title="Delete tab" onclick="confirmDeleteGroup('${g.id}')">×</button>
+            </div>
+          </div>
+          ${renderGroupBody(card, g)}
+        </div>`).join('')}
+      <div style="padding:6px 10px">
+        <button class="add-item-btn" onclick="addGroup('${card.id}')">+ Add tab</button>
+      </div>
+    </div>`;
+}
+
 // ── Tabs ──
 function renderTabs(card, activeIdx) {
-  if (!card.groups.length && !editMode) return '';
-  if (card.groups.length <= 1 && !editMode) return '';
+  if (!card.groups.length) return '';
+  if (card.groups.length <= 1) return ''; // single sub-card — no tab bar needed
   return `
-    <div class="card-tabs"
-         ${editMode ? `ondragover="onTabBarDragOver(event)" ondrop="onTabBarDrop(event)"` : ''}>
+    <div class="card-tabs">
       ${card.groups.map((g, i) => `
         <button class="card-tab${i===activeIdx?' active':''}"
-          data-group-id="${g.id}"
           onclick="setActiveGroup('${card.id}',${i})"
           ${editMode ? `draggable="true"
             ondragstart="onTabDragStart(event,'${g.id}')"
-            ondragover="onTabDragOver(event,'${g.id}')"
-            ondrop="onTabDrop(event,'${g.id}')"
-            ondragend="onTabDragEnd(event)"` : ''}>
+            ondragover="onTabDragOver(event,'${card.id}',${i},'${g.id}')"
+            ondragleave="onTabDragLeave(event)"
+            ondrop="onTabDrop(event,'${g.id}')"` : ''}>
           ${editMode ? `
             <span class="tab-name" contenteditable="true" spellcheck="false"
               onclick="event.stopPropagation()"
@@ -244,24 +188,27 @@ function renderTabs(card, activeIdx) {
 }
 
 // ── Group body (list or icon-grid) ──
-const PAGE_SIZE = 6;
-
 function renderGroupBody(card, group) {
   return card.mode === 'icon-grid'
     ? renderIconGrid(card, group)
     : renderLinkList(card, group);
 }
 
+const PAGE_SIZE = 6;
+
 function renderLinkList(card, group) {
   if (!group.items.length && !editMode) {
     return `<div class="empty-group">No links yet</div>`;
   }
-  const page = editMode ? 0 : (activePages[group.id] || 0);
+
+  const page      = editMode ? 0 : (activePages[group.id] || 0);
   const totalPages = Math.ceil(group.items.length / PAGE_SIZE);
-  const safePage = Math.min(page, Math.max(0, totalPages - 1));
-  const items = editMode ? group.items : group.items.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const safePage  = Math.min(page, totalPages - 1);
+  const items     = editMode ? group.items : group.items.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   return `
-    <ul class="link-list" data-group-id="${group.id}">
+    <ul class="link-list" data-group-id="${group.id}"
+      ${editMode ? `ondragover="onListDragOver(event,'${group.id}')" ondragleave="onListDragLeave(event)" ondrop="onListDrop(event,'${group.id}')"` : ''}>
       ${items.map(item => `
         <li class="link-item${editMode?' edit-item':''}" data-item-id="${item.id}"
           ${editMode ? `draggable="true"
@@ -271,15 +218,19 @@ function renderLinkList(card, group) {
             ondragleave="onItemDragLeave(event)"
             ondragend="onItemDragEnd(event)"` : ''}>
           ${editMode ? `<span class="item-drag-handle">⠿</span>` : ''}
-          ${faviconEl(item, 'link-favicon', 'link-favicon-mono')}
+          <img class="link-favicon"
+            src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
+            onerror="this.style.display='none'"
+            ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
           ${editMode
             ? `<span class="link-name-static">${esc(item.name)}</span>
                <button class="item-btn edit" onclick="openItemEdit('${item.id}')" title="Edit">✎</button>
                <button class="item-btn del"  onclick="deleteItem('${item.id}')"   title="Delete">×</button>`
-            : `<a class="link-anchor" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')">${esc(item.name)}</a>`}
+            : `<a class="link-anchor" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer">${esc(item.name)}</a>`}
         </li>`).join('')}
       ${editMode ? `<li class="add-item-row"><button class="add-item-btn" onclick="addItem('${group.id}')">+ Add link</button></li>` : ''}
-    </ul>`;
+    </ul>
+  `;
 }
 
 function renderListPagination(group) {
@@ -304,7 +255,8 @@ function renderIconGrid(card, group) {
     return `<div class="empty-group">No links yet</div>`;
   }
   return `
-    <div class="icon-grid" data-group-id="${group.id}">
+    <div class="icon-grid" data-group-id="${group.id}"
+      ${editMode ? `ondragover="onListDragOver(event,'${group.id}')" ondragleave="onListDragLeave(event)" ondrop="onListDrop(event,'${group.id}')"` : ''}>
       ${group.items.map(item => `
         <div class="icon-item-wrap" data-item-id="${item.id}"
           ${editMode ? `draggable="true"
@@ -316,15 +268,21 @@ function renderIconGrid(card, group) {
           ${editMode
             ? `<div class="icon-item editing-icon" onclick="openItemEdit('${item.id}')">
                  <div class="icon-img-wrap">
-                   ${faviconEl(item, 'icon-img', 'icon-img-mono')}
+                   <img class="icon-img"
+                     src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
+                     onerror="this.style.display='none'"
+                     ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
                    <div class="icon-edit-overlay">✎</div>
                  </div>
                  <span class="icon-label">${esc(item.name)}</span>
                </div>
                <button class="icon-del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')" title="Delete">×</button>`
-            : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')">
+            : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer">
                  <div class="icon-img-wrap">
-                   ${faviconEl(item, 'icon-img', 'icon-img-mono')}
+                   <img class="icon-img"
+                     src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
+                     onerror="this.style.display='none'"
+                     ${(!item.iconUrl && !faviconUrl(item.url)) ? 'style="display:none"' : ''}>
                  </div>
                  ${item.showLabel ? `<span class="icon-label">${esc(item.name)}</span>` : ''}
                </a>`}
@@ -372,17 +330,16 @@ function renderSearchView(app) {
       </div>
       <div class="toolbar-right">
         <span class="search-count">${results.length} result${results.length!==1?'s':''}</span>
-        ${editMode
-          ? `<button class="edit-mode-btn cancel" onclick="cancelEditMode()">Cancel</button>
-             <button class="edit-mode-btn active" onclick="toggleEditMode()">Done</button>`
-          : `<button class="edit-mode-btn" onclick="toggleEditMode()">Edit</button>`}
+        <button class="edit-mode-btn ${editMode?'active':''}" onclick="toggleEditMode()">
+          ${editMode ? 'Done' : 'Edit'}
+        </button>
       </div>
     </div>
     <div class="search-results">
       ${results.length
         ? results.map(({card, group, item}) => `
             <a class="search-result-item"
-               href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')"
+               href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer">
               <img class="link-favicon"
                 src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
                 onerror="this.style.display='none'"
