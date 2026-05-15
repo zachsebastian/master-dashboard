@@ -44,16 +44,41 @@ const ALL_MODULES = [
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>`,
     desc: 'Track projects, log updates, manage tasks, and monitor progress across all your initiatives.',
     href: '/projects/',
-    table: 'dashboards',
+    async fetchStats(sb, userId) {
+      const mode  = localStorage.getItem('digestWeekMode') || 'rolling';
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      let startStr, endStr, rangeLabel;
 
-    computeStats(data) {
-      const projects = (data && data.projects) || [];
-      const active = projects.filter(p => p.status !== 'complete' && p.status !== 'archived').length;
+      if (mode === 'custom') {
+        startStr   = localStorage.getItem('digestCustomStart');
+        endStr     = localStorage.getItem('digestCustomEnd');
+        if (startStr && endStr) {
+          const s = new Date(startStr + 'T00:00:00');
+          const e = new Date(endStr   + 'T00:00:00');
+          rangeLabel = `${s.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+        } else {
+          startStr = new Date(today.getTime() - 6 * 86400000).toISOString().split('T')[0];
+          endStr   = today.toISOString().split('T')[0];
+          rangeLabel = '7d';
+        }
+      } else if (mode === 'sun') {
+        const s = new Date(today); s.setDate(today.getDate() - today.getDay());
+        const e = new Date(s);     e.setDate(s.getDate() + 6);
+        startStr   = s.toISOString().split('T')[0];
+        endStr     = e.toISOString().split('T')[0];
+        rangeLabel = 'Sun–Sat';
+      } else {
+        startStr   = new Date(today.getTime() - 6 * 86400000).toISOString().split('T')[0];
+        endStr     = today.toISOString().split('T')[0];
+        rangeLabel = '7d';
+      }
+
+      const { data: blob } = await sb.from('dashboards').select('data').eq('user_id', userId).maybeSingle();
+      const projects   = blob?.data?.projects || [];
+      const active     = projects.filter(p => p.status !== 'complete' && p.status !== 'archived').length;
       const allEntries = projects.flatMap(p => (p.entries || []).map(e => ({ ...e, projectName: p.name })));
-      const recent = allEntries.filter(e => {
-        if (!e.date) return false;
-        return (Date.now() - new Date(e.date).getTime()) / 86400000 <= 7;
-      }).length;
+      const recent     = allEntries.filter(e => e.date && e.date >= startStr && e.date <= endStr).length;
+
       const buckets = new Array(12).fill(0);
       allEntries.forEach(e => {
         if (!e.date) return;
@@ -61,9 +86,10 @@ const ALL_MODULES = [
         if (w >= 0 && w < 12) buckets[11 - w]++;
       });
       const sorted = allEntries.filter(e => e.date).sort((a, b) => new Date(b.date) - new Date(a.date));
+
       return {
         primary:   { value: active, label: 'Active' },
-        secondary: { value: recent, label: 'Updates · 7d' },
+        secondary: { value: recent, label: `Updates · ${rangeLabel}` },
         spark: buckets.some(b => b > 0) ? buckets : null,
         latestEntries: sorted.slice(0, 6).map(e => ({
           when: e.date, target: e.projectName,
