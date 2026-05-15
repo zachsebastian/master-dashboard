@@ -164,25 +164,34 @@ const ALL_MODULES = [
 
       // Mirror the mode the user has selected inside the digest module
       const mode = localStorage.getItem('digestWeekMode') || 'rolling';
-      let start, end, weekLabel;
+      let startStr, endStr, weekLabel;
 
-      if (mode === 'rolling') {
-        start     = new Date(today.getTime() - 6 * 86400000);
-        end       = new Date(today);
-        weekLabel = 'Rolling 7d';
-      } else if (mode === 'mon') {
-        const diff = (today.getDay() === 0 ? -6 : 1 - today.getDay());
-        start = new Date(today); start.setDate(today.getDate() + diff);
-        end   = new Date(start); end.setDate(start.getDate() + 6);
-        weekLabel = 'Mon–Sun';
-      } else {
-        start = new Date(today); start.setDate(today.getDate() - today.getDay());
-        end   = new Date(start); end.setDate(start.getDate() + 6);
+      if (mode === 'custom') {
+        startStr  = localStorage.getItem('digestCustomStart');
+        endStr    = localStorage.getItem('digestCustomEnd');
+        if (startStr && endStr) {
+          const s = new Date(startStr + 'T00:00:00');
+          const e = new Date(endStr   + 'T00:00:00');
+          weekLabel = `${s.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+        } else {
+          // Fallback if custom was set but dates are missing
+          startStr  = new Date(today.getTime() - 6 * 86400000).toISOString().split('T')[0];
+          endStr    = today.toISOString().split('T')[0];
+          weekLabel = 'Rolling 7d';
+        }
+      } else if (mode === 'sun') {
+        const start = new Date(today); start.setDate(today.getDate() - today.getDay());
+        const end   = new Date(start); end.setDate(start.getDate() + 6);
+        startStr  = start.toISOString().split('T')[0];
+        endStr    = end.toISOString().split('T')[0];
         weekLabel = 'Sun–Sat';
+      } else {
+        const start = new Date(today.getTime() - 6 * 86400000);
+        const end   = new Date(today);
+        startStr  = start.toISOString().split('T')[0];
+        endStr    = end.toISOString().split('T')[0];
+        weekLabel = 'Rolling 7d';
       }
-
-      const startStr = start.toISOString().split('T')[0];
-      const endStr   = end.toISOString().split('T')[0];
 
       // Count project tasks whose completing log entry falls within the range
       const { data: dashRows } = await sb.from('dashboards').select('data').eq('user_id', userId);

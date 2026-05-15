@@ -1,8 +1,11 @@
 // ── State ──
 let _currentUser       = null;
 const _storedMode = localStorage.getItem('digestWeekMode');
-let _weekMode = (_storedMode === 'rolling' || _storedMode === 'sun') ? _storedMode : 'rolling'; // 'rolling' | 'sun' | 'custom'
-let _customRange       = { start: null, end: null }; // only used when _weekMode === 'custom'
+let _weekMode = (_storedMode === 'rolling' || _storedMode === 'sun' || _storedMode === 'custom') ? _storedMode : 'rolling';
+let _customRange = {
+  start: localStorage.getItem('digestCustomStart') || null,
+  end:   localStorage.getItem('digestCustomEnd')   || null,
+};
 let _digestData        = null;
 let _reflection        = { wins: '', blockers: '', carry_forwards: '', ai_summary: null, ai_generated_at: null };
 let _reflectionHistory = []; // past weeks, sorted descending
@@ -46,7 +49,9 @@ function getWeekRange() {
 function applyCustomRange(start, end) {
   _customRange = { start, end };
   _weekMode    = 'custom';
-  // Don't persist to localStorage — custom range is session-only
+  localStorage.setItem('digestWeekMode', 'custom');
+  localStorage.setItem('digestCustomStart', start);
+  localStorage.setItem('digestCustomEnd', end);
 }
 
 // ── Load all digest data ──
