@@ -1,6 +1,35 @@
 // ── Modal state ──
 let _modalTags = [];
 
+// ── Sync project task completion back to Today List ──
+async function _syncTasksToTodayList(projectId, completedTaskIds, uncompletedTaskIds) {
+  if (!_currentUser) return;
+  if (!completedTaskIds.length && !uncompletedTaskIds.length) return;
+
+  const allTaskIds = [...completedTaskIds, ...uncompletedTaskIds];
+
+  // Find matching today_items by source_task_id
+  const { data: items, error } = await sb
+    .from('today_items')
+    .select('id, source_task_id, completed')
+    .eq('user_id', _currentUser.id)
+    .eq('source_ref_id', projectId)
+    .in('source_task_id', allTaskIds);
+
+  if (error || !items?.length) return;
+
+  await Promise.all(items.map(item => {
+    const shouldComplete   = completedTaskIds.includes(item.source_task_id);
+    const shouldUncomplete = uncompletedTaskIds.includes(item.source_task_id);
+    if (shouldComplete && !item.completed) {
+      return sb.from('today_items').update({ completed: true }).eq('id', item.id);
+    }
+    if (shouldUncomplete && item.completed) {
+      return sb.from('today_items').update({ completed: false }).eq('id', item.id);
+    }
+  }));
+}
+
 // ── Modal openers ──
 function openAddProjectModal() { renderModal('add-project', {}); }
 function openEditProjectModal(id) { renderModal('edit-project', { id }); }
@@ -369,6 +398,7 @@ function saveAddEntry(pid) {
   p.nextSteps = e.nextSteps || p.nextSteps;
   if (e.status === 'done') p.status = 'done';
   closeModal(); saveState(); render();
+  _syncTasksToTodayList(p.id, checkedIds, []);
   if (e.completion === 100 && p.status !== 'done') {
     if (confirm('🎉 All tasks complete! Mark this project as Done?')) {
       p.status = 'done';
@@ -386,13 +416,22 @@ function saveEditEntry(pid, eid) {
   e.note = document.getElementById('e-note').value.trim();
   e.nextSteps = document.getElementById('e-nextsteps').value.trim();
   const checkedIds = getCheckedTaskIds();
+  const nowCompleted   = [];
+  const nowUncompleted = [];
   (p.tasks || []).forEach(t => {
-    if (t.completedInEntry === eid && !checkedIds.includes(t.id)) t.completedInEntry = null;
-    if (!t.completedInEntry && checkedIds.includes(t.id)) t.completedInEntry = eid;
+    if (t.completedInEntry === eid && !checkedIds.includes(t.id)) {
+      t.completedInEntry = null;
+      nowUncompleted.push(t.id);
+    }
+    if (!t.completedInEntry && checkedIds.includes(t.id)) {
+      t.completedInEntry = eid;
+      nowCompleted.push(t.id);
+    }
   });
   e.completion = calcCompletion(p);
   p.completion = e.completion;
   closeModal(); saveState(); render();
+  _syncTasksToTodayList(p.id, nowCompleted, nowUncompleted);
 }
 
 function deleteEntry(pid, eid) {

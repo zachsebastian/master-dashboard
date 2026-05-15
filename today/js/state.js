@@ -84,9 +84,13 @@ async function autoPullFromProjects() {
   const uid   = _currentUser.id;
   const today = getTodayDate();
 
-  // Only run if there are no project-sourced items today
-  const alreadyPulled = todayItems.filter(i => i.source === 'project');
-  if (alreadyPulled.length > 0) return;
+  // How many uncompleted slots are open (target: 5)
+  const uncompletedCount = todayItems.filter(i => !i.completed).length;
+  const slotsOpen = 5 - uncompletedCount;
+  if (slotsOpen <= 0) return;
+
+  // Tasks already in today's list — skip these when pulling
+  const existingTaskIds = new Set(todayItems.map(i => i.source_task_id).filter(Boolean));
 
   // Fetch the dashboard blob
   const { data: dashRows, error } = await sb
@@ -105,7 +109,9 @@ async function autoPullFromProjects() {
   for (const project of projects) {
     if (project.status !== 'in-progress') continue;
 
-    const incompleteTasks = (project.tasks || []).filter(t => t.completedInEntry == null);
+    const incompleteTasks = (project.tasks || []).filter(
+      t => t.completedInEntry == null && !existingTaskIds.has(t.id)
+    );
     if (!incompleteTasks.length) continue;
 
     // Score the project
@@ -132,9 +138,9 @@ async function autoPullFromProjects() {
 
   if (!candidates.length) return;
 
-  // Sort by score desc, take up to 5
+  // Sort by score desc, fill only the open slots
   candidates.sort((a, b) => b.score - a.score);
-  const top = candidates.slice(0, 5);
+  const top = candidates.slice(0, slotsOpen);
 
   const maxOrder = todayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
   let nextOrder = maxOrder + 1;
