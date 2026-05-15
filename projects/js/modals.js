@@ -296,6 +296,29 @@ function buildModal(type, data) {
     </div></div>`;
   }
 
+  // ── Edit Blocker ──
+  if (type === 'edit-blocker') {
+    const p = state.projects.find(x => x.id === data.pid);
+    const raw = p?.blockers?.[data.idx];
+    const current = raw ? esc(typeof raw === 'string' ? raw : raw.text) : '';
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:400px">
+      <div class="modal-header"><div class="modal-title">Edit blocker</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Blocker description</label>
+          <input class="form-input" id="b-text" value="${current}" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveEditBlocker('${data.pid}',${data.idx})">Save</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
   return '';
 }
 
@@ -444,12 +467,50 @@ function deleteEntry(pid, eid) {
   closeModal(); saveState(); render();
 }
 
+// ── Migrate blockers from legacy string format to objects ──
+function _migrateBlockers(p) {
+  if (!p.blockers) { p.blockers = []; return; }
+  p.blockers = p.blockers.map(b =>
+    typeof b === 'string'
+      ? { id: uid(), text: b, resolved: false, resolvedAt: null }
+      : b
+  );
+}
+
 function saveBlocker(pid) {
   const p = state.projects.find(x => x.id === pid);
   const text = document.getElementById('b-text').value.trim();
   if (!text) { alert('Please enter a blocker description.'); return; }
-  p.blockers.push(text);
+  _migrateBlockers(p);
+  p.blockers.push({ id: uid(), text, resolved: false, resolvedAt: null });
   closeModal(); saveState(); render();
+}
+
+function openEditBlockerModal(pid, idx) {
+  renderModal('edit-blocker', { pid, idx });
+}
+
+function saveEditBlocker(pid, idx) {
+  const p = state.projects.find(x => x.id === pid);
+  if (!p) return;
+  _migrateBlockers(p);
+  const b = p.blockers[idx];
+  if (!b) return;
+  const text = document.getElementById('b-text').value.trim();
+  if (!text) { alert('Please enter a blocker description.'); return; }
+  b.text = text;
+  closeModal(); saveState(); render();
+}
+
+function resolveBlocker(pid, idx) {
+  const p = state.projects.find(x => x.id === pid);
+  if (!p) return;
+  _migrateBlockers(p);
+  const b = p.blockers[idx];
+  if (!b) return;
+  b.resolved   = true;
+  b.resolvedAt = new Date().toISOString().slice(0, 10);
+  saveState(); render();
 }
 
 function saveAddTask(pid) {

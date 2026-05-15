@@ -241,12 +241,33 @@ function renderDetailView() {
     </div>`;
   }).join('') : `<div style="padding:16px 20px;font-size:12px;color:var(--text-3);font-style:italic">No tasks yet.</div>`;
 
-  const blockersHTML = p.blockers.length ? p.blockers.map((b, i) => `
-    <div class="blocker-row">
-      <div class="blocker-text">${esc(b)}</div>
-      <button class="btn btn-sm" onclick="resolveBlocker('${p.id}',${i})" title="Mark resolved">✓</button>
-    </div>
-  `).join('') : `<div style="font-size:12px;color:var(--text-3);font-style:italic">No active blockers.</div>`;
+  // Normalize blockers (legacy strings → objects) — use original array indices for onclick
+  const allBlockers = (p.blockers || []).map((b, i) =>
+    typeof b === 'string' ? { _idx: i, text: b, resolved: false, resolvedAt: null } : { ...b, _idx: i }
+  );
+  const activeBlockers   = allBlockers.filter(b => !b.resolved);
+  const resolvedBlockers = allBlockers.filter(b =>  b.resolved);
+
+  const blockersHTML = activeBlockers.length
+    ? activeBlockers.map(b => `
+        <div class="blocker-row">
+          <div class="blocker-text">${esc(b.text)}</div>
+          <div class="blocker-actions">
+            <button class="btn btn-sm" onclick="openEditBlockerModal('${p.id}',${b._idx})" title="Edit">✏️</button>
+            <button class="btn btn-sm" onclick="resolveBlocker('${p.id}',${b._idx})" title="Mark resolved">✓</button>
+          </div>
+        </div>`).join('')
+    : `<div style="font-size:12px;color:var(--text-3);font-style:italic">No active blockers.</div>`;
+
+  const resolvedBlockersHTML = resolvedBlockers.length ? `
+    <div class="blocker-resolved-section">
+      <div class="blocker-resolved-header">Resolved (${resolvedBlockers.length})</div>
+      ${resolvedBlockers.map(b => `
+        <div class="blocker-row blocker-row--resolved">
+          <div class="blocker-text">${esc(b.text)}</div>
+          <div class="blocker-resolved-date">${b.resolvedAt || ''}</div>
+        </div>`).join('')}
+    </div>` : '';
 
   return `
   <button onclick="setView('summary')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-3);padding:0 0 14px 0;display:flex;align-items:center;gap:4px;transition:color 0.1s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-3)'">← Back to Summary</button>
@@ -320,7 +341,7 @@ function renderDetailView() {
         <span class="panel-title">⚠️ Blockers</span>
         <button class="btn btn-sm" onclick="openAddBlockerModal('${p.id}')">+ Add</button>
       </div>
-      <div class="panel-body"><div class="blocker-list">${blockersHTML}</div></div>
+      <div class="panel-body"><div class="blocker-list">${blockersHTML}${resolvedBlockersHTML}</div></div>
     </div>
 
     <div class="panel">
@@ -419,12 +440,6 @@ function updateProjectPriority(id, val) {
   const p = state.projects.find(x => x.id === id);
   if (!p) return;
   p.priority = val;
-  saveState(); render();
-}
-function resolveBlocker(id, idx) {
-  const p = state.projects.find(x => x.id === id);
-  if (!p) return;
-  p.blockers.splice(idx, 1);
   saveState(); render();
 }
 function deleteProject(id) {

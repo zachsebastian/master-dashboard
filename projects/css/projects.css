@@ -245,8 +245,17 @@ svg.proj-chart { width: 100%; height: 160px; display: block; overflow: visible; 
   padding: 10px 14px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: var(--r-sm);
 }
-.blocker-text     { flex: 1; font-size: 13px; color: var(--text-2); }
-.blocker-resolved { text-decoration: line-through; color: var(--text-3); }
+.blocker-text    { flex: 1; font-size: 13px; color: var(--text-2); }
+.blocker-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.blocker-row--resolved { opacity: 0.5; }
+.blocker-row--resolved .blocker-text { text-decoration: line-through; color: var(--text-3); }
+.blocker-resolved-date { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.blocker-resolved-section { margin-top: 10px; }
+.blocker-resolved-header {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-3);
+  margin-bottom: 6px; padding-left: 2px;
+}
 
 /* ── Form elements (projects overrides shared) ── */
 .form-group { margin-bottom: 16px; }
