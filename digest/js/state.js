@@ -130,7 +130,7 @@ async function loadDigestData() {
   // Fetch submitted Case Writer tickets in range
   const { data: caseTickets } = await sb
     .from('case_writer_tickets')
-    .select('id, title, template_name, submitted_at')
+    .select('id, title, template_name, submitted_at, jira_ticket')
     .eq('user_id', uid)
     .gte('submitted_at', start + 'T00:00:00')
     .lte('submitted_at', end   + 'T23:59:59')
@@ -276,7 +276,8 @@ function _buildSummaryText(data) {
     lines.push(`DEVELOPMENT TICKETS CREATED (${caseTickets.length}):`);
     for (const t of caseTickets) {
       const date = t.submitted_at ? new Date(t.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
-      lines.push(`  ✓ [${t.template_name}] ${t.title}${date ? ` · ${date}` : ''}`);
+      const jira = t.jira_ticket ? ` · ${t.jira_ticket}` : '';
+      lines.push(`  ✓ [${t.template_name}] ${t.title}${date ? ` · ${date}` : ''}${jira}`);
     }
     lines.push('');
   }

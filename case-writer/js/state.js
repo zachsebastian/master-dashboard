@@ -106,6 +106,30 @@ async function deleteTicket(id) {
   _tickets = _tickets.filter(t => t.id !== id);
 }
 
+async function updateTicketDate(id, dateStr) {
+  // Store as start-of-day ISO so digest range comparisons work correctly
+  const iso = new Date(dateStr + 'T12:00:00').toISOString();
+  const { error } = await sb
+    .from('case_writer_tickets')
+    .update({ submitted_at: iso })
+    .eq('id', id);
+  if (error) { console.error('updateTicketDate:', error); return false; }
+  const ticket = _tickets.find(t => t.id === id);
+  if (ticket) ticket.submitted_at = iso;
+  return true;
+}
+
+async function updateTicketJira(id, jiraTicket) {
+  const { error } = await sb
+    .from('case_writer_tickets')
+    .update({ jira_ticket: jiraTicket })
+    .eq('id', id);
+  if (error) { console.error('updateTicketJira:', error); return false; }
+  const ticket = _tickets.find(t => t.id === id);
+  if (ticket) ticket.jira_ticket = jiraTicket;
+  return true;
+}
+
 async function reopenTicketAsDraft(ticket) {
   const t = _templates.find(t => t.id === ticket.template_id);
   if (!t) return false;

@@ -266,6 +266,19 @@
   font-size: 12.5px;
 }
 
+.digest-jira-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--blue-bg, rgba(74,159,212,0.12));
+  color: var(--blue);
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
 .digest-empty-section {
   font-size: 13px;
   color: var(--text-3);

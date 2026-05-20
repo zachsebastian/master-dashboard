@@ -553,6 +553,59 @@
   margin-right: 4px;
 }
 
+/* ── Jira badge (shared look) ── */
+.cw-ticket-jira-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--blue-bg, rgba(74,159,212,0.12));
+  color: var(--blue);
+  margin-left: 4px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
+/* ── Meta fields row (Jira + Date) inside expanded ticket ── */
+.cw-ticket-meta-row {
+  display: flex;
+  gap: 64px;
+  justify-content: center;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cw-ticket-meta-field {
+  flex: 0 0 auto;
+  width: calc(35% - 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cw-ticket-jira-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+.cw-ticket-jira-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cw-ticket-jira-input {
+  flex: 1;
+  height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+.cw-ticket-body-content {
+  font-size: 14px;
+}
+
 /* ── Submitted tickets section ── */
 .cw-tickets-section {
   margin-top: 32px;

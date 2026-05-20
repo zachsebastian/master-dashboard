@@ -284,11 +284,14 @@ function renderCaseTicketsSection(caseTickets) {
     const date = t.submitted_at
       ? new Date(t.submitted_at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
       : '';
+    const jiraBadge = t.jira_ticket
+      ? `<span class="digest-jira-badge">${esc(t.jira_ticket)}</span>`
+      : '';
     return `
       <div class="digest-item">
         <div class="digest-item-dot orange"></div>
         <div class="digest-item-text">
-          <div class="digest-item-label">${esc(t.title || '(untitled)')}</div>
+          <div class="digest-item-label">${esc(t.title || '(untitled)')}${jiraBadge}</div>
           <div class="digest-item-note">${esc(t.template_name || '')}${date ? ` · ${date}` : ''}</div>
         </div>
       </div>`;

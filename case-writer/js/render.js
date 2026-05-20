@@ -100,7 +100,7 @@ function _renderTicketsSection() {
             <div class="cw-ticket-header">
               <div class="cw-ticket-info">
                 <div class="cw-ticket-title">${escHtml(t.title || 'Untitled')}</div>
-                <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}</div>
+                <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}${t.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(t.jira_ticket)}</span>` : ''}</div>
               </div>
               <div class="cw-ticket-actions">
                 <button class="btn btn-sm cw-reopen-ticket-btn" data-ticket-id="${escHtml(t.id)}">Re-open as Draft</button>
@@ -109,7 +109,23 @@ function _renderTicketsSection() {
               </div>
             </div>
             <div class="cw-ticket-content" style="display:none">
-              ${t.content_html}
+              <div class="cw-ticket-meta-row">
+                <div class="cw-ticket-meta-field">
+                  <label class="cw-ticket-jira-label" for="cw-jira-${escHtml(t.id)}">Jira Ticket #</label>
+                  <div class="cw-ticket-jira-input-wrap">
+                    <input class="cw-input cw-ticket-jira-input" id="cw-jira-${escHtml(t.id)}" type="text" placeholder="e.g. PROJ-1234" value="${escHtml(t.jira_ticket || '')}">
+                    <button class="btn btn-sm cw-save-jira-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
+                  </div>
+                </div>
+                <div class="cw-ticket-meta-field">
+                  <label class="cw-ticket-jira-label" for="cw-date-${escHtml(t.id)}">Date Submitted</label>
+                  <div class="cw-ticket-jira-input-wrap">
+                    <input class="cw-input cw-ticket-jira-input" id="cw-date-${escHtml(t.id)}" type="date" value="${escHtml(t.submitted_at ? t.submitted_at.split('T')[0] : '')}">
+                    <button class="btn btn-sm cw-save-date-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
+                  </div>
+                </div>
+              </div>
+              <div class="cw-ticket-body-content">${t.content_html}</div>
             </div>
           </div>
         `).join('')}
@@ -391,6 +407,60 @@ function _bindListEvents() {
       btn.disabled = true;
       await deleteTicket(btn.dataset.ticketId);
       render();
+    });
+  });
+
+  document.querySelectorAll('.cw-save-date-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id    = btn.dataset.ticketId;
+      const input = document.getElementById(`cw-date-${id}`);
+      if (!input || !input.value) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      const ok = await updateTicketDate(id, input.value);
+      if (ok) {
+        btn.textContent = '✓ Saved';
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Save'; }, 2000);
+        // Update the visible meta line
+        const row    = btn.closest('.cw-ticket-row');
+        const meta   = row?.querySelector('.cw-ticket-meta');
+        const ticket = _tickets.find(t => t.id === id);
+        if (meta && ticket) {
+          const jiraBadge = ticket.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(ticket.jira_ticket)}</span>` : '';
+          meta.innerHTML = `${escHtml(ticket.template_name)} · ${escHtml(_fmtDate(ticket.submitted_at))}${jiraBadge}`;
+        }
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+    });
+  });
+
+  document.querySelectorAll('.cw-save-jira-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id    = btn.dataset.ticketId;
+      const input = document.getElementById(`cw-jira-${id}`);
+      if (!input) return;
+      const val = input.value.trim();
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      const ok = await updateTicketJira(id, val);
+      if (ok) {
+        btn.textContent = '✓ Saved';
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Save'; }, 2000);
+        // Update the badge in the header without re-rendering
+        const row    = btn.closest('.cw-ticket-row');
+        const meta   = row?.querySelector('.cw-ticket-meta');
+        if (meta) {
+          const ticket = _tickets.find(t => t.id === id);
+          if (ticket) meta.innerHTML = `${escHtml(ticket.template_name)} · ${escHtml(_fmtDate(ticket.submitted_at))}${val ? ` · <span class="cw-ticket-jira-badge">${escHtml(val)}</span>` : ''}`;
+        }
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
     });
   });
 }
