@@ -130,10 +130,6 @@ function _renderForm() {
         <button class="btn" id="cw-back-btn">← Back</button>
         <div class="cw-page-title">${escHtml(t.name)}</div>
         <div class="cw-form-header-actions">
-          <button class="btn cw-ai-fill-btn" id="cw-ai-fill-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-            AI Fill
-          </button>
           <button class="btn" id="cw-save-draft-btn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             ${_activeDraft ? 'Update Draft' : 'Save Draft'}
@@ -147,6 +143,10 @@ function _renderForm() {
       </div>
 
       <div class="cw-form-footer">
+        <button class="btn cw-ai-fill-btn" id="cw-ai-fill-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+          AI Assist
+        </button>
         <button class="btn btn-primary" id="cw-generate-btn">Generate Ticket</button>
       </div>
 
@@ -489,7 +489,7 @@ function _openAiFillModal() {
       <div class="cw-ai-modal-header">
         <div class="cw-ai-modal-title">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-          AI Fill
+          AI Assist
         </div>
         <button class="cw-ai-modal-close" id="cw-ai-modal-close">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
@@ -620,13 +620,24 @@ Rules:
     return;
   }
 
-  const json   = await resp.json();
-  const rawText = (json?.content?.[0]?.text || '').trim();
+  const json    = await resp.json();
+  let rawText   = (json?.content?.[0]?.text || '').trim();
+  console.log('[AI Assist] raw response:', rawText);
+
+  // Strip markdown code fences if the model wrapped the JSON anyway
+  rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+  // If still not starting with {, try to extract the first {...} block
+  if (!rawText.startsWith('{')) {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) rawText = match[0];
+  }
 
   let fieldValues;
   try {
     fieldValues = JSON.parse(rawText);
-  } catch {
+  } catch (e) {
+    console.error('[AI Assist] JSON parse failed:', e, 'raw:', rawText);
     _showAiFillError('AI returned an unexpected response. Please try again.');
     if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate with AI`; }
     return;
