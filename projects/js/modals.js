@@ -278,12 +278,23 @@ function buildModal(type, data) {
 
   // ── Add Blocker ──
   if (type === 'add-blocker') {
+    const p = state.projects.find(x => x.id === data.pid);
+    const tasks = (p?.tasks || []);
+    const taskOptions = tasks.length
+      ? `<option value="">— None —</option>` + tasks.map(t =>
+          `<option value="${esc(t.id)}">${esc(t.text)}${t.completedInEntry ? ' ✓' : ''}</option>`
+        ).join('')
+      : `<option value="">No tasks yet</option>`;
     return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:400px">
       <div class="modal-header"><div class="modal-title">Add blocker</div><button class="modal-close" onclick="closeModal()">×</button></div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Blocker description</label>
           <input class="form-input" id="b-text" placeholder="e.g. Waiting on legal sign-off…" autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blocking which task? <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>
+          <select class="form-input" id="b-task">${taskOptions}</select>
         </div>
       </div>
       <div class="modal-footer">
@@ -300,13 +311,22 @@ function buildModal(type, data) {
   if (type === 'edit-blocker') {
     const p = state.projects.find(x => x.id === data.pid);
     const raw = p?.blockers?.[data.idx];
-    const current = raw ? esc(typeof raw === 'string' ? raw : raw.text) : '';
+    const current  = raw ? esc(typeof raw === 'string' ? raw : raw.text) : '';
+    const linkedId = (raw && typeof raw === 'object') ? (raw.taskId || '') : '';
+    const tasks = (p?.tasks || []);
+    const taskOptions = `<option value="">— None —</option>` + tasks.map(t =>
+      `<option value="${esc(t.id)}"${t.id === linkedId ? ' selected' : ''}>${esc(t.text)}${t.completedInEntry ? ' ✓' : ''}</option>`
+    ).join('');
     return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:400px">
       <div class="modal-header"><div class="modal-title">Edit blocker</div><button class="modal-close" onclick="closeModal()">×</button></div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Blocker description</label>
           <input class="form-input" id="b-text" value="${current}" autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blocking which task? <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>
+          <select class="form-input" id="b-task">${taskOptions}</select>
         </div>
       </div>
       <div class="modal-footer">
@@ -479,10 +499,11 @@ function _migrateBlockers(p) {
 
 function saveBlocker(pid) {
   const p = state.projects.find(x => x.id === pid);
-  const text = document.getElementById('b-text').value.trim();
+  const text   = document.getElementById('b-text').value.trim();
+  const taskId = document.getElementById('b-task')?.value || null;
   if (!text) { alert('Please enter a blocker description.'); return; }
   _migrateBlockers(p);
-  p.blockers.push({ id: uid(), text, resolved: false, resolvedAt: null });
+  p.blockers.push({ id: uid(), text, taskId: taskId || null, resolved: false, resolvedAt: null });
   closeModal(); saveState(); render();
 }
 
@@ -496,9 +517,11 @@ function saveEditBlocker(pid, idx) {
   _migrateBlockers(p);
   const b = p.blockers[idx];
   if (!b) return;
-  const text = document.getElementById('b-text').value.trim();
+  const text   = document.getElementById('b-text').value.trim();
+  const taskId = document.getElementById('b-task')?.value || null;
   if (!text) { alert('Please enter a blocker description.'); return; }
-  b.text = text;
+  b.text   = text;
+  b.taskId = taskId || null;
   closeModal(); saveState(); render();
 }
 

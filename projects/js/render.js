@@ -225,14 +225,25 @@ function renderDetailView() {
     </div>
   `).join('') : `<div style="padding:20px"><div class="entry-empty">No entries yet. Add your first progress update.</div></div>`;
 
+  // Normalize blockers first so we can reference active ones when rendering tasks
+  const allBlockers = (p.blockers || []).map((b, i) =>
+    typeof b === 'string' ? { _idx: i, text: b, resolved: false, resolvedAt: null } : { ...b, _idx: i }
+  );
+  const activeBlockers   = allBlockers.filter(b => !b.resolved);
+  const resolvedBlockers = allBlockers.filter(b =>  b.resolved);
+
+  // Set of task IDs that have at least one active blocker
+  const blockedTaskIds = new Set(activeBlockers.map(b => b.taskId).filter(Boolean));
+
   const tasks = p.tasks || [];
   const openTasks = tasks.filter(t => !t.completedInEntry);
   const doneTasks = tasks.filter(t => t.completedInEntry);
   const tasksHTML = tasks.length ? tasks.map(t => {
-    const isDone = !!t.completedInEntry;
+    const isDone    = !!t.completedInEntry;
+    const isBlocked = !isDone && blockedTaskIds.has(t.id);
     const entry = isDone ? p.entries.find(e => e.id === t.completedInEntry) : null;
     return `<div class="task-row">
-      <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}</div>
+      <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}${isBlocked ? ` <span class="task-blocked-chip">Blocked</span>` : ''}</div>
       ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
       ${!isDone ? `<div style="display:flex;gap:4px">
         <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
@@ -241,22 +252,24 @@ function renderDetailView() {
     </div>`;
   }).join('') : `<div style="padding:16px 20px;font-size:12px;color:var(--text-3);font-style:italic">No tasks yet.</div>`;
 
-  // Normalize blockers (legacy strings → objects) — use original array indices for onclick
-  const allBlockers = (p.blockers || []).map((b, i) =>
-    typeof b === 'string' ? { _idx: i, text: b, resolved: false, resolvedAt: null } : { ...b, _idx: i }
-  );
-  const activeBlockers   = allBlockers.filter(b => !b.resolved);
-  const resolvedBlockers = allBlockers.filter(b =>  b.resolved);
-
   const blockersHTML = activeBlockers.length
-    ? activeBlockers.map(b => `
+    ? activeBlockers.map(b => {
+        const linkedTask = b.taskId ? (p.tasks || []).find(t => t.id === b.taskId) : null;
+        const taskTag = linkedTask
+          ? `<span class="blocker-task-tag">↳ ${esc(linkedTask.text)}</span>`
+          : '';
+        return `
         <div class="blocker-row">
-          <div class="blocker-text">${esc(b.text)}</div>
+          <div class="blocker-body">
+            <div class="blocker-text">${esc(b.text)}</div>
+            ${taskTag}
+          </div>
           <div class="blocker-actions">
             <button class="btn btn-sm" onclick="openEditBlockerModal('${p.id}',${b._idx})" title="Edit">✏️</button>
             <button class="btn btn-sm" onclick="resolveBlocker('${p.id}',${b._idx})" title="Mark resolved">✓</button>
           </div>
-        </div>`).join('')
+        </div>`;
+      }).join('')
     : `<div style="font-size:12px;color:var(--text-3);font-style:italic">No active blockers.</div>`;
 
   const resolvedBlockersHTML = resolvedBlockers.length ? `

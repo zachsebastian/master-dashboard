@@ -113,10 +113,18 @@ async function autoPullFromProjects(topUp = false) {
   for (const project of projects) {
     if (project.status !== 'in-progress') continue;
 
+    // Build set of task IDs blocked by an active blocker on this project
+    const blockedTaskIds = new Set(
+      (project.blockers || [])
+        .filter(b => typeof b === 'object' && !b.resolved && b.taskId)
+        .map(b => b.taskId)
+    );
+
     const incompleteTasks = (project.tasks || []).filter(
       t => t.completedInEntry == null
         && !existingTaskIds.has(t.id)
         && !existingTexts.has(t.text.trim().toLowerCase())
+        && !blockedTaskIds.has(t.id)
     );
     if (!incompleteTasks.length) continue;
 

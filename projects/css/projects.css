@@ -245,7 +245,18 @@ svg.proj-chart { width: 100%; height: 160px; display: block; overflow: visible; 
   padding: 10px 14px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: var(--r-sm);
 }
-.blocker-text    { flex: 1; font-size: 13px; color: var(--text-2); }
+.task-blocked-chip {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--red);
+  background: var(--red-bg); border-radius: 4px;
+  padding: 2px 6px; flex-shrink: 0;
+}
+.blocker-body    { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.blocker-text    { font-size: 13px; color: var(--text-2); }
+.blocker-task-tag {
+  font-size: 11px; color: var(--text-3); font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .blocker-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .blocker-row--resolved { opacity: 0.5; }
 .blocker-row--resolved .blocker-text { text-decoration: line-through; color: var(--text-3); }
