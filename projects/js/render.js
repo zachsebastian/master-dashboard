@@ -246,6 +246,7 @@ function renderDetailView() {
       <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}${isBlocked ? ` <span class="task-blocked-chip">Blocked</span>` : ''}</div>
       ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
       ${!isDone ? `<div style="display:flex;gap:4px">
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" id="today-btn-${t.id}" onclick="addTaskToToday('${p.id}','${t.id}',this)">+ Today</button>
         <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
         <button class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteTask('${p.id}','${t.id}')">✕</button>
       </div>` : ''}

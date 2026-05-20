@@ -574,3 +574,61 @@ function saveEditTask(pid, tid) {
   if (task) task.text = text;
   closeModal(); saveState(); render();
 }
+
+// ── Add project task to Today List manually ──
+async function addTaskToToday(pid, tid, btn) {
+  const p    = state.projects.find(x => x.id === pid);
+  const task = (p?.tasks || []).find(t => t.id === tid);
+  if (!p || !task || !_currentUser) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Check for duplicate
+  const { data: existing } = await sb
+    .from('today_items')
+    .select('id')
+    .eq('user_id', _currentUser.id)
+    .eq('source_task_id', tid)
+    .eq('item_date', today)
+    .maybeSingle();
+
+  if (existing) {
+    btn.textContent = 'Already added';
+    btn.disabled = true;
+    return;
+  }
+
+  btn.textContent = 'Adding…';
+  btn.disabled = true;
+
+  // Get max sort_order for today
+  const { data: todayRows } = await sb
+    .from('today_items')
+    .select('sort_order')
+    .eq('user_id', _currentUser.id)
+    .eq('item_date', today)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+
+  const maxOrder = todayRows?.[0]?.sort_order ?? -1;
+
+  const { error } = await sb.from('today_items').insert({
+    user_id:         _currentUser.id,
+    text:            task.text,
+    completed:       false,
+    source:          'project',
+    source_ref_id:   p.id,
+    source_ref_name: p.name,
+    source_task_id:  task.id,
+    sort_order:      maxOrder + 1,
+    item_date:       today,
+  });
+
+  if (error) {
+    btn.textContent = 'Failed';
+    btn.disabled = false;
+    return;
+  }
+
+  btn.textContent = '✓ Added';
+}
