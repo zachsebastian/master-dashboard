@@ -326,6 +326,14 @@
   display: flex;
   gap: 8px;
 }
+.today-add-row .btn-primary {
+  width: auto;
+  flex-shrink: 0;
+  padding: 0 18px;
+  font-size: 13px;
+  margin-top: 0;
+  height: 38px;
+}
 
 .today-add-input {
   flex: 1;
