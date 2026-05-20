@@ -112,7 +112,7 @@ function _renderItem(item) {
       <div class="today-item-body">
         <span class="today-item-text">${escHtml(item.text)}</span>
         ${item.source === 'project' && item.source_ref_name
-          ? `<span class="today-item-source">${escHtml(item.source_ref_name)}</span>`
+          ? `<button class="today-item-source today-item-source-link" onclick="window.location.href='/projects/?project=${escHtml(item.source_ref_id)}'" title="Open project">${escHtml(item.source_ref_name)}</button>`
           : ''}
       </div>
       <div class="today-item-right">
@@ -169,7 +169,7 @@ function _renderHistoryView() {
             <div class="history-item-body">
               <span class="history-item-text">${escHtml(item.text)}</span>
               ${item.source === 'project' && item.source_ref_name
-                ? `<span class="today-item-source">${escHtml(item.source_ref_name)}</span>`
+                ? `<button class="today-item-source today-item-source-link" onclick="window.location.href='/projects/?project=${escHtml(item.source_ref_id)}'" title="Open project">${escHtml(item.source_ref_name)}</button>`
                 : ''}
             </div>
           </div>`).join('')}

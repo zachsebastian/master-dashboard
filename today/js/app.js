@@ -29,16 +29,22 @@ async function initAuth() {
   _currentUser = session.user;
   initImpersonationBanner();
 
-  const { data: prefs } = await sb.from('user_preferences')
-    .select('theme').eq('user_id', session.user.id).maybeSingle();
-  const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
+  const [prefsRes, modulesRes] = await Promise.all([
+    sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle(),
+    sb.from('user_modules').select('module').eq('user_id', session.user.id),
+  ]);
+  const theme = prefsRes.data?.theme || localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
+
+  const userModules = new Set((modulesRes.data || []).map(r => r.module));
 
   initModuleHeader({
     name: 'Today',
     subtitle: 'Daily Priorities',
-    leftActions: ''
+    leftActions: userModules.has('projects')
+      ? `<button class="btn" onclick="window.location.href='/projects/'">Projects</button>`
+      : '',
   });
 
   await loadTodayState();

@@ -133,8 +133,9 @@ async function initAuth() {
     name: 'Links',
     subtitle: 'Home',
     leftActions: [
-      userModules.has('projects') ? `<a class="btn" href="/projects/">Projects</a>` : '',
-      userModules.has('metrics')  ? `<a class="btn" href="/metrics/">Metrics</a>`  : '',
+      userModules.has('today')    ? `<button class="btn" onclick="window.location.href='/today/'">Today</button>`       : '',
+      userModules.has('projects') ? `<button class="btn" onclick="window.location.href='/projects/'">Projects</button>` : '',
+      userModules.has('metrics')  ? `<button class="btn" onclick="window.location.href='/metrics/'">Metrics</button>`  : '',
     ].join('')
   });
 

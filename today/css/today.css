@@ -268,6 +268,16 @@
   font-weight: 600;
   flex-shrink: 0;
 }
+.today-item-source-link {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: inherit;
+  transition: opacity 0.1s;
+}
+.today-item-source-link:hover {
+  opacity: 0.75;
+}
 
 /* ── Right actions (visible on hover) ── */
 .today-item-right {

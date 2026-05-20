@@ -8,7 +8,7 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 13px; font-weight: 500; padding: 6px 14px;
   border-radius: var(--r-sm); border: 1px solid var(--border-md);
-  background: var(--surface); color: var(--text);
+  background: var(--surface-2); color: var(--text);
   cursor: pointer; transition: background 0.1s, opacity 0.1s;
   white-space: nowrap; line-height: 1.2;
 }

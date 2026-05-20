@@ -64,22 +64,35 @@ async function boot() {
   _currentUser = session.user;
   initImpersonationBanner();
 
-  const { data: prefs } = await sb.from('user_preferences')
-    .select('theme').eq('user_id', session.user.id).maybeSingle();
-  const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
+  const [prefsRes, modulesRes] = await Promise.all([
+    sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle(),
+    sb.from('user_modules').select('module').eq('user_id', session.user.id),
+  ]);
+  const theme = prefsRes.data?.theme || localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
+
+  const userModules = new Set((modulesRes.data || []).map(r => r.module));
 
   initModuleHeader({
     name: 'Project',
     subtitle: 'Tracker',
     hasSidebar: true,
     tabs: true,
-    leftActions: ''
+    leftActions: userModules.has('today')
+      ? `<button class="btn" onclick="window.location.href='/today/'">Today</button>`
+      : '',
   });
   applyTheme();
 
   await loadStateFromSupabase();
+
+  // Deep-link: /projects/?project=<id> scrolls straight to that project
+  const _deepProjectId = new URLSearchParams(window.location.search).get('project');
+  if (_deepProjectId && state.projects.find(p => p.id === _deepProjectId)) {
+    openDetail(_deepProjectId);
+  }
+
   document.getElementById('app-wrap').style.display = 'flex';
   render();
   setTimeout(initSidebarResize, 0);
