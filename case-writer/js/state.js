@@ -10,6 +10,42 @@ let _view            = 'list';   // 'list' | 'form' | 'manage' | 'edit-template'
 let _activeTemplate  = null;     // template currently being filled out
 let _activeDraft     = null;     // draft being continued (null = new ticket)
 let _editingTemplate = null;     // template currently being edited in manage view
+let _cwAnthropicKey  = null;     // cached Anthropic key for AI fill
+
+// ── Load Anthropic key (lazy, cached) ──
+async function loadCwAnthropicKey() {
+  if (_cwAnthropicKey) return _cwAnthropicKey;
+  const { data } = await sb
+    .from('profiles')
+    .select('anthropic_api_key')
+    .eq('user_id', _currentUser.id)
+    .maybeSingle();
+  _cwAnthropicKey = data?.anthropic_api_key?.trim() || null;
+  return _cwAnthropicKey;
+}
+
+// ── Pick best available model for the key ──
+async function pickCwModel(apiKey) {
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key':                                 apiKey,
+        'anthropic-version':                         '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+    if (!resp.ok) return 'claude-haiku-4-20250307';
+    const json = await resp.json();
+    const ids  = (json.data || []).map(m => m.id);
+    for (const pref of ['haiku', 'sonnet', 'opus']) {
+      const match = ids.find(id => id.toLowerCase().includes(pref));
+      if (match) return match;
+    }
+    return ids[0] || 'claude-haiku-4-20250307';
+  } catch {
+    return 'claude-haiku-4-20250307';
+  }
+}
 
 // ── Load ──
 async function loadTemplates() {

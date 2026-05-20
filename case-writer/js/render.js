@@ -130,6 +130,10 @@ function _renderForm() {
         <button class="btn" id="cw-back-btn">← Back</button>
         <div class="cw-page-title">${escHtml(t.name)}</div>
         <div class="cw-form-header-actions">
+          <button class="btn cw-ai-fill-btn" id="cw-ai-fill-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            AI Fill
+          </button>
           <button class="btn" id="cw-save-draft-btn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             ${_activeDraft ? 'Update Draft' : 'Save Draft'}
@@ -457,6 +461,9 @@ function _bindFormEvents() {
   // Numbered lists
   document.querySelectorAll('.cw-numbered-list').forEach(list => _bindListRowEvents(list));
 
+  // AI Fill
+  document.getElementById('cw-ai-fill-btn')?.addEventListener('click', _openAiFillModal);
+
   // Generate
   document.getElementById('cw-generate-btn')?.addEventListener('click', _generateTicket);
 
@@ -465,6 +472,224 @@ function _bindFormEvents() {
 
   // Copy (rich text to clipboard)
   document.getElementById('cw-copy-btn')?.addEventListener('click', _copyOutput);
+}
+
+// ─────────────────────────────────────────
+// ── AI Fill ──
+// ─────────────────────────────────────────
+
+function _openAiFillModal() {
+  if (document.getElementById('cw-ai-modal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'cw-ai-modal';
+  modal.className = 'cw-ai-modal-overlay';
+  modal.innerHTML = `
+    <div class="cw-ai-modal">
+      <div class="cw-ai-modal-header">
+        <div class="cw-ai-modal-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+          AI Fill
+        </div>
+        <button class="cw-ai-modal-close" id="cw-ai-modal-close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="cw-ai-modal-body">
+        <p class="cw-ai-modal-intro">Provide context and AI will fill out the ticket fields for you. Answer what you have — leave anything blank you don't know yet.</p>
+        <div class="cw-ai-field">
+          <label class="cw-ai-field-label" for="cw-ai-q1">Client's initial ask / complaint / problem</label>
+          <textarea class="cw-ai-textarea" id="cw-ai-q1" placeholder="Paste the client's message, ticket, or describe their request…" rows="4"></textarea>
+        </div>
+        <div class="cw-ai-field">
+          <label class="cw-ai-field-label" for="cw-ai-q2">Your initial assessment</label>
+          <textarea class="cw-ai-textarea" id="cw-ai-q2" placeholder="Your internal analysis — what's the root cause, what's the impact…" rows="4"></textarea>
+        </div>
+        <div class="cw-ai-field">
+          <label class="cw-ai-field-label" for="cw-ai-q3">Additional internal input</label>
+          <textarea class="cw-ai-textarea" id="cw-ai-q3" placeholder="Any direction received, decisions made, or other relevant context…" rows="3"></textarea>
+        </div>
+        <div class="cw-ai-modal-error" id="cw-ai-modal-error" style="display:none"></div>
+      </div>
+      <div class="cw-ai-modal-footer">
+        <button class="btn" id="cw-ai-modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="cw-ai-modal-submit">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+          Generate with AI
+        </button>
+      </div>
+    </div>`;
+
+  modal.addEventListener('mousedown', e => { if (e.target === modal) _closeAiFillModal(); });
+  document.body.appendChild(modal);
+
+  document.getElementById('cw-ai-modal-close')?.addEventListener('click', _closeAiFillModal);
+  document.getElementById('cw-ai-modal-cancel')?.addEventListener('click', _closeAiFillModal);
+  document.getElementById('cw-ai-modal-submit')?.addEventListener('click', _submitAiFill);
+}
+
+function _closeAiFillModal() {
+  document.getElementById('cw-ai-modal')?.remove();
+}
+
+async function _submitAiFill() {
+  const q1 = document.getElementById('cw-ai-q1')?.value.trim() || '';
+  const q2 = document.getElementById('cw-ai-q2')?.value.trim() || '';
+  const q3 = document.getElementById('cw-ai-q3')?.value.trim() || '';
+
+  if (!q1 && !q2 && !q3) {
+    _showAiFillError('Please fill in at least one field before generating.');
+    return;
+  }
+
+  const submitBtn = document.getElementById('cw-ai-modal-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = `<span class="cw-ai-spinner"></span> Generating…`; }
+
+  const apiKey = await loadCwAnthropicKey();
+  if (!apiKey) {
+    _showAiFillError('No Anthropic API key found. Add one in Profile Settings.');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate with AI`; }
+    return;
+  }
+  const model = await pickCwModel(apiKey);
+
+  // Build field schema for the prompt
+  const fields = _activeTemplate.fields.map(f => {
+    const base = { id: f.id, label: f.label, type: f.type };
+    if (f.type === 'dropdown' && f.options) base.options = f.options;
+    return base;
+  });
+
+  const fieldSchema = fields.map(f => {
+    let typeNote = '';
+    if (f.type === 'text')          typeNote = 'short plain text string';
+    else if (f.type === 'textarea') typeNote = 'rich HTML using only <p>, <ul>, <ol>, <li>, <strong>, <em> tags — no inline styles, no background-color';
+    else if (f.type === 'dropdown') typeNote = `one of these exact options: ${(f.options || []).join(', ')}`;
+    else if (f.type === 'numbered_list') typeNote = 'JSON array of plain text strings';
+    return `- id: "${f.id}", label: "${f.label}", type: ${typeNote}`;
+  }).join('\n');
+
+  const userContent = [
+    q1 ? `CLIENT'S ASK / PROBLEM:\n${q1}` : '',
+    q2 ? `INTERNAL ASSESSMENT:\n${q2}` : '',
+    q3 ? `ADDITIONAL INTERNAL INPUT:\n${q3}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  const systemPrompt = `You are filling out a structured ticket form. Based on the context provided, generate appropriate content for each field.
+
+Template fields:
+${fieldSchema}
+
+Rules:
+- Return ONLY a valid JSON object. No markdown fences, no explanation — just the raw JSON.
+- Keys are the field "id" values listed above.
+- For text fields: return a plain string.
+- For textarea fields: return clean HTML using only <p>, <ul>, <ol>, <li>, <strong>, <em>. No inline styles, no colors, no <h1>/<h2>/<h3>.
+- For dropdown fields: return exactly one of the listed options.
+- For numbered_list fields: return a JSON array of plain text strings.
+- If you don't have enough information to fill a field confidently, return an empty string "" (or [] for numbered_list).
+- Write in a professional, clear tone appropriate for internal Jira/product tickets.`;
+
+  let resp;
+  try {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':                                 apiKey,
+        'anthropic-version':                         '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type':                              'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2000,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: userContent }],
+      }),
+    });
+  } catch (e) {
+    _showAiFillError(`Network error: ${e.message}`);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate with AI`; }
+    return;
+  }
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    _showAiFillError(`API error (${resp.status}): ${body}`);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate with AI`; }
+    return;
+  }
+
+  const json   = await resp.json();
+  const rawText = (json?.content?.[0]?.text || '').trim();
+
+  let fieldValues;
+  try {
+    fieldValues = JSON.parse(rawText);
+  } catch {
+    _showAiFillError('AI returned an unexpected response. Please try again.');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg> Generate with AI`; }
+    return;
+  }
+
+  _closeAiFillModal();
+  _applyAiFieldValues(fieldValues);
+  _generateTicket();
+}
+
+function _showAiFillError(msg) {
+  const el = document.getElementById('cw-ai-modal-error');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+function _applyAiFieldValues(fieldValues) {
+  for (const f of _activeTemplate.fields) {
+    const val = fieldValues[f.id];
+    if (val === undefined || val === null || val === '') continue;
+
+    const row = document.querySelector(`.cw-field-row[data-field-id="${f.id}"]`);
+    if (!row) continue;
+
+    // Make sure the field is enabled
+    const cb = row.querySelector('.cw-checkbox');
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      _applyFieldEnabled(row, true);
+    }
+
+    if (f.type === 'textarea') {
+      const editor = _quillEditors[f.id];
+      if (editor) {
+        editor.root.innerHTML = typeof val === 'string' ? val : '';
+      }
+    } else if (f.type === 'numbered_list') {
+      const items = Array.isArray(val) ? val.filter(Boolean) : [];
+      if (!items.length) continue;
+      const list = row.querySelector('.cw-numbered-list');
+      if (!list) continue;
+      // Remove all existing rows except the template structure, rebuild
+      list.querySelectorAll('.cw-list-row').forEach(r => r.remove());
+      items.forEach((text, i) => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'cw-list-row';
+        rowEl.innerHTML = `
+          <span class="cw-list-num">${i + 1}.</span>
+          <input class="cw-input cw-list-input" type="text" value="${escHtml(text)}" placeholder="Item ${i + 1}">
+          <button class="cw-list-remove" title="Remove">×</button>`;
+        list.insertBefore(rowEl, list.querySelector('.cw-list-add'));
+      });
+      _bindListRowEvents(list);
+    } else if (f.type === 'dropdown') {
+      const select = row.querySelector('.cw-select');
+      if (select) {
+        const match = Array.from(select.options).find(o => o.value === val || o.text === val);
+        if (match) select.value = match.value;
+      }
+    } else {
+      const input = row.querySelector('.cw-input');
+      if (input) input.value = typeof val === 'string' ? val : '';
+    }
+  }
 }
 
 function _initQuillEditors() {
