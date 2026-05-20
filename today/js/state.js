@@ -35,6 +35,25 @@ async function loadTodayState() {
   todayItems   = all.filter(i => i.item_date === today);
   historyItems = all.filter(i => i.item_date < today);
 
+  // Silently carry forward any uncompleted manual items — they have no
+  // home elsewhere so they should never fall off the list automatically.
+  const manualToCarry = historyItems.filter(i => !i.completed && i.source === 'manual');
+  if (manualToCarry.length > 0) {
+    const maxOrder = todayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
+    let nextOrder = maxOrder + 1;
+    await Promise.all(manualToCarry.map(item => {
+      const order = nextOrder++;
+      item.item_date  = today;
+      item.sort_order = order;
+      return sb.from('today_items')
+        .update({ item_date: today, sort_order: order })
+        .eq('id', item.id);
+    }));
+    manualToCarry.forEach(item => todayItems.push(item));
+    historyItems = historyItems.filter(i => i.completed || i.source !== 'manual');
+  }
+
+  // Only prompt the carry-forward modal for uncompleted project-sourced items
   const pastUncompleted = historyItems.filter(i => !i.completed);
   if (pastUncompleted.length > 0) {
     _resetNeeded     = true;
