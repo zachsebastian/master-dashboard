@@ -247,6 +247,7 @@
 .digest-item-dot.green  { background: var(--green); }
 .digest-item-dot.blue   { background: var(--blue); }
 .digest-item-dot.purple { background: var(--purple); }
+.digest-item-dot.orange { background: var(--orange); }
 
 .digest-item-text {
   flex: 1;

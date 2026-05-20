@@ -127,7 +127,16 @@ async function loadDigestData() {
     })
     .filter(Boolean);
 
-  _digestData = { weekRange: { start, end, label }, todayItems: todayItems || [], projects, metrics };
+  // Fetch submitted Case Writer tickets in range
+  const { data: caseTickets } = await sb
+    .from('case_writer_tickets')
+    .select('id, title, template_name, submitted_at')
+    .eq('user_id', uid)
+    .gte('submitted_at', start + 'T00:00:00')
+    .lte('submitted_at', end   + 'T23:59:59')
+    .order('submitted_at', { ascending: true });
+
+  _digestData = { weekRange: { start, end, label }, todayItems: todayItems || [], projects, metrics, caseTickets: caseTickets || [] };
   return _digestData;
 }
 
@@ -214,7 +223,7 @@ async function saveReflection(wins, blockers, carry_forwards) {
 
 // ── Build summary text from digest data ──
 function _buildSummaryText(data) {
-  const { weekRange, todayItems, projects, metrics } = data;
+  const { weekRange, todayItems, projects, metrics, caseTickets } = data;
   const lines = [`Week of ${weekRange.label}`, ''];
 
   // Manual today-list tasks (not from projects)
@@ -259,6 +268,17 @@ function _buildSummaryText(data) {
     }
   } else {
     lines.push('  (none)');
+  }
+  lines.push('');
+
+  // Case Writer tickets
+  if (caseTickets && caseTickets.length) {
+    lines.push(`DEVELOPMENT TICKETS CREATED (${caseTickets.length}):`);
+    for (const t of caseTickets) {
+      const date = t.submitted_at ? new Date(t.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+      lines.push(`  ✓ [${t.template_name}] ${t.title}${date ? ` · ${date}` : ''}`);
+    }
+    lines.push('');
   }
 
   return lines.join('\n');

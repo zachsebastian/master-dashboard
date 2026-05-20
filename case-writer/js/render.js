@@ -1,0 +1,836 @@
+// ── Quill instances (keyed by field id) ──
+let _quillEditors = {};
+
+// ── Escape helper ──
+function escHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Loading ──
+function renderLoading() {
+  const app = document.getElementById('app');
+  if (app) app.innerHTML = `<div class="loading-screen"><div class="spinner"></div></div>`;
+}
+
+// ── Top-level render ──
+function render() {
+  _quillEditors = {}; // clear stale instances on every view change
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  if (_view === 'list')               app.innerHTML = _renderList();
+  else if (_view === 'form')          app.innerHTML = _renderForm();
+  else if (_view === 'manage')        app.innerHTML = _renderManage();
+  else if (_view === 'edit-template') app.innerHTML = _renderEditTemplate();
+
+  _bindEvents();
+}
+
+// ─────────────────────────────────────────
+// ── List view ──
+// ─────────────────────────────────────────
+function _renderList() {
+  const templatesHtml = _templates.length === 0 ? `
+    <div class="cw-empty">
+      <div class="cw-empty-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="cw-empty-title">No templates yet</div>
+      <div class="cw-empty-sub">Create your first template to start writing tickets.</div>
+    </div>` : `
+    <div class="cw-template-grid">
+      ${_templates.map(t => `
+        <div class="cw-template-card" data-template-id="${escHtml(t.id)}">
+          <div class="cw-template-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="cw-template-card-body">
+            <div class="cw-template-card-name">${escHtml(t.name)}</div>
+            <div class="cw-template-card-meta">${t.fields.length} field${t.fields.length !== 1 ? 's' : ''}</div>
+          </div>
+          <button class="btn btn-primary cw-start-btn" data-template-id="${escHtml(t.id)}">New Ticket →</button>
+        </div>
+      `).join('')}
+    </div>`;
+
+  const draftsHtml = _drafts.length === 0 ? '' : `
+    <div class="cw-drafts-section">
+      <div class="cw-section-label">Drafts</div>
+      <div class="cw-drafts-list">
+        ${_drafts.map(d => `
+          <div class="cw-draft-row">
+            <div class="cw-draft-body">
+              <div class="cw-draft-title">${escHtml(d.title || 'Untitled Draft')}</div>
+              <div class="cw-draft-meta">${escHtml(d.template_name)} · ${escHtml(_fmtRelativeTime(d.updated_at))}</div>
+            </div>
+            <div class="cw-draft-actions">
+              <button class="btn btn-sm cw-continue-draft-btn" data-draft-id="${escHtml(d.id)}">Continue →</button>
+              <button class="btn btn-sm btn-danger cw-delete-draft-btn" data-draft-id="${escHtml(d.id)}">Delete</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+  return `
+    <div class="cw-wrap">
+      <div class="cw-page-header">
+        <div class="cw-page-title">Case Writer</div>
+        <button class="btn" id="cw-manage-btn">Manage Templates</button>
+      </div>
+      ${templatesHtml}
+      ${draftsHtml}
+      ${_renderTicketsSection()}
+    </div>`;
+}
+
+function _renderTicketsSection() {
+  if (_tickets.length === 0) return '';
+  return `
+    <div class="cw-tickets-section">
+      <div class="cw-section-label">Submitted Tickets</div>
+      <div class="cw-tickets-list">
+        ${_tickets.map(t => `
+          <div class="cw-ticket-row" data-ticket-id="${escHtml(t.id)}">
+            <div class="cw-ticket-header">
+              <div class="cw-ticket-info">
+                <div class="cw-ticket-title">${escHtml(t.title || 'Untitled')}</div>
+                <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}</div>
+              </div>
+              <div class="cw-ticket-actions">
+                <button class="btn btn-sm cw-reopen-ticket-btn" data-ticket-id="${escHtml(t.id)}">Re-open as Draft</button>
+                <button class="btn btn-sm btn-danger cw-delete-ticket-btn" data-ticket-id="${escHtml(t.id)}">Delete</button>
+                <span class="cw-ticket-chevron">›</span>
+              </div>
+            </div>
+            <div class="cw-ticket-content" style="display:none">
+              ${t.content_html}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// ── Form view ──
+// ─────────────────────────────────────────
+function _renderForm() {
+  const t           = _activeTemplate;
+  const savedValues = _activeDraft ? (_activeDraft.field_values || {}) : {};
+
+  return `
+    <div class="cw-wrap">
+      <div class="cw-page-header">
+        <button class="btn" id="cw-back-btn">← Back</button>
+        <div class="cw-page-title">${escHtml(t.name)}</div>
+        <div class="cw-form-header-actions">
+          <button class="btn" id="cw-save-draft-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            ${_activeDraft ? 'Update Draft' : 'Save Draft'}
+          </button>
+          <button class="btn" id="cw-clear-btn">Clear</button>
+        </div>
+      </div>
+
+      <div class="cw-form" id="cw-form">
+        ${t.fields.map(f => _renderField(f, savedValues[f.id] || null)).join('')}
+      </div>
+
+      <div class="cw-form-footer">
+        <button class="btn btn-primary" id="cw-generate-btn">Generate Ticket</button>
+      </div>
+
+      <div class="cw-output-wrap" id="cw-output-wrap" style="display:none">
+        <div class="cw-output-header">
+          <div class="cw-output-label">Generated Ticket</div>
+          <div class="cw-output-header-actions">
+            <button class="btn btn-primary" id="cw-submit-ticket-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Save as Submitted
+            </button>
+            <button class="btn" id="cw-copy-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+        </div>
+        <div class="cw-output-content" id="cw-output-content"></div>
+      </div>
+    </div>`;
+}
+
+function _renderField(f, savedState) {
+  const enabled    = savedState ? savedState.enabled : true;
+  const savedValue = savedState ? savedState.value   : null;
+
+  let inputHtml = '';
+
+  if (f.type === 'text') {
+    const val = typeof savedValue === 'string' ? savedValue : '';
+    inputHtml = `<input type="text" class="cw-input" data-field-id="${escHtml(f.id)}" value="${escHtml(val)}" ${enabled ? '' : 'disabled'}>`;
+
+  } else if (f.type === 'textarea') {
+    // Quill container — initialized after render in _bindFormEvents
+    inputHtml = `<div class="cw-quill-wrap${enabled ? '' : ' cw-quill-disabled'}">
+      <div class="cw-quill-editor" data-field-id="${escHtml(f.id)}"></div>
+    </div>`;
+
+  } else if (f.type === 'dropdown') {
+    const val  = typeof savedValue === 'string' ? savedValue : '';
+    const opts = (f.options || []).map(o =>
+      `<option value="${escHtml(o)}" ${val === o ? 'selected' : ''}>${escHtml(o)}</option>`
+    ).join('');
+    inputHtml = `<select class="cw-select" data-field-id="${escHtml(f.id)}" ${enabled ? '' : 'disabled'}><option value="">— Select —</option>${opts}</select>`;
+
+  } else if (f.type === 'numbered_list') {
+    const items = Array.isArray(savedValue) && savedValue.length > 0 ? savedValue : [''];
+    inputHtml = `
+      <div class="cw-numbered-list" data-field-id="${escHtml(f.id)}">
+        ${items.map((item, i) => `
+          <div class="cw-list-row" data-index="${i}">
+            <span class="cw-list-num">${i + 1}.</span>
+            <input type="text" class="cw-input cw-list-input" value="${escHtml(item)}" ${enabled ? '' : 'disabled'}>
+            <button class="cw-list-remove" title="Remove" ${enabled ? '' : 'disabled'}>×</button>
+          </div>`).join('')}
+        <button class="cw-list-add" ${enabled ? '' : 'disabled'}>+ Add item</button>
+      </div>`;
+  }
+
+  return `
+    <div class="cw-field-row${enabled ? '' : ' cw-field-disabled'}" data-field-id="${escHtml(f.id)}">
+      <div class="cw-field-left">
+        <input type="checkbox" class="cw-checkbox" data-field-id="${escHtml(f.id)}" ${enabled ? 'checked' : ''}>
+        <label class="cw-field-label">${escHtml(f.label)}</label>
+      </div>
+      <div class="cw-field-input">
+        ${inputHtml}
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// ── Manage view ──
+// ─────────────────────────────────────────
+function _renderManage() {
+  return `
+    <div class="cw-wrap">
+      <div class="cw-page-header">
+        <button class="btn" id="cw-back-btn">← Back</button>
+        <div class="cw-page-title">Manage Templates</div>
+        <button class="btn btn-primary" id="cw-new-template-btn">+ New Template</button>
+      </div>
+      ${_templates.length === 0 ? `
+        <div class="cw-empty">
+          <div class="cw-empty-title">No templates yet</div>
+          <div class="cw-empty-sub">Click "+ New Template" to create your first one.</div>
+        </div>` : `
+        <div class="cw-manage-list">
+          ${_templates.map(t => `
+            <div class="cw-manage-row">
+              <div class="cw-manage-row-body">
+                <div class="cw-manage-row-name">${escHtml(t.name)}</div>
+                <div class="cw-manage-row-meta">${t.fields.length} field${t.fields.length !== 1 ? 's' : ''}</div>
+              </div>
+              <div class="cw-manage-row-actions">
+                <button class="btn btn-sm cw-edit-template-btn" data-template-id="${escHtml(t.id)}">Edit</button>
+                <button class="btn btn-sm btn-danger cw-delete-template-btn" data-template-id="${escHtml(t.id)}">Delete</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>`}
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// ── Edit Template view ──
+// ─────────────────────────────────────────
+function _renderEditTemplate() {
+  const t    = _editingTemplate;
+  const isNew = !t.id;
+
+  return `
+    <div class="cw-wrap">
+      <div class="cw-page-header">
+        <button class="btn" id="cw-back-btn">← Cancel</button>
+        <div class="cw-page-title">${isNew ? 'New Template' : 'Edit Template'}</div>
+        <button class="btn btn-primary" id="cw-save-template-btn">Save</button>
+      </div>
+      <div class="cw-edit-form">
+        <div class="cw-edit-name-row">
+          <label class="cw-edit-section-label">Template Name</label>
+          <input type="text" class="cw-input" id="cw-template-name"
+            value="${escHtml(t.name)}" placeholder="e.g. Bug Ticket" maxlength="80">
+        </div>
+        <div class="cw-edit-fields-header">
+          <label class="cw-edit-section-label">Fields</label>
+          <button class="btn" id="cw-add-field-btn">+ Add Field</button>
+        </div>
+        <div class="cw-edit-fields-list" id="cw-edit-fields-list">
+          ${(t.fields || []).map((f, i) => _renderEditField(f, i)).join('')}
+        </div>
+        ${(t.fields || []).length === 0 ? `<div class="cw-edit-empty">Add your first field above.</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function _renderEditField(f, idx) {
+  const typeOptions = [
+    ['text',          'Single line'],
+    ['textarea',      'Rich text'],
+    ['dropdown',      'Dropdown'],
+    ['numbered_list', 'Numbered list'],
+  ].map(([val, label]) =>
+    `<option value="${val}" ${f.type === val ? 'selected' : ''}>${label}</option>`
+  ).join('');
+
+  return `
+    <div class="cw-edit-field-row" data-idx="${idx}" data-field-id="${escHtml(f.id || '')}">
+      <div class="cw-edit-field-main">
+        <span class="cw-drag-handle" title="Drag to reorder">⠿</span>
+        <input type="text" class="cw-input cw-edit-field-label-input"
+          placeholder="Field label" value="${escHtml(f.label || '')}">
+        <select class="cw-select cw-edit-field-type-select">
+          ${typeOptions}
+        </select>
+        <button class="btn btn-sm btn-danger cw-remove-field-btn" title="Remove field">×</button>
+      </div>
+      <div class="cw-edit-field-options-wrap" style="${f.type === 'dropdown' ? '' : 'display:none'}">
+        <label class="cw-edit-options-label">Options (one per line)</label>
+        <textarea class="cw-textarea cw-edit-options-ta" rows="3">${escHtml((f.options || []).join('\n'))}</textarea>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// ── Event binding ──
+// ─────────────────────────────────────────
+function _bindEvents() {
+  if (_view === 'list')               _bindListEvents();
+  else if (_view === 'form')          _bindFormEvents();
+  else if (_view === 'manage')        _bindManageEvents();
+  else if (_view === 'edit-template') _bindEditTemplateEvents();
+}
+
+// ── List ──
+function _bindListEvents() {
+  document.getElementById('cw-manage-btn')?.addEventListener('click', () => {
+    _view = 'manage'; render();
+  });
+  document.querySelectorAll('.cw-start-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = _templates.find(t => t.id === btn.dataset.templateId);
+      if (t) { _activeTemplate = t; _activeDraft = null; _view = 'form'; render(); }
+    });
+  });
+  document.querySelectorAll('.cw-template-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const t = _templates.find(t => t.id === card.dataset.templateId);
+      if (t) { _activeTemplate = t; _activeDraft = null; _view = 'form'; render(); }
+    });
+  });
+  document.querySelectorAll('.cw-continue-draft-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const draft = _drafts.find(d => d.id === btn.dataset.draftId);
+      if (!draft) return;
+      const t = _templates.find(t => t.id === draft.template_id);
+      if (!t) return;
+      _activeTemplate = t; _activeDraft = draft; _view = 'form'; render();
+    });
+  });
+  document.querySelectorAll('.cw-delete-draft-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this draft? This cannot be undone.')) return;
+      btn.disabled = true;
+      await deleteDraft(btn.dataset.draftId);
+      render();
+    });
+  });
+
+  // ── Submitted ticket rows ──
+  document.querySelectorAll('.cw-ticket-header').forEach(header => {
+    header.addEventListener('click', e => {
+      if (e.target.closest('button')) return; // let buttons handle themselves
+      const row     = header.closest('.cw-ticket-row');
+      const content = row.querySelector('.cw-ticket-content');
+      const chevron = row.querySelector('.cw-ticket-chevron');
+      const open    = content.style.display !== 'none';
+      content.style.display = open ? 'none' : 'block';
+      if (chevron) chevron.textContent = open ? '›' : '‹';
+    });
+  });
+
+  document.querySelectorAll('.cw-reopen-ticket-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const ticket = _tickets.find(t => t.id === btn.dataset.ticketId);
+      if (!ticket) return;
+      btn.disabled = true;
+      const ok = await reopenTicketAsDraft(ticket);
+      if (ok) render();
+      else btn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.cw-delete-ticket-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this submitted ticket? This cannot be undone.')) return;
+      btn.disabled = true;
+      await deleteTicket(btn.dataset.ticketId);
+      render();
+    });
+  });
+}
+
+// ── Form ──
+function _bindFormEvents() {
+  // Initialize Quill editors for all textarea-type fields
+  _initQuillEditors();
+
+  // Back
+  document.getElementById('cw-back-btn')?.addEventListener('click', () => {
+    _view = 'list'; render();
+  });
+
+  // Save Draft
+  document.getElementById('cw-save-draft-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('cw-save-draft-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    const ok = await saveDraftFromForm();
+    if (btn) {
+      btn.disabled  = false;
+      btn.innerHTML = ok
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved`
+        : 'Save Draft';
+      if (ok) setTimeout(() => {
+        if (document.getElementById('cw-save-draft-btn'))
+          document.getElementById('cw-save-draft-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Update Draft`;
+      }, 2000);
+    }
+  });
+
+  // Clear
+  document.getElementById('cw-clear-btn')?.addEventListener('click', () => {
+    // Clear plain inputs & selects
+    document.querySelectorAll('#cw-form .cw-input:not(.cw-list-input), #cw-form .cw-select').forEach(el => {
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
+    });
+    // Clear Quill editors
+    Object.values(_quillEditors).forEach(q => q.setContents([]));
+    // Reset numbered lists
+    document.querySelectorAll('.cw-numbered-list').forEach(list => {
+      const addBtn = list.querySelector('.cw-list-add');
+      list.querySelectorAll('.cw-list-row').forEach((r, i) => {
+        if (i === 0) r.querySelector('input').value = '';
+        else r.remove();
+      });
+      _bindListRowEvents(list);
+    });
+    // Re-enable all checkboxes
+    document.querySelectorAll('.cw-checkbox').forEach(cb => {
+      cb.checked = true;
+      const row = cb.closest('.cw-field-row');
+      if (row) _applyFieldEnabled(row, true);
+    });
+    const out = document.getElementById('cw-output-wrap');
+    if (out) out.style.display = 'none';
+  });
+
+  // Checkboxes
+  document.querySelectorAll('.cw-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const row = cb.closest('.cw-field-row');
+      if (row) _applyFieldEnabled(row, cb.checked);
+    });
+  });
+
+  // Numbered lists
+  document.querySelectorAll('.cw-numbered-list').forEach(list => _bindListRowEvents(list));
+
+  // Generate
+  document.getElementById('cw-generate-btn')?.addEventListener('click', _generateTicket);
+
+  // Save as Submitted Ticket
+  document.getElementById('cw-submit-ticket-btn')?.addEventListener('click', _submitTicket);
+
+  // Copy (rich text to clipboard)
+  document.getElementById('cw-copy-btn')?.addEventListener('click', _copyOutput);
+}
+
+function _initQuillEditors() {
+  _quillEditors = {};
+  const savedValues = _activeDraft ? (_activeDraft.field_values || {}) : {};
+
+  document.querySelectorAll('.cw-quill-editor').forEach(el => {
+    const fieldId = el.dataset.fieldId;
+    const field   = _activeTemplate?.fields.find(f => f.id === fieldId);
+    const enabled = savedValues[fieldId]?.enabled !== false;
+
+    const quill = new Quill(el, {
+      theme: 'snow',
+      placeholder: field ? `Enter ${field.label.toLowerCase()}…` : 'Enter details…',
+      modules: {
+        toolbar: [
+          ['bold', 'italic'],
+          [{ header: 2 }],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['clean'],
+        ],
+      },
+    });
+
+    // Restore saved HTML content
+    const saved = savedValues[fieldId]?.value;
+    if (saved && typeof saved === 'string') quill.root.innerHTML = saved;
+
+    if (!enabled) quill.enable(false);
+
+    _quillEditors[fieldId] = quill;
+  });
+}
+
+function _applyFieldEnabled(row, enabled) {
+  row.classList.toggle('cw-field-disabled', !enabled);
+  // Plain inputs / selects / numbered-list buttons
+  row.querySelectorAll('input:not(.cw-checkbox), select, button.cw-list-remove, button.cw-list-add').forEach(el => {
+    el.disabled = !enabled;
+  });
+  // Quill editor
+  const quillEl = row.querySelector('.cw-quill-editor');
+  if (quillEl) {
+    const editor = _quillEditors[quillEl.dataset.fieldId];
+    if (editor) editor.enable(enabled);
+    row.querySelector('.cw-quill-wrap')?.classList.toggle('cw-quill-disabled', !enabled);
+  }
+}
+
+function _bindListRowEvents(list) {
+  list.querySelectorAll('.cw-list-remove').forEach(btn => {
+    btn.addEventListener('click', () => _removeListRow(list, btn.closest('.cw-list-row')));
+  });
+  list.querySelector('.cw-list-add')?.addEventListener('click', () => _addListRow(list));
+}
+
+function _addListRow(list) {
+  const addBtn = list.querySelector('.cw-list-add');
+  const count  = list.querySelectorAll('.cw-list-row').length;
+  const row    = document.createElement('div');
+  row.className     = 'cw-list-row';
+  row.dataset.index = count;
+  row.innerHTML     = `
+    <span class="cw-list-num">${count + 1}.</span>
+    <input type="text" class="cw-input cw-list-input">
+    <button class="cw-list-remove" title="Remove">×</button>`;
+  row.querySelector('.cw-list-remove').addEventListener('click', () => _removeListRow(list, row));
+  list.insertBefore(row, addBtn);
+  row.querySelector('input').focus();
+}
+
+function _removeListRow(list, row) {
+  if (list.querySelectorAll('.cw-list-row').length <= 1) {
+    row.querySelector('input').value = ''; return;
+  }
+  row.remove();
+  list.querySelectorAll('.cw-list-row').forEach((r, i) => {
+    r.dataset.index = i;
+    const num = r.querySelector('.cw-list-num');
+    if (num) num.textContent = `${i + 1}.`;
+  });
+}
+
+// ── Strip pasted-in background/foreground colors from Quill HTML ──
+function _sanitizeQuillHtml(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  tmp.querySelectorAll('[style]').forEach(el => {
+    let style = el.getAttribute('style') || '';
+    // Remove background-color and color declarations
+    style = style.replace(/background-color\s*:[^;]+;?/gi, '');
+    style = style.replace(/\bcolor\s*:[^;]+;?/gi, '');
+    style = style.trim().replace(/;$/, '');
+    if (style) el.setAttribute('style', style);
+    else el.removeAttribute('style');
+  });
+  return tmp.innerHTML;
+}
+
+// ── Generate ticket ──
+function _generateTicket() {
+  const t        = _activeTemplate;
+  const sections = [];
+
+  for (const f of t.fields) {
+    const row = document.querySelector(`.cw-field-row[data-field-id="${f.id}"]`);
+    if (!row) continue;
+    const cb = row.querySelector('.cw-checkbox');
+    if (!cb || !cb.checked) continue;
+
+    let contentHtml = '';
+
+    if (f.type === 'numbered_list') {
+      const items = Array.from(row.querySelectorAll('.cw-list-input'))
+        .map(i => i.value.trim()).filter(Boolean);
+      contentHtml = items.length
+        ? `<ol>${items.map(item => `<li>${escHtml(item)}</li>`).join('')}</ol>`
+        : '';
+    } else if (f.type === 'textarea') {
+      const editor = _quillEditors[f.id];
+      contentHtml = editor ? _sanitizeQuillHtml(editor.root.innerHTML) : '';
+    } else if (f.type === 'dropdown') {
+      const select = row.querySelector('.cw-select');
+      const val    = select ? select.value.trim() : '';
+      contentHtml  = val ? `<p>${escHtml(val)}</p>` : '';
+    } else {
+      const input = row.querySelector('.cw-input');
+      const val   = input ? input.value.trim() : '';
+      contentHtml = val ? `<p>${escHtml(val)}</p>` : '';
+    }
+
+    sections.push({ label: f.label, contentHtml });
+  }
+
+  // ── Display HTML (shown in module, uses CSS) ──
+  const displayHtml = sections.map(s => `
+    <div class="cw-output-section">
+      <div class="cw-output-field-label">${escHtml(s.label)}</div>
+      <div class="cw-output-field-content">${s.contentHtml || '<p class="cw-output-empty">—</p>'}</div>
+    </div>`).join('');
+
+  // ── Clipboard HTML (inline styles, portable) ──
+  const clipSections = sections.map(s => `
+    <div style="margin-bottom:20px;">
+      <p style="margin:0 0 5px 0;font-size:14px;font-weight:700;color:#111;">${escHtml(s.label)}</p>
+      <div style="font-size:14px;line-height:1.6;color:#111;">${s.contentHtml || ''}</div>
+    </div>`).join('');
+
+  const clipHtml = `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;color:#111;max-width:700px;">${clipSections}</body></html>`;
+
+  const outputWrap    = document.getElementById('cw-output-wrap');
+  const outputContent = document.getElementById('cw-output-content');
+  if (outputWrap && outputContent) {
+    outputContent.innerHTML        = displayHtml;
+    outputWrap.dataset.clipHtml    = '';
+    outputWrap._clipHtml           = clipHtml;
+    outputWrap._sections           = sections;
+    outputWrap.style.display       = 'block';
+    outputWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── Save as Submitted Ticket ──
+async function _submitTicket() {
+  const btn        = document.getElementById('cw-submit-ticket-btn');
+  const outputWrap = document.getElementById('cw-output-wrap');
+  if (!outputWrap?._sections) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  const fieldValues  = _collectFormValues();
+  const title        = _getDraftTitle(fieldValues);
+  const contentHtml  = document.getElementById('cw-output-content')?.innerHTML || '';
+
+  const ticket = await saveSubmittedTicket(title, contentHtml, fieldValues);
+
+  if (ticket) {
+    if (btn) {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Submitted`;
+      btn.disabled  = false;
+      setTimeout(() => {
+        if (document.getElementById('cw-submit-ticket-btn'))
+          document.getElementById('cw-submit-ticket-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Save as Submitted`;
+      }, 2000);
+    }
+    // If this ticket was from a draft, delete the draft
+    if (_activeDraft) {
+      await deleteDraft(_activeDraft.id);
+      _activeDraft = null;
+    }
+  } else {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save as Submitted'; }
+  }
+}
+
+// ── Copy rich text to clipboard ──
+async function _copyOutput() {
+  const outputWrap = document.getElementById('cw-output-wrap');
+  const btn        = document.getElementById('cw-copy-btn');
+  if (!outputWrap?._clipHtml) return;
+
+  try {
+    const htmlBlob  = new Blob([outputWrap._clipHtml], { type: 'text/html' });
+    // Plain text fallback: extract readable text from sections
+    const sections  = outputWrap._sections || [];
+    const plainText = sections.map(s => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = s.contentHtml;
+      return `${s.label}:\n${tmp.innerText || tmp.textContent || ''}`;
+    }).join('\n\n');
+    const textBlob = new Blob([plainText], { type: 'text/plain' });
+
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob }),
+    ]);
+  } catch (_) {
+    // Fallback: copy plain text
+    const sections  = outputWrap._sections || [];
+    const plainText = sections.map(s => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = s.contentHtml;
+      return `${s.label}:\n${tmp.innerText || ''}`;
+    }).join('\n\n');
+    navigator.clipboard.writeText(plainText);
+  }
+
+  if (btn) {
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied`;
+    setTimeout(() => {
+      if (document.getElementById('cw-copy-btn'))
+        document.getElementById('cw-copy-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+    }, 2000);
+  }
+}
+
+// ── Manage ──
+function _bindManageEvents() {
+  document.getElementById('cw-back-btn')?.addEventListener('click', () => {
+    _view = 'list'; render();
+  });
+  document.getElementById('cw-new-template-btn')?.addEventListener('click', () => {
+    _editingTemplate = { id: null, name: '', fields: [] }; _view = 'edit-template'; render();
+  });
+  document.querySelectorAll('.cw-edit-template-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = _templates.find(t => t.id === btn.dataset.templateId);
+      if (t) { _editingTemplate = JSON.parse(JSON.stringify(t)); _view = 'edit-template'; render(); }
+    });
+  });
+  document.querySelectorAll('.cw-delete-template-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const t = _templates.find(t => t.id === btn.dataset.templateId);
+      if (!t || !confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
+      btn.disabled = true;
+      await deleteTemplate(t.id); render();
+    });
+  });
+}
+
+// ── Edit Template ──
+let _editDragSrc = null;
+
+function _bindEditTemplateEvents() {
+  document.getElementById('cw-back-btn')?.addEventListener('click', () => {
+    _view = 'manage'; render();
+  });
+  document.getElementById('cw-add-field-btn')?.addEventListener('click', () => {
+    const list    = document.getElementById('cw-edit-fields-list');
+    const empty   = list.parentElement.querySelector('.cw-edit-empty');
+    if (empty) empty.remove();
+    const idx     = list.querySelectorAll('.cw-edit-field-row').length;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = _renderEditField({ id: _uid(), label: '', type: 'text' }, idx);
+    const row = wrapper.firstElementChild;
+    list.appendChild(row);
+    _bindEditFieldRowEvents(row);
+    row.querySelector('.cw-edit-field-label-input')?.focus();
+  });
+  document.querySelectorAll('.cw-edit-field-row').forEach(row => _bindEditFieldRowEvents(row));
+  document.getElementById('cw-save-template-btn')?.addEventListener('click', _saveTemplate);
+  _bindFieldDragEvents();
+}
+
+function _bindEditFieldRowEvents(row) {
+  row.querySelector('.cw-edit-field-type-select')?.addEventListener('change', e => {
+    const wrap = row.querySelector('.cw-edit-field-options-wrap');
+    if (wrap) wrap.style.display = e.target.value === 'dropdown' ? '' : 'none';
+  });
+  row.querySelector('.cw-remove-field-btn')?.addEventListener('click', () => {
+    row.remove();
+    document.querySelectorAll('.cw-edit-field-row').forEach((r, i) => r.dataset.idx = i);
+  });
+}
+
+function _bindFieldDragEvents() {
+  const list = document.getElementById('cw-edit-fields-list');
+  if (!list) return;
+
+  list.querySelectorAll('.cw-edit-field-row').forEach(row => {
+    const handle = row.querySelector('.cw-drag-handle');
+    if (handle) {
+      handle.addEventListener('mousedown', () => { row.draggable = true; });
+      handle.addEventListener('mouseup',   () => { row.draggable = false; });
+    }
+    row.addEventListener('dragstart', e => {
+      _editDragSrc = row;
+      row.classList.add('cw-drag-active');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.draggable = false;
+      _editDragSrc  = null;
+      list.querySelectorAll('.cw-edit-field-row').forEach(r =>
+        r.classList.remove('cw-drag-active', 'cw-drag-over')
+      );
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (row === _editDragSrc) return;
+      list.querySelectorAll('.cw-edit-field-row').forEach(r => r.classList.remove('cw-drag-over'));
+      row.classList.add('cw-drag-over');
+    });
+    row.addEventListener('dragleave', e => {
+      if (!row.contains(e.relatedTarget)) row.classList.remove('cw-drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!_editDragSrc || _editDragSrc === row) return;
+      list.querySelectorAll('.cw-edit-field-row').forEach(r => r.classList.remove('cw-drag-over'));
+      const rect  = row.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      if (after) row.after(_editDragSrc);
+      else       row.before(_editDragSrc);
+      list.querySelectorAll('.cw-edit-field-row').forEach((r, i) => r.dataset.idx = i);
+    });
+  });
+}
+
+async function _saveTemplate() {
+  const nameEl = document.getElementById('cw-template-name');
+  const name   = nameEl?.value.trim() || '';
+  if (!name) { nameEl?.focus(); return; }
+
+  const fields = [];
+  document.querySelectorAll('.cw-edit-field-row').forEach(row => {
+    const label   = row.querySelector('.cw-edit-field-label-input')?.value.trim() || '';
+    const type    = row.querySelector('.cw-edit-field-type-select')?.value || 'text';
+    const optText = row.querySelector('.cw-edit-options-ta')?.value || '';
+    const options = type === 'dropdown'
+      ? optText.split('\n').map(o => o.trim()).filter(Boolean) : undefined;
+    if (label) {
+      const field = { id: row.dataset.fieldId || _uid(), label, type };
+      if (options) field.options = options;
+      fields.push(field);
+    }
+  });
+
+  const btn = document.getElementById('cw-save-template-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  const t = _editingTemplate;
+  if (t.id) await updateTemplate(t.id, name, fields);
+  else      await createTemplate(name, fields);
+
+  _view = 'manage'; render();
+}

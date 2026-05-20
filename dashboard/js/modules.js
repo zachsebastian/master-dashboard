@@ -220,7 +220,7 @@ const ALL_MODULES = [
       }
 
       // Count project task completions within the range
-      const [dashRows, manualItems] = await Promise.all([
+      const [dashRows, manualItems, caseTickets] = await Promise.all([
         sb.from('dashboards').select('data').eq('user_id', userId),
         sb.from('today_items')
           .select('id', { count: 'exact', head: true })
@@ -229,6 +229,11 @@ const ALL_MODULES = [
           .eq('completed', true)
           .gte('item_date', startStr)
           .lte('item_date', endStr),
+        sb.from('case_writer_tickets')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('submitted_at', startStr + 'T00:00:00')
+          .lte('submitted_at', endStr   + 'T23:59:59'),
       ]);
 
       let completions = 0;
@@ -242,6 +247,7 @@ const ALL_MODULES = [
         }
       }
       completions += manualItems.count || 0;
+      completions += caseTickets.count || 0;
 
       return {
         primary:   { value: completions, label: 'Completions' },
@@ -277,6 +283,66 @@ const ALL_MODULES = [
         quickCapture: true,
         latestEntries: [],
         summaryFragment: unreviewed > 0 ? `${unreviewed} unreviewed note${unreviewed === 1 ? '' : 's'}` : 'All notes reviewed',
+      };
+    },
+  },
+  {
+    id: 'case-writer',
+    name: 'Case Writer',
+    type: 'launchpad',
+    iconBg: 'var(--surface-2)',
+    iconColor: 'var(--text-2)',
+    accentVar: '--text',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+    desc: 'Fill out structured ticket templates and copy formatted output.',
+    href: '/case-writer/',
+
+    async fetchStats(sb, userId) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const mode = localStorage.getItem('digestWeekMode') || 'rolling';
+      let startStr, endStr, weekLabel;
+
+      if (mode === 'custom') {
+        startStr  = localStorage.getItem('digestCustomStart');
+        endStr    = localStorage.getItem('digestCustomEnd');
+        if (startStr && endStr) {
+          const s = new Date(startStr + 'T00:00:00');
+          const e = new Date(endStr   + 'T00:00:00');
+          weekLabel = `${s.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+        } else {
+          startStr  = new Date(today.getTime() - 6 * 86400000).toISOString().split('T')[0];
+          endStr    = today.toISOString().split('T')[0];
+          weekLabel = 'Rolling 7d';
+        }
+      } else if (mode === 'sun') {
+        const s = new Date(today); s.setDate(today.getDate() - today.getDay());
+        const e = new Date(s);     e.setDate(s.getDate() + 6);
+        startStr  = s.toISOString().split('T')[0];
+        endStr    = e.toISOString().split('T')[0];
+        weekLabel = 'Sun–Sat';
+      } else {
+        startStr  = new Date(today.getTime() - 6 * 86400000).toISOString().split('T')[0];
+        endStr    = today.toISOString().split('T')[0];
+        weekLabel = 'Rolling 7d';
+      }
+
+      const { count } = await sb
+        .from('case_writer_tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('submitted_at', startStr + 'T00:00:00')
+        .lte('submitted_at', endStr   + 'T23:59:59');
+      const n = count || 0;
+      return {
+        primary:      { value: n, label: n === 1 ? 'Ticket' : 'Tickets' },
+        secondary:    null,
+        weekLabel,
+        spark:        null,
+        quickCapture: false,
+        latestEntries: [],
+        summaryFragment: `${n} ticket${n === 1 ? '' : 's'} submitted`,
       };
     },
   },

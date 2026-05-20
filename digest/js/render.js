@@ -274,6 +274,27 @@ function toggleRhCard(i) {
   card.classList.toggle('open', !isOpen);
 }
 
+// ── Render case writer tickets section ──
+function renderCaseTicketsSection(caseTickets) {
+  if (!caseTickets || !caseTickets.length) {
+    return `<p class="digest-empty-section">No tickets submitted this week.</p>`;
+  }
+
+  return caseTickets.map(t => {
+    const date = t.submitted_at
+      ? new Date(t.submitted_at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+      : '';
+    return `
+      <div class="digest-item">
+        <div class="digest-item-dot orange"></div>
+        <div class="digest-item-text">
+          <div class="digest-item-label">${esc(t.title || '(untitled)')}</div>
+          <div class="digest-item-note">${esc(t.template_name || '')}${date ? ` · ${date}` : ''}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
 // ── Render metrics section ──
 function renderMetricsSection(metrics) {
   if (!metrics || !metrics.length) {
@@ -316,11 +337,12 @@ function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [] };
-  const { weekRange, todayItems, projects, metrics } = data;
+  const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [], caseTickets: [] };
+  const { weekRange, todayItems, projects, metrics, caseTickets } = data;
 
-  const projectCount = projects.length;
-  const metricCount  = metrics.length;
+  const projectCount    = projects.length;
+  const metricCount     = metrics.length;
+  const ticketCount     = (caseTickets || []).length;
 
   const aiLabel = _aiSummary ? 'Regenerate Summary' : '✨ Generate AI Summary';
 
@@ -394,6 +416,16 @@ function render() {
         </div>
         ${renderMetricsSection(metrics)}
       </div>
+
+      <!-- Development Tickets (Case Writer) -->
+      ${ticketCount ? `
+      <div class="digest-section">
+        <div class="digest-section-header">
+          <span class="digest-section-title">Development Tickets Created · ${ticketCount}</span>
+          <span class="digest-section-count">${ticketCount}</span>
+        </div>
+        ${renderCaseTicketsSection(caseTickets)}
+      </div>` : ''}
 
       <!-- Reflections -->
       <div class="reflection-section">
