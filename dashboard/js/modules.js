@@ -219,10 +219,20 @@ const ALL_MODULES = [
         weekLabel = 'Rolling 7d';
       }
 
-      // Count project tasks whose completing log entry falls within the range
-      const { data: dashRows } = await sb.from('dashboards').select('data').eq('user_id', userId);
+      // Count project task completions within the range
+      const [dashRows, manualItems] = await Promise.all([
+        sb.from('dashboards').select('data').eq('user_id', userId),
+        sb.from('today_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('source', 'manual')
+          .eq('completed', true)
+          .gte('item_date', startStr)
+          .lte('item_date', endStr),
+      ]);
+
       let completions = 0;
-      for (const row of (dashRows || [])) {
+      for (const row of (dashRows.data || [])) {
         for (const project of (row.data?.projects || [])) {
           for (const task of (project.tasks || [])) {
             if (!task.completedInEntry) continue;
@@ -231,6 +241,7 @@ const ALL_MODULES = [
           }
         }
       }
+      completions += manualItems.count || 0;
 
       return {
         primary:   { value: completions, label: 'Completions' },
