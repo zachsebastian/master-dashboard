@@ -210,9 +210,16 @@ function renderDetailView() {
   }
 
   const dueMeta = dueMeta_(p);
-  const sortedEntries = [...p.entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedEntries = [...p.entries].sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    // Same day: later insertion order = newer = sort first
+    return p.entries.indexOf(b) - p.entries.indexOf(a);
+  });
 
-  const entriesHTML = sortedEntries.length ? sortedEntries.map(e => `
+  const entriesHTML = sortedEntries.length ? sortedEntries.map(e => {
+    const completedTasks = (p.tasks || []).filter(t => t.completedInEntry === e.id);
+    return `
     <div class="entry-row" onclick="openEditEntryModal('${p.id}','${e.id}')">
       <div class="entry-date">${fmtDate(e.date)}</div>
       <div class="entry-body">
@@ -220,10 +227,18 @@ function renderDetailView() {
           <span class="entry-status-chip ${e.status}" style="background:${e.status === 'done' ? 'var(--green-bg)' : e.status === 'in-progress' ? 'var(--blue-bg)' : e.status === 'on-hold' ? 'var(--orange-bg)' : 'var(--surface-3)'};color:${e.status === 'done' ? 'var(--green)' : e.status === 'in-progress' ? 'var(--blue)' : e.status === 'on-hold' ? 'var(--orange)' : 'var(--text-3)'}">${statusLabel(e.status)}</span>
         </div>
         ${e.note ? `<div class="entry-note">${esc(e.note)}</div>` : ''}
+        ${completedTasks.length ? `
+          <div class="entry-tasks-completed">
+            ${completedTasks.map(t => `
+              <div class="entry-task-item">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>
+                ${esc(t.text)}
+              </div>`).join('')}
+          </div>` : ''}
         ${e.nextSteps ? `<div class="entry-meta-row"><span class="entry-meta-item">→ ${esc(e.nextSteps)}</span></div>` : ''}
       </div>
-    </div>
-  `).join('') : `<div style="padding:20px"><div class="entry-empty">No entries yet. Add your first progress update.</div></div>`;
+    </div>`;
+  }).join('') : `<div style="padding:20px"><div class="entry-empty">No entries yet. Add your first progress update.</div></div>`;
 
   // Normalize blockers first so we can reference active ones when rendering tasks
   const allBlockers = (p.blockers || []).map((b, i) =>
