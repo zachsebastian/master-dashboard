@@ -95,7 +95,18 @@ function renderNarrativeBlock(entry) {
   </div>`;
 }
 
-function renderStatCard(f, latest, prev, metricColor) {
+// Metrics where up is bad (reversed) or neutral
+const _DELTA_REVERSED = ['required dev', 'total escalations'];
+const _DELTA_NEUTRAL  = ['cx solvable'];
+
+function _getDeltaMode(metricName) {
+  const n = (metricName || '').toLowerCase();
+  if (_DELTA_REVERSED.some(k => n.includes(k))) return 'reversed';
+  if (_DELTA_NEUTRAL.some(k => n.includes(k)))  return 'neutral';
+  return 'normal';
+}
+
+function renderStatCard(f, latest, prev, metricColor, metricName) {
   const val = f.type === 'derived'
     ? evalFormula(f.formula || '', latest.values || {})
     : (latest.values[f.id] ?? '—');
@@ -111,7 +122,12 @@ function renderStatCard(f, latest, prev, metricColor) {
       const prevNum = parseFloat(pv);
       const diff = Math.round((numVal - prevNum) * 100) / 100;
       const pctChange = prevNum !== 0 ? Math.round((diff / Math.abs(prevNum)) * 1000) / 10 : null;
-      const cls = diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-flat';
+      const mode = _getDeltaMode(f.name);
+      let cls;
+      if (diff === 0)          cls = 'delta-flat';
+      else if (mode === 'neutral')  cls = 'delta-neutral';
+      else if (mode === 'reversed') cls = diff > 0 ? 'delta-down' : 'delta-up';
+      else                          cls = diff > 0 ? 'delta-up'   : 'delta-down';
       const sign = diff > 0 ? '+' : '';
       if (isPercent) {
         const pctStr = pctChange !== null ? `${sign}${pctChange}%` : `${sign}${diff}%`;
@@ -285,7 +301,7 @@ function renderMetricPanel(m) {
         <select class="rock-select" onchange="setMetricRock('${m.id}', this.value)">${rockOptions}</select>
       </div>
       <div class="metric-panel-body">
-        ${entry ? `<div class="stat-grid">${m.fields.map(f => renderStatCard(f, entry, prevEntry, m.color)).join('')}</div>` : `<div style="font-size:13px;color:var(--text-3);padding:4px 0">No entries yet — click to add one.</div>`}
+        ${entry ? `<div class="stat-grid">${m.fields.map(f => renderStatCard(f, entry, prevEntry, m.color, m.name)).join('')}</div>` : `<div style="font-size:13px;color:var(--text-3);padding:4px 0">No entries yet — click to add one.</div>`}
       </div>
       ${chartHtml}
       ${entry ? renderNarrativeBlock(entry) : ''}
@@ -538,7 +554,7 @@ function renderPresentation(metrics) {
               ${renderTaskChart(m)}
               ${(m.why || m.prediction || m.proposal) ? renderNarrativeBlock({ why: m.why, prediction: m.prediction, proposal: m.proposal }) : ''}`;
             })() : entry ? `
-              <div class="stat-grid" style="margin-bottom:12px">${m.fields.map(f => renderStatCard(f, entry, prev, m.color)).join('')}</div>
+              <div class="stat-grid" style="margin-bottom:12px">${m.fields.map(f => renderStatCard(f, entry, prev, m.color, m.name)).join('')}</div>
               ${chartHtml ? `<div style="margin-top:12px">${chartHtml}</div>` : ''}
               ${renderNarrativeBlock(entry)}
             ` : `<div style="color:var(--text-3);font-size:13px">No entries recorded yet.</div>`}
