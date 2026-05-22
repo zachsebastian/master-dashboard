@@ -345,7 +345,7 @@ svg.metric-chart { width: 100%; height: 160px; display: block; overflow: hidden;
 .narrative-block { margin-top: 12px; padding: 14px 16px; background: var(--surface-2); border-radius: var(--r-sm); border: 1px solid var(--border); }
 
 /* ── Presentation ── */
-.present-wrap { min-height: 100vh; background: var(--surface); padding: 52px 64px; }
+.present-wrap { background: var(--surface); padding: 52px 64px; }
 .present-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 48px; padding-bottom: 28px; border-bottom: 1.5px solid var(--border-md); }
 .present-title { font-size: 26px; font-weight: 700; letter-spacing: -0.6px; }
 .present-date { font-size: 14px; color: var(--text-2); margin-top: 6px; }

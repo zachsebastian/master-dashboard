@@ -164,15 +164,13 @@ function render() {
   if (presentationMode) {
     app.style.display = 'block';
     app.style.minHeight = '';
-    app.style.overflow = 'auto';
-    document.body.style.overflow = 'auto';
+    app.style.overflowY = 'auto';
     app.innerHTML = renderPresentation(metrics.filter(m => m.visible));
     return;
   }
   app.style.display = '';
   app.style.minHeight = '';
-  app.style.overflow = '';
-  document.body.style.overflow = '';
+  app.style.overflowY = '';
 
   app.innerHTML = `
     <div class="main">
