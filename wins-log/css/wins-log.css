@@ -1,0 +1,493 @@
+/* ── Wins Log ── */
+
+/* ── Layout ── */
+.wl-layout {
+  padding: 28px 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Section shell ── */
+.wl-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wl-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.wl-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wl-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.wl-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgba(224, 160, 48, 0.15);
+  color: var(--orange, #e0a030);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wl-wins-count {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ── Scan button ── */
+.wl-scan-btn {
+  font-weight: 600;
+  font-size: 13px;
+  background: linear-gradient(135deg, rgba(224,160,48,0.1), rgba(224,160,48,0.05));
+  border-color: var(--orange, #e0a030);
+  color: var(--orange, #e0a030);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.wl-scan-btn:hover:not(:disabled) {
+  background: rgba(224, 160, 48, 0.18);
+}
+.wl-scan-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Filters ── */
+.wl-filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wl-filter-select {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.wl-filter-select:focus {
+  outline: none;
+  border-color: var(--blue, #4a9fd4);
+}
+
+/* ── Add button ── */
+.wl-add-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+/* ── Badges ── */
+.wl-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.wl-badge-source {
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.wl-badge-date {
+  background: transparent;
+  color: var(--text-3);
+  font-weight: 400;
+  padding: 0;
+  font-size: 11px;
+}
+
+/* Category colors */
+.wl-cat-customer-impact    { background: var(--blue-bg);           color: var(--blue);           }
+.wl-cat-process-improvement{ background: var(--purple-bg);         color: var(--purple);         }
+.wl-cat-delivery           { background: var(--green-bg);          color: var(--green);          }
+.wl-cat-relationship       { background: rgba(224,160,48,0.14);    color: var(--orange, #e0a030);}
+
+/* ── Candidates grid ── */
+.wl-candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+
+.wl-candidate-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.wl-candidate-card:hover {
+  border-color: var(--orange, #e0a030);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+
+.wl-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.wl-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.wl-card-summary {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.wl-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.wl-btn-confirm {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: currentColor;
+  font-weight: 600;
+  font-size: 12px;
+}
+.wl-btn-confirm:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+.wl-btn-dismiss {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ── Wins list ── */
+.wl-wins-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wl-win-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.wl-win-row:last-child { border-bottom: none; }
+.wl-win-row:hover { background: var(--surface-2); }
+
+.wl-win-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  min-width: 100px;
+}
+
+.wl-win-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.wl-win-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.wl-win-summary {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin-top: 4px;
+}
+
+.wl-win-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.wl-win-date {
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.wl-win-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.wl-win-row:hover .wl-win-actions { opacity: 1; }
+
+/* ── Icon buttons ── */
+.wl-btn-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+.wl-btn-delete { color: var(--red, #e05c7a); }
+.wl-btn-delete:hover {
+  background: rgba(224, 92, 122, 0.1);
+  border-color: var(--red, #e05c7a);
+}
+
+/* ── Empty states ── */
+.wl-empty-state {
+  padding: 44px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.wl-candidates-empty { padding: 32px 20px; }
+
+.wl-empty-icon {
+  font-size: 26px;
+  margin-bottom: 4px;
+  opacity: 0.5;
+}
+
+.wl-empty-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.wl-empty-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  max-width: 380px;
+  line-height: 1.55;
+}
+
+/* ── Loading ── */
+.wl-loading {
+  padding: 64px 32px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* ── Scan notice ── */
+.wl-scan-notice {
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  animation: wl-fade-in 0.25s ease;
+}
+.wl-scan-error {
+  color: var(--red, #e05c7a);
+}
+
+@keyframes wl-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Modal overlay ── */
+.wl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+/* ── Modal ── */
+.wl-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 520px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.wl-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wl-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wl-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wl-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Form ── */
+.wl-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wl-form-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+
+.wl-form-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+
+.wl-form-input,
+.wl-form-select,
+.wl-form-textarea {
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  transition: border-color 0.15s;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wl-form-input:focus,
+.wl-form-select:focus,
+.wl-form-textarea:focus {
+  outline: none;
+  border-color: var(--blue, #4a9fd4);
+}
+
+.wl-date-input {
+  color-scheme: light dark;
+}
+
+.wl-form-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+}
+
+.wl-form-row {
+  display: flex;
+  gap: 12px;
+}
+.wl-form-row .wl-form-group { flex: 1; min-width: 0; }
+
+/* ── Modal error ── */
+.wl-modal-error {
+  font-size: 13px;
+  color: var(--red, #e05c7a);
+  background: rgba(224, 92, 122, 0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+/* ── Primary button ── */
+.wl-btn-primary {
+  background: var(--blue, #4a9fd4);
+  color: #fff;
+  border-color: var(--blue, #4a9fd4);
+  font-weight: 600;
+}
+.wl-btn-primary:hover:not(:disabled) { opacity: 0.88; }
+.wl-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .wl-layout { padding: 16px; gap: 20px; }
+  .wl-section-header { flex-wrap: wrap; gap: 10px; }
+  .wl-filters { width: 100%; }
+  .wl-candidates-grid { grid-template-columns: 1fr; }
+  .wl-win-badges { min-width: 80px; }
+  .wl-form-row { flex-direction: column; }
+}

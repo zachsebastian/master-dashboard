@@ -260,6 +260,40 @@ const ALL_MODULES = [
     },
   },
   {
+    id: 'wins-log',
+    name: 'Wins Log',
+    type: 'launchpad',
+    iconBg: 'rgba(224,160,48,0.14)',
+    iconColor: 'var(--orange, #e0a030)',
+    accentVar: '--orange',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>`,
+    desc: 'Track your wins and accomplishments. AI-powered scanning surfaces highlights from your activity.',
+    href: '/wins-log/',
+
+    async fetchStats(sb, userId) {
+      const [winsRes, pendingRes] = await Promise.all([
+        sb.from('wins')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        sb.from('win_candidates')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('status', 'pending'),
+      ]);
+      const totalWins = winsRes.count || 0;
+      const pending   = pendingRes.count || 0;
+      return {
+        primary:      { value: totalWins, label: totalWins === 1 ? 'Win' : 'Wins' },
+        secondary:    pending > 0 ? { value: pending, label: 'Suggestions' } : null,
+        spark:        null,
+        latestEntries: [],
+        summaryFragment: totalWins === 0
+          ? 'No wins logged yet'
+          : `${totalWins} win${totalWins === 1 ? '' : 's'} logged`,
+      };
+    },
+  },
+  {
     id: 'scratchpad',
     name: 'Scratchpad',
     type: 'launchpad',
