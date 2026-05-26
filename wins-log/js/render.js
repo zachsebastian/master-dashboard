@@ -18,7 +18,8 @@ function _catClass(category) {
 }
 
 // ── Modal state ──
-let _modalCtx = null; // { type: 'add' | 'edit' | 'confirm', winId?, candidateId? }
+let _modalCtx      = null; // { type: 'add' | 'edit' | 'confirm', winId?, candidateId? }
+let _showDismissed = false;
 
 // ── Main render ──
 function renderLoading() {
@@ -43,7 +44,9 @@ function render() {
 
 // ── Section 1: AI Suggestions ──
 function _renderCandidatesSection(candidates) {
-  const count = candidates.length;
+  const count          = candidates.length;
+  const dismissedCount = _dismissedCandidates.length;
+
   return `
     <div class="wl-section" id="wl-candidates-section">
       <div class="wl-section-header">
@@ -51,6 +54,10 @@ function _renderCandidatesSection(candidates) {
           <span class="wl-section-title">AI Suggestions</span>
           ${count > 0 ? `<span class="wl-count-badge">${count}</span>` : ''}
         </div>
+        ${dismissedCount > 0 ? `
+          <button class="btn wl-dismissed-toggle" onclick="toggleDismissed()">
+            ${_showDismissed ? 'Hide dismissed' : `Dismissed (${dismissedCount})`}
+          </button>` : ''}
         <button class="btn wl-scan-btn" onclick="runAiScan()"${_isScanning ? ' disabled' : ''}>
           ${_isScanning ? '⏳ Scanning…' : '✦ Scan for Wins'}
         </button>
@@ -63,6 +70,33 @@ function _renderCandidatesSection(candidates) {
            </div>`
         : `<div class="wl-candidates-grid">${candidates.map(_renderCandidateCard).join('')}</div>`
       }
+      ${_showDismissed && dismissedCount > 0 ? _renderDismissedList() : ''}
+    </div>
+  `;
+}
+
+function _renderDismissedList() {
+  return `
+    <div class="wl-dismissed-section">
+      <div class="wl-dismissed-header">Dismissed suggestions</div>
+      <div class="wl-dismissed-list">
+        ${_dismissedCandidates.map(c => `
+          <div class="wl-dismissed-row" data-id="${_escHtml(c.id)}">
+            <div class="wl-dismissed-badges">
+              <span class="wl-badge wl-badge-category wl-cat-${_catClass(c.category)}">${_escHtml(c.category)}</span>
+              <span class="wl-badge wl-badge-source">${_escHtml(c.source)}</span>
+            </div>
+            <div class="wl-dismissed-body">
+              <div class="wl-dismissed-title">${_escHtml(c.title)}</div>
+              ${c.summary ? `<div class="wl-dismissed-summary">${_escHtml(c.summary)}</div>` : ''}
+            </div>
+            <div class="wl-dismissed-meta">
+              ${c.win_date ? `<span class="wl-win-date">${_formatDate(c.win_date)}</span>` : ''}
+              <button class="btn wl-btn-restore" onclick="restoreCandidateAndRender('${_escHtml(c.id)}')">Restore</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -315,7 +349,20 @@ async function _submitWinModal() {
 }
 
 async function dismissCandidateAndRender(id) {
+  // Grab before dismissCandidate() removes it from _candidates
+  const candidate = _candidates.find(c => c.id === id);
   await dismissCandidate(id);
+  if (candidate) _dismissedCandidates.unshift({ ...candidate, status: 'dismissed', dismissed_at: new Date().toISOString() });
+  render();
+}
+
+async function restoreCandidateAndRender(id) {
+  await restoreCandidate(id);
+  render();
+}
+
+function toggleDismissed() {
+  _showDismissed = !_showDismissed;
   render();
 }
 

@@ -44,7 +44,7 @@ async function initAuth() {
 
   initModuleHeader({ name: 'Wins', subtitle: 'Log' });
 
-  await Promise.all([loadWins(), loadCandidates()]);
+  await Promise.all([loadWins(), loadCandidates(), loadDismissedCandidates()]);
   render();
 
   sb.auth.onAuthStateChange(event => {

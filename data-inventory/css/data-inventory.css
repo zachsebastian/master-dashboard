@@ -1,0 +1,210 @@
+/* ── Data Inventory ── */
+
+.di-layout {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px 32px 64px;
+}
+
+.di-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.di-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+
+.di-page-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.di-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Generate All button ── */
+.di-gen-btn {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.di-gen-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Progress bar ── */
+.di-progress-wrap {
+  margin-bottom: 20px;
+  display: none;
+}
+.di-progress-wrap.visible { display: block; }
+.di-progress-label {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.di-progress-bar-bg {
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.di-progress-bar-fill {
+  height: 100%;
+  background: var(--blue, #4a9fd4);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ── Notice ── */
+.di-notice {
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  line-height: 1.6;
+}
+.di-notice code {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 12px;
+  background: var(--surface-3, var(--surface-2));
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── Cards ── */
+.di-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.di-card:hover { border-color: rgba(0,0,0,0.14); }
+
+.di-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.di-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+.di-card-btns { display: flex; gap: 6px; }
+
+/* Reuse shared btn-sm — just tweak colors for save */
+.di-save-btn {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-color: var(--blue);
+  font-weight: 600;
+}
+
+/* ── Column list ── */
+.di-cols {
+  padding: 7px 16px;
+  font-size: 11px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.8;
+  word-break: break-word;
+}
+.di-col-type { opacity: 0.65; }
+
+/* ── Fields area ── */
+.di-fields {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.di-field { display: flex; flex-direction: column; gap: 5px; }
+
+.di-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-3);
+}
+
+.di-field-value {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.65;
+}
+.di-field-empty { color: var(--text-3); font-style: italic; }
+
+.di-field-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  line-height: 1.65;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+.di-field-textarea:focus {
+  outline: none;
+  border-color: var(--blue, #4a9fd4);
+}
+
+.di-field-updated {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: -4px;
+}
+
+.di-edit-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+/* ── Loading ── */
+.di-loading {
+  padding: 64px 32px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .di-layout { padding: 16px; }
+  .di-page-header { flex-direction: column; gap: 12px; }
+}

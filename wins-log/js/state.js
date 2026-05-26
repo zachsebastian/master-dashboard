@@ -1,11 +1,12 @@
 // ── Wins Log – State ──
 
-let _currentUser = null;
-let _wins        = [];
-let _candidates  = [];
-let _wlKey       = null;   // Anthropic key
-let _isScanning  = false;
-let _winsFilter  = { month: 'all', source: 'all', category: 'all' };
+let _currentUser        = null;
+let _wins               = [];
+let _candidates         = [];
+let _dismissedCandidates = [];
+let _wlKey              = null;   // Anthropic key
+let _isScanning         = false;
+let _winsFilter         = { month: 'all', source: 'all', category: 'all' };
 
 // ── Load ──
 async function loadWins() {
@@ -27,6 +28,30 @@ async function loadCandidates() {
     .order('created_at', { ascending: false });
   if (error) { console.error('loadCandidates:', error); return; }
   _candidates = data || [];
+}
+
+async function loadDismissedCandidates() {
+  const { data, error } = await sb
+    .from('win_candidates')
+    .select('*')
+    .eq('user_id', _currentUser.id)
+    .eq('status', 'dismissed')
+    .order('dismissed_at', { ascending: false });
+  if (error) { console.error('loadDismissedCandidates:', error); return; }
+  _dismissedCandidates = data || [];
+}
+
+async function restoreCandidate(id) {
+  await sb.from('win_candidates')
+    .update({ status: 'pending', dismissed_at: null })
+    .eq('id', id).eq('user_id', _currentUser.id);
+  const candidate = _dismissedCandidates.find(c => c.id === id);
+  if (candidate) {
+    candidate.status       = 'pending';
+    candidate.dismissed_at = null;
+    _dismissedCandidates   = _dismissedCandidates.filter(c => c.id !== id);
+    _candidates.unshift(candidate);
+  }
 }
 
 // ── CRUD: wins ──

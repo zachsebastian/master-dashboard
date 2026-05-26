@@ -93,9 +93,21 @@ async function renderAdminPage() {
       ${adminRows}
     </div>
     <div class="section-title">Users</div>
-    <div class="admin-table">
+    <div class="admin-table" style="margin-bottom:48px">
       <div class="admin-row admin-row-header"><div>User</div><div>Actions</div></div>
       ${userRows}
+    </div>
+    <div class="section-title">Tools</div>
+    <div class="admin-table">
+      <div class="admin-row">
+        <div class="admin-email">
+          <div style="font-weight:600">Data Inventory</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">AI-generated descriptions of every database table — read-only, never modifies data</div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-sm" onclick="window.location.href='/data-inventory/'">Open →</button>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -353,3 +365,5 @@ function hideBanner() {
   document.getElementById('impersonation-email').textContent = '';
   document.body.classList.remove('has-banner');
 }
+
+// (Data Inventory logic lives in /data-inventory/js/app.js)
