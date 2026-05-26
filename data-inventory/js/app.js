@@ -1,10 +1,13 @@
 // ── Data Inventory ──
 
+const MASTER_KEY   = '__master_summary__';
+
 let _currentUser   = null;
 let _anthropicKey  = null;
 let _inventoryMap  = {};   // table_name → { contents, why_stored, updated_at }
 let _schemaData    = [];   // [{ table_name, columns }]
 let _invGenerating = false;
+let _masterRegen   = false;
 let _claudeModel   = null;
 
 // ── Helpers ──
@@ -131,11 +134,200 @@ function _render() {
           <div class="di-progress-bar-fill" id="di-progress-fill" style="width:0%"></div>
         </div>
       </div>
+      ${_renderMasterSummary()}
       ${!_schemaData.length
         ? `<div class="di-notice">No tables found in the public schema.</div>`
         : _schemaData.map(_renderCard).join('')
       }
     </div>`;
+}
+
+function _renderMasterSummary() {
+  const entry   = _inventoryMap[MASTER_KEY] || {};
+  const summary = entry.contents || '';
+  const updatedAt = entry.updated_at
+    ? new Date(entry.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+
+  // Count how many tables have descriptions (for the empty-state hint)
+  const documented = Object.keys(_inventoryMap).filter(k => k !== MASTER_KEY && _inventoryMap[k].contents).length;
+
+  return `
+    <div class="di-master-card" id="di-master-card">
+      <div class="di-master-header">
+        <div class="di-master-title">
+          <span class="di-master-label">Master Summary</span>
+          <span class="di-master-sub">All tables · unified overview</span>
+        </div>
+        <div class="di-card-btns">
+          <button class="btn-sm" id="di-master-edit-btn" onclick="startMasterEdit()">Edit</button>
+          <button class="btn-sm" id="di-master-regen-btn" onclick="regenMasterSummary()">↺ Regen</button>
+        </div>
+      </div>
+      <div class="di-master-body" id="di-master-body">
+        ${_renderMasterBody(summary, updatedAt, documented, false)}
+      </div>
+    </div>
+    <div class="di-divider"></div>`;
+}
+
+function _renderMasterBody(summary, updatedAt, documented, editMode) {
+  if (editMode) {
+    return `
+      <textarea class="di-field-textarea di-master-textarea" id="di-master-textarea"
+        rows="8">${_esc(summary)}</textarea>
+      <div class="di-edit-footer" style="margin-top:10px">
+        <span id="di-master-save-status" style="font-size:12px;flex:1;color:var(--text-3)"></span>
+        <button class="btn-sm" onclick="cancelMasterEdit()">Cancel</button>
+        <button class="btn-sm di-save-btn" onclick="saveMasterEdit()">Save</button>
+      </div>`;
+  }
+
+  if (!summary) {
+    return `<div class="di-master-empty">
+      ${documented > 0
+        ? `${documented} table${documented === 1 ? '' : 's'} documented — click <strong>↺ Regen</strong> to generate the master summary.`
+        : 'Generate individual table descriptions first, then click <strong>↺ Regen</strong> to build the master summary.'
+      }
+    </div>`;
+  }
+
+  return `
+    <div class="di-master-text">${_esc(summary)}</div>
+    ${updatedAt ? `<div class="di-field-updated" style="margin-top:10px">Last updated ${updatedAt}</div>` : ''}`;
+}
+
+async function regenMasterSummary() {
+  if (_masterRegen || _invGenerating) return;
+  if (!_anthropicKey) { alert('No Anthropic API key found. Add your key in profile settings.'); return; }
+
+  // Collect all existing table descriptions
+  const documented = Object.entries(_inventoryMap)
+    .filter(([k, v]) => k !== MASTER_KEY && (v.contents || v.why_stored))
+    .map(([k, v]) => ({ table_name: k, contents: v.contents, why_stored: v.why_stored }));
+
+  if (!documented.length) {
+    alert('No table descriptions found. Run "Generate All" first to document the individual tables, then regenerate the summary.');
+    return;
+  }
+
+  _masterRegen = true;
+  const btn = document.getElementById('di-master-regen-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  try {
+    await _resolveModel();
+
+    const tableLines = documented.map(t =>
+      `• ${t.table_name}: ${t.contents}${t.why_stored ? ' ' + t.why_stored : ''}`
+    ).join('\n');
+
+    const prompt = `You are writing a master summary for a personal productivity dashboard's database documentation.
+
+Below are descriptions for each table:
+
+${tableLines}
+
+Write a single cohesive summary (3–5 paragraphs) that answers:
+1. What tables exist in this database
+2. What data each one contains
+3. Why each type of data is stored — what role it plays in the dashboard
+
+Write in plain, readable prose. You can group related tables together. Don't use bullet points or headers — this should read as a unified narrative someone could skim to understand the full data model at a glance. Be specific and reference actual table names.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': _anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: _claudeModel,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${res.status}`);
+    }
+
+    const json    = await res.json();
+    const summary = (json.content?.[0]?.text || '').trim();
+    if (!summary) throw new Error('Empty response from Claude.');
+
+    const entry = {
+      table_name: MASTER_KEY,
+      contents:   summary,
+      why_stored: '',
+      updated_at: new Date().toISOString(),
+    };
+    await sb.from('data_inventory').upsert(entry, { onConflict: 'table_name' });
+    _inventoryMap[MASTER_KEY] = entry;
+
+    // Re-render just the master body
+    const bodyEl = document.getElementById('di-master-body');
+    if (bodyEl) {
+      const updatedAt = new Date(entry.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+      const doc = Object.keys(_inventoryMap).filter(k => k !== MASTER_KEY && _inventoryMap[k].contents).length;
+      bodyEl.innerHTML = _renderMasterBody(summary, updatedAt, doc, false);
+    }
+  } catch (err) {
+    console.error('regenMasterSummary:', err);
+    alert('Failed to generate summary: ' + (err.message || 'Unknown error'));
+  } finally {
+    _masterRegen = false;
+    if (btn) { btn.disabled = false; btn.textContent = '↺ Regen'; }
+  }
+}
+
+function startMasterEdit() {
+  const bodyEl  = document.getElementById('di-master-body');
+  const editBtn = document.getElementById('di-master-edit-btn');
+  if (!bodyEl) return;
+  const entry   = _inventoryMap[MASTER_KEY] || {};
+  const doc     = Object.keys(_inventoryMap).filter(k => k !== MASTER_KEY && _inventoryMap[k].contents).length;
+  bodyEl.innerHTML = _renderMasterBody(entry.contents || '', '', doc, true);
+  if (editBtn) editBtn.style.display = 'none';
+  document.getElementById('di-master-textarea')?.focus();
+}
+
+function cancelMasterEdit() {
+  const bodyEl  = document.getElementById('di-master-body');
+  const editBtn = document.getElementById('di-master-edit-btn');
+  if (!bodyEl) return;
+  const entry     = _inventoryMap[MASTER_KEY] || {};
+  const updatedAt = entry.updated_at
+    ? new Date(entry.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+  const doc = Object.keys(_inventoryMap).filter(k => k !== MASTER_KEY && _inventoryMap[k].contents).length;
+  bodyEl.innerHTML = _renderMasterBody(entry.contents || '', updatedAt, doc, false);
+  if (editBtn) editBtn.style.display = '';
+}
+
+async function saveMasterEdit() {
+  const statusEl = document.getElementById('di-master-save-status');
+  const summary  = (document.getElementById('di-master-textarea')?.value || '').trim();
+  if (statusEl) statusEl.textContent = 'Saving…';
+
+  const entry = {
+    table_name: MASTER_KEY,
+    contents:   summary,
+    why_stored: '',
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await sb.from('data_inventory').upsert(entry, { onConflict: 'table_name' });
+
+  if (error) {
+    if (statusEl) { statusEl.textContent = '⚠ ' + error.message; statusEl.style.color = 'var(--red)'; }
+    return;
+  }
+
+  _inventoryMap[MASTER_KEY] = entry;
+  cancelMasterEdit();
 }
 
 function _renderCard(table) {

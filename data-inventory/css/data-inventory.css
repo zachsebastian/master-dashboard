@@ -195,6 +195,72 @@
   margin-top: 4px;
 }
 
+/* ── Master Summary card ── */
+.di-master-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.di-master-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.di-master-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.di-master-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+.di-master-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.di-master-body {
+  padding: 18px 16px;
+}
+
+.di-master-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.di-master-empty {
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.di-master-textarea {
+  min-height: 180px;
+}
+
+.di-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0 24px;
+}
+
 /* ── Loading ── */
 .di-loading {
   padding: 64px 32px;
