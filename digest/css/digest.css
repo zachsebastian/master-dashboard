@@ -319,7 +319,10 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
-.digest-project-meta--blocker { background: var(--red-bg, #fff0ef); }
+.digest-project-meta--blocker          { background: var(--red-bg, #fff0ef); }
+.digest-project-meta--blocker-resolved { background: var(--green-bg); }
+.digest-blocker-active   { color: var(--red,   #e05c7a); }
+.digest-blocker-resolved { color: var(--green, #3dbfa0); }
 .digest-meta-label {
   font-size: 10px;
   font-weight: 700;

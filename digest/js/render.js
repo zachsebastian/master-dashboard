@@ -85,11 +85,28 @@ function renderProjectsSection(projects) {
           <span class="digest-meta-value">${esc(_snippet(p.nextSteps, 200))}</span>
         </div>` : ''}
 
-      ${p.blockers && p.blockers.length ? `
-        <div class="digest-project-meta digest-project-meta--blocker">
-          <span class="digest-meta-label">Blockers</span>
-          <div>${p.blockers.map(b => `<div class="digest-meta-value">⚠ ${esc(b)}</div>`).join('')}</div>
-        </div>` : ''}
+      ${p.blockers && p.blockers.length ? (() => {
+          // Normalise: blockers can be plain strings (legacy) or objects {text, resolved}
+          const normalised = p.blockers.map(b => typeof b === 'string' ? { text: b, resolved: false } : b);
+          const active   = normalised.filter(b => !b.resolved);
+          const resolved = normalised.filter(b =>  b.resolved);
+          const activeHtml = active.map(b =>
+            `<div class="digest-meta-value digest-blocker-active">⚠ ${esc(b.text || '')}</div>`
+          ).join('');
+          const resolvedHtml = resolved.map(b =>
+            `<div class="digest-meta-value digest-blocker-resolved">✓ ${esc(b.text || '')}</div>`
+          ).join('');
+          // Only render the section if there's something to show
+          if (!activeHtml && !resolvedHtml) return '';
+          const sectionClass = active.length
+            ? 'digest-project-meta digest-project-meta--blocker'
+            : 'digest-project-meta digest-project-meta--blocker-resolved';
+          return `
+            <div class="${sectionClass}">
+              <span class="digest-meta-label">${active.length ? 'Blockers' : 'Blockers (resolved)'}</span>
+              <div>${activeHtml}${resolvedHtml}</div>
+            </div>`;
+        })() : ''}
 
     </div>`).join('');
 }

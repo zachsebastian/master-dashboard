@@ -248,8 +248,16 @@ function _buildSummaryText(data) {
       }
       if (p.nextSteps) lines.push(`    Current next steps: ${p.nextSteps}`);
       if (p.blockers.length) {
-        lines.push(`    Current blockers:`);
-        for (const b of p.blockers) lines.push(`      ⚠ ${b}`);
+        const active   = p.blockers.filter(b => !(typeof b === 'object' ? b.resolved : false));
+        const resolved = p.blockers.filter(b =>  (typeof b === 'object' ? b.resolved : false));
+        if (active.length) {
+          lines.push(`    Active blockers:`);
+          for (const b of active) lines.push(`      ⚠ ${typeof b === 'object' ? (b.text || '') : b}`);
+        }
+        if (resolved.length) {
+          lines.push(`    Resolved blockers:`);
+          for (const b of resolved) lines.push(`      ✓ ${typeof b === 'object' ? (b.text || '') : b}`);
+        }
       }
     }
   } else {
