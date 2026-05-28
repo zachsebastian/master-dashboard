@@ -339,6 +339,54 @@ async function _syncProjectTask(item, completing) {
     .eq('user_id', uid);
 }
 
+async function updateItemText(id, newText) {
+  const item = todayItems.find(i => i.id === id);
+  if (!item) return;
+
+  const trimmed = newText.trim();
+  if (!trimmed || trimmed === item.text) return;
+
+  item.text = trimmed;
+
+  await sb.from('today_items').update({ text: trimmed }).eq('id', id);
+
+  // For project-sourced items, keep the originating task in sync
+  if (item.source === 'project' && item.source_ref_id) {
+    await _syncProjectTaskText(item, trimmed);
+  }
+}
+
+// Update the task text in the dashboards blob when a project item is edited
+async function _syncProjectTaskText(item, newText) {
+  const uid = _currentUser.id;
+
+  const { data: dashRows } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', uid);
+
+  if (!dashRows?.length) return;
+
+  for (const row of dashRows) {
+    const project = (row.data?.projects || []).find(p => p.id === item.source_ref_id);
+    if (!project) continue;
+
+    const task = item.source_task_id
+      ? (project.tasks || []).find(t => t.id === item.source_task_id)
+      : (project.tasks || []).find(t => t.text.trim() === item.text.trim());
+
+    if (!task) continue;
+
+    task.text = newText;
+
+    await sb
+      .from('dashboards')
+      .update({ data: row.data, updated_at: new Date().toISOString() })
+      .eq('user_id', uid);
+    break;
+  }
+}
+
 async function deleteItem(id) {
   todayItems = todayItems.filter(i => i.id !== id);
   await sb.from('today_items').delete().eq('id', id);

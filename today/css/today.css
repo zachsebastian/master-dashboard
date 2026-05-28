@@ -330,6 +330,88 @@
   color: var(--red, #c0392b);
 }
 
+/* ── Edit button ── */
+.today-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.today-edit-btn:hover {
+  background: var(--blue-bg, #e8f3fc);
+  color: var(--blue, #4a9fd4);
+}
+
+/* ── Inline edit input ── */
+.today-item--editing {
+  border-color: var(--blue) !important;
+}
+
+.today-item-edit-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+
+.today-item-right--editing {
+  opacity: 1 !important;
+  gap: 4px;
+}
+
+/* Save / cancel buttons inside edit mode */
+.today-edit-save-btn,
+.today-edit-cancel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.today-edit-save-btn {
+  color: var(--green, #3dbfa0);
+}
+.today-edit-save-btn:hover {
+  background: var(--green-bg, #e6f7f4);
+}
+
+.today-edit-cancel-btn {
+  color: var(--text-3);
+  font-size: 16px;
+}
+.today-edit-cancel-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
 /* ── Add row ── */
 .today-add-row {
   margin-top: 12px;

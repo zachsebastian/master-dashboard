@@ -2,6 +2,9 @@
 let _dragSrcId  = null;
 let _dragOverId = null;
 
+// ── Edit state ──
+let _editingItemId = null;
+
 // ── Escape helper ──
 function escHtml(str) {
   return String(str == null ? '' : str)
@@ -102,6 +105,30 @@ function _renderTodayView(uncompleted, completed, total, doneCount) {
 // ── Single item ──
 function _renderItem(item) {
   const isDraggable = !item.completed;
+  const isEditing   = _editingItemId === item.id;
+
+  if (isEditing) {
+    return `
+      <div class="today-item today-item--editing"
+           data-id="${escHtml(item.id)}">
+        <div class="today-item-check${item.completed ? ' checked' : ''}"
+             data-check-id="${escHtml(item.id)}"
+             title="${item.completed ? 'Mark incomplete' : 'Mark complete'}"></div>
+        <div class="today-item-body">
+          <input class="today-item-edit-input"
+                 id="edit-input-${escHtml(item.id)}"
+                 data-edit-input-id="${escHtml(item.id)}"
+                 value="${escHtml(item.text)}"
+                 maxlength="500"
+                 autocomplete="off">
+        </div>
+        <div class="today-item-right today-item-right--editing">
+          <button class="today-edit-save-btn" data-save-id="${escHtml(item.id)}" title="Save">✓</button>
+          <button class="today-edit-cancel-btn" data-cancel-id="${escHtml(item.id)}" title="Cancel">×</button>
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="today-item${item.completed ? ' completed' : ''}"
          data-id="${escHtml(item.id)}"
@@ -117,6 +144,7 @@ function _renderItem(item) {
       </div>
       <div class="today-item-right">
         ${isDraggable ? `<span class="today-drag-handle" title="Drag to reorder">⠿</span>` : ''}
+        <button class="today-edit-btn" data-edit-id="${escHtml(item.id)}" title="Edit">✎</button>
         <button class="today-delete-btn" data-delete-id="${escHtml(item.id)}" title="Delete">×</button>
       </div>
     </div>`;
@@ -240,6 +268,54 @@ function bindEvents() {
       const id = el.dataset.deleteId;
       await deleteItem(id);
       render();
+    });
+  });
+
+  // Edit buttons — enter edit mode
+  document.querySelectorAll('[data-edit-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      _editingItemId = el.dataset.editId;
+      render();
+      // Focus and select all text
+      const input = document.getElementById(`edit-input-${_editingItemId}`);
+      if (input) { input.focus(); input.select(); }
+    });
+  });
+
+  // Save edit — button click
+  document.querySelectorAll('[data-save-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const id    = el.dataset.saveId;
+      const input = document.getElementById(`edit-input-${id}`);
+      const newText = input ? input.value : '';
+      _editingItemId = null;
+      await updateItemText(id, newText);
+      render();
+    });
+  });
+
+  // Cancel edit — button click
+  document.querySelectorAll('[data-cancel-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      _editingItemId = null;
+      render();
+    });
+  });
+
+  // Edit input — keyboard shortcuts (Enter to save, Escape to cancel)
+  document.querySelectorAll('[data-edit-input-id]').forEach(input => {
+    input.addEventListener('keydown', async e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const id = input.dataset.editInputId;
+        const newText = input.value;
+        _editingItemId = null;
+        await updateItemText(id, newText);
+        render();
+      } else if (e.key === 'Escape') {
+        _editingItemId = null;
+        render();
+      }
     });
   });
 
