@@ -173,6 +173,77 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .chip.due.overdue     { background: var(--red-bg);    color: var(--red);    border-color: transparent; }
 .chip.due.soon        { background: var(--orange-bg); color: var(--orange); border-color: transparent; }
 
+/* ── Link chip ── */
+.link-chip {
+  padding: 0;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: stretch;
+  cursor: default;
+}
+.link-chip--empty {
+  cursor: pointer;
+  padding: 3px 9px;
+  color: var(--text-3);
+  border-style: dashed;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.link-chip--empty:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+  background: var(--blue-bg, #e8f3fc);
+}
+.link-chip-href {
+  padding: 3px 6px 3px 9px;
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.link-chip-href:hover { background: var(--blue-bg, #e8f3fc); }
+.link-chip-edit {
+  padding: 3px 8px;
+  border: none;
+  border-left: 1px solid var(--border-md);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  transition: color 0.1s, background 0.1s;
+}
+.link-chip-edit:hover { color: var(--text); background: var(--surface-2); }
+
+/* ── Inline link edit ── */
+.link-edit-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.link-edit-input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--blue);
+  border-radius: var(--r-sm, 6px);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  width: 220px;
+  transition: border-color 0.15s;
+}
+.link-edit-label-input {
+  width: 160px;
+}
+
 /* ── Panel ── */
 .panel { background: var(--surface); border: 1px solid var(--border-md); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); margin-bottom: 16px; }
 .panel-header {

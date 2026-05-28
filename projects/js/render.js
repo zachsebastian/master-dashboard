@@ -1,5 +1,8 @@
 // ── Helpers ──
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+// ── Link-edit state ──
+let _editingLinkId = null;
 function byPriority(a, b) { return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1); }
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function uid() { return Math.random().toString(36).slice(2, 9); }
@@ -37,6 +40,38 @@ function circleProgress(pct, color) {
       stroke-dasharray="${dashArray}" stroke-dashoffset="${circ / 4}" stroke-linecap="${linecap}"
       transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dasharray 0.5s ease"/>
   </svg>`;
+}
+
+// ── Link chip helpers ──
+function _linkLabel(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch { return url.slice(0, 40); }
+}
+
+function _renderLinkChip(p) {
+  if (_editingLinkId === p.id) {
+    return `
+      <span class="link-edit-inline">
+        <input type="url" class="link-edit-input" id="link-edit-input-${esc(p.id)}"
+               value="${esc(p.url || '')}" placeholder="https://…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();saveLinkEdit('${esc(p.id)}')}else if(event.key==='Escape')cancelLinkEdit()">
+        <input type="text" class="link-edit-input link-edit-label-input" id="link-edit-label-${esc(p.id)}"
+               value="${esc(p.urlLabel || '')}" placeholder="Display name (optional)"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();saveLinkEdit('${esc(p.id)}')}else if(event.key==='Escape')cancelLinkEdit()">
+        <button class="btn btn-sm btn-primary" style="padding:2px 10px;font-size:12px" onclick="saveLinkEdit('${esc(p.id)}')">Save</button>
+        <button class="btn btn-sm" style="padding:2px 8px;font-size:12px" onclick="cancelLinkEdit()">✕</button>
+      </span>`;
+  }
+
+  if (p.url) {
+    const label = p.urlLabel || _linkLabel(p.url);
+    return `
+      <span class="chip link-chip link-chip--set">
+        <a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" class="link-chip-href">🔗 ${esc(label)}</a><button class="link-chip-edit" onclick="setLinkEditMode('${esc(p.id)}')" title="Edit link">›</button>
+      </span>`;
+  }
+
+  return `<button class="chip link-chip link-chip--empty" onclick="setLinkEditMode('${esc(p.id)}')">🔗 Add link</button>`;
 }
 
 // ── Render ──
@@ -326,6 +361,7 @@ function renderDetailView() {
     </select>
     ${dueMeta ? `<span class="chip due ${dueMeta.cls}">📅 ${dueMeta.label}</span>` : ''}
     ${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join('')}
+    ${_renderLinkChip(p)}
   </div>
 
   <div class="panel" style="margin-bottom:16px">
@@ -470,6 +506,29 @@ function updateProjectPriority(id, val) {
   if (!p) return;
   p.priority = val;
   saveState(); render();
+}
+function setLinkEditMode(id) {
+  _editingLinkId = id;
+  renderContent();
+  const input = document.getElementById(`link-edit-input-${id}`);
+  if (input) { input.focus(); input.select(); }
+}
+function cancelLinkEdit() {
+  _editingLinkId = null;
+  renderContent();
+}
+function saveLinkEdit(id) {
+  const urlInput   = document.getElementById(`link-edit-input-${id}`);
+  const labelInput = document.getElementById(`link-edit-label-${id}`);
+  const url   = urlInput   ? urlInput.value.trim()   : '';
+  const label = labelInput ? labelInput.value.trim() : '';
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  p.url      = url   || null;
+  p.urlLabel = label || null;
+  _editingLinkId = null;
+  saveState();
+  renderContent();
 }
 function deleteProject(id) {
   if (!confirm('Delete this project and all its data?')) return;
