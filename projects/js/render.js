@@ -3,6 +3,10 @@ const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 
 // ── Link-edit state ──
 let _editingLinkId = null;
+
+// ── Task drag state ──
+let _taskDragSrcId  = null;
+let _taskDragOverId = null;
 function byPriority(a, b) { return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1); }
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function uid() { return Math.random().toString(36).slice(2, 9); }
@@ -126,6 +130,7 @@ function renderContent() {
   if (state.view === 'detail') {
     const p = state.projects.find(x => x.id === state.activeProject);
     if (p && p.entries.length > 1) drawChart(p);
+    _bindTaskDragEvents();
   }
 }
 
@@ -292,7 +297,8 @@ function renderDetailView() {
     const isDone    = !!t.completedInEntry;
     const isBlocked = !isDone && blockedTaskIds.has(t.id);
     const entry = isDone ? p.entries.find(e => e.id === t.completedInEntry) : null;
-    return `<div class="task-row">
+    return `<div class="task-row" data-task-id="${esc(t.id)}" draggable="true">
+      <span class="task-drag-handle" title="Drag to reorder">⠿</span>
       <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}${isBlocked ? ` <span class="task-blocked-chip">Blocked</span>` : ''}</div>
       ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
       ${!isDone ? `<div style="display:flex;gap:4px">
@@ -389,7 +395,7 @@ function renderDetailView() {
         <button class="btn btn-sm btn-primary" onclick="openAddTaskModal('${p.id}')">+ Add task</button>
       </div>
     </div>
-    <div class="task-list">${tasksHTML}</div>
+    <div class="task-list" id="task-list-${esc(p.id)}">${tasksHTML}</div>
   </div>
 
   <div class="detail-grid">
@@ -470,6 +476,67 @@ function drawChart(p) {
     ${sorted.map((e, i) => `<circle cx="${toX(xs[i])}" cy="${toY(e.completion)}" r="4" fill="${p.color}" stroke="${isDark ? '#1a1a1a' : '#fff'}" stroke-width="2"/>`).join('')}
     ${xLabels}
   `;
+}
+
+// ── Task drag-to-reorder ──
+function _bindTaskDragEvents() {
+  const p = state.projects.find(x => x.id === state.activeProject);
+  if (!p) return;
+  const list = document.getElementById(`task-list-${p.id}`);
+  if (!list) return;
+
+  const rows = list.querySelectorAll('.task-row[data-task-id]');
+
+  rows.forEach(el => {
+    el.addEventListener('dragstart', e => {
+      _taskDragSrcId = el.dataset.taskId;
+      el.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _taskDragSrcId);
+    });
+
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      list.querySelectorAll('.task-row').forEach(r => r.classList.remove('drag-over'));
+      _taskDragSrcId  = null;
+      _taskDragOverId = null;
+    });
+
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (el.dataset.taskId === _taskDragSrcId) return;
+      list.querySelectorAll('.task-row').forEach(r => r.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+      _taskDragOverId = el.dataset.taskId;
+    });
+
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
+    });
+
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!_taskDragSrcId || _taskDragSrcId === _taskDragOverId) return;
+      list.querySelectorAll('.task-row').forEach(r => r.classList.remove('drag-over'));
+
+      // Build new order from current DOM
+      const allIds = Array.from(list.querySelectorAll('.task-row[data-task-id]'))
+        .map(r => r.dataset.taskId);
+
+      const srcIdx  = allIds.indexOf(_taskDragSrcId);
+      const destIdx = allIds.indexOf(_taskDragOverId);
+      if (srcIdx === -1 || destIdx === -1) return;
+
+      allIds.splice(srcIdx, 1);
+      allIds.splice(destIdx, 0, _taskDragSrcId);
+
+      // Reorder the tasks array to match and persist
+      const taskMap = new Map(p.tasks.map(t => [t.id, t]));
+      p.tasks = allIds.map(id => taskMap.get(id)).filter(Boolean);
+      saveState();
+    });
+  });
 }
 
 // ── Actions ──
