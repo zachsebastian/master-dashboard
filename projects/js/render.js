@@ -535,6 +535,7 @@ function _bindTaskDragEvents() {
       const taskMap = new Map(p.tasks.map(t => [t.id, t]));
       p.tasks = allIds.map(id => taskMap.get(id)).filter(Boolean);
       saveState();
+      renderContent();
     });
   });
 }
