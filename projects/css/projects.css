@@ -319,6 +319,7 @@ svg.proj-chart { width: 100%; height: 160px; display: block; overflow: visible; 
   user-select: none;
   flex-shrink: 0;
   line-height: 1;
+  opacity: 1;
 }
 .task-drag-handle:active { cursor: grabbing; }
 .task-row.dragging { opacity: 0.3; }
