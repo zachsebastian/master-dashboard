@@ -99,6 +99,9 @@ function _renderTodayView(uncompleted, completed, total, doneCount) {
         placeholder="Add a priority for today…"
         maxlength="500">
       <button class="btn btn-primary" id="today-add-btn">Add</button>
+    </div>
+    <div class="today-pull-more-row">
+      <button class="today-pull-more-btn" id="today-pull-more-btn">↓ Pull more from projects</button>
     </div>`;
 }
 
@@ -340,6 +343,26 @@ function bindEvents() {
 
     addInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') addBtn.click();
+    });
+  }
+
+  // Pull more from projects
+  const pullMoreBtn = document.getElementById('today-pull-more-btn');
+  if (pullMoreBtn) {
+    pullMoreBtn.addEventListener('click', async () => {
+      pullMoreBtn.disabled = true;
+      pullMoreBtn.textContent = 'Pulling…';
+      const added = await pullMoreTasks();
+      if (added > 0) {
+        render();
+      } else {
+        pullMoreBtn.textContent = 'No more tasks available';
+        setTimeout(() => {
+          if (!pullMoreBtn.isConnected) return;
+          pullMoreBtn.disabled = false;
+          pullMoreBtn.textContent = '↓ Pull more from projects';
+        }, 2500);
+      }
     });
   }
 

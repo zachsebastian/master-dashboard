@@ -203,6 +203,96 @@ async function autoPullFromProjects(topUp = false) {
   }
 }
 
+// ── Pull additional tasks on demand ──
+async function pullMoreTasks() {
+  const uid   = _currentUser.id;
+  const today = getTodayDate();
+
+  // Skip anything already on today's list
+  const existingTaskIds = new Set(todayItems.map(i => i.source_task_id).filter(Boolean));
+  const existingTexts   = new Set(todayItems.map(i => i.text.trim().toLowerCase()));
+
+  const { data: dashRows, error } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  if (error || !dashRows?.data?.projects) return 0;
+
+  const projects    = dashRows.data.projects || [];
+  const todayParsed = new Date(today + 'T00:00:00');
+  const candidates  = [];
+
+  for (const project of projects) {
+    if (project.status !== 'in-progress') continue;
+
+    const blockedTaskIds = new Set(
+      (project.blockers || [])
+        .filter(b => typeof b === 'object' && !b.resolved && b.taskId)
+        .map(b => b.taskId)
+    );
+
+    const incompleteTasks = (project.tasks || []).filter(
+      t => t.completedInEntry == null
+        && !existingTaskIds.has(t.id)
+        && !existingTexts.has(t.text.trim().toLowerCase())
+        && !blockedTaskIds.has(t.id)
+    );
+    if (!incompleteTasks.length) continue;
+
+    const priorityMap = { high: 3, medium: 2, low: 1 };
+    const priorityScore = priorityMap[project.priority] || 0;
+
+    let dueDateScore = 0;
+    if (project.dueDate) {
+      const due      = new Date(project.dueDate + 'T00:00:00');
+      const diffDays = Math.floor((due - todayParsed) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0)        dueDateScore = 5;
+      else if (diffDays === 0) dueDateScore = 4;
+      else if (diffDays <= 3)  dueDateScore = 3;
+      else if (diffDays <= 7)  dueDateScore = 2;
+      else if (diffDays <= 14) dueDateScore = 1;
+    }
+
+    const score = priorityScore + dueDateScore;
+    for (const task of incompleteTasks) candidates.push({ task, project, score });
+  }
+
+  if (!candidates.length) return 0;
+
+  candidates.sort((a, b) => b.score - a.score);
+  const top = candidates.slice(0, 5);
+
+  const maxOrder = todayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
+  let nextOrder = maxOrder + 1;
+  let added = 0;
+
+  for (const { task, project } of top) {
+    const row = {
+      user_id:         uid,
+      text:            task.text,
+      completed:       false,
+      source:          'project',
+      source_ref_id:   project.id,
+      source_ref_name: project.name,
+      source_task_id:  task.id,
+      sort_order:      nextOrder++,
+      item_date:       today,
+    };
+
+    const { data: inserted, error: insErr } = await sb
+      .from('today_items')
+      .insert(row)
+      .select()
+      .single();
+
+    if (!insErr && inserted) { todayItems.push(inserted); added++; }
+  }
+
+  return added;
+}
+
 // ── CRUD ──
 async function addManualItem(text) {
   const uid   = _currentUser.id;
