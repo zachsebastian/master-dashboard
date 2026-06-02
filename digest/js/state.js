@@ -387,7 +387,8 @@ Return absolutely nothing else — no explanation, no markdown fences, just the 
 
 // ── Generate AI summary via Anthropic API ──
 // qaContext: optional array of { q, a } objects from the pre-analysis Q&A
-async function generateAiSummary(qaContext) {
+// feedback:  optional string — user's critique of a previous summary to guide revision
+async function generateAiSummary(qaContext, feedback) {
   const uid = _currentUser.id;
 
   // Reuse cached key if fetchAiQuestions already loaded it
@@ -422,6 +423,9 @@ async function generateAiSummary(qaContext) {
   if (answeredQa.length) {
     const qaBlock = answeredQa.map(qa => `Q: ${qa.q}\nA: ${qa.a}`).join('\n\n');
     userContent = `ADDITIONAL CONTEXT (answers to clarifying questions):\n${qaBlock}\n\n---\n\n${summaryText}`;
+  }
+  if (feedback && feedback.trim()) {
+    userContent = `FEEDBACK ON THE PREVIOUS SUMMARY — please revise to address this:\n${feedback.trim()}\n\n---\n\n${userContent}`;
   }
 
   const systemPrompt = `Write a weekly progress update in first person, as if this person wrote it \

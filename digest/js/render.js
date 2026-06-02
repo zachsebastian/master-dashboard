@@ -336,19 +336,37 @@ function renderMetricsSection(metrics) {
   }).join('');
 }
 
+// ── Inner HTML for AI summary card when a summary exists ──
+function _renderAiSummaryContent(text) {
+  return `
+    <div class="ai-summary-card-header">
+      <div class="ai-summary-label">✨ AI Summary</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="ai-summary-copy-btn" id="ai-copy-btn" onclick="copyAiSummary()" title="Copy to clipboard">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+        <button class="ai-summary-revise-btn" onclick="showAiFeedbackForm()" title="Revise with feedback">↺ Revise</button>
+      </div>
+    </div>
+    <div class="ai-summary-text" id="ai-summary-text">${esc(text)}</div>
+    <div class="ai-feedback-form" id="ai-feedback-form" style="display:none">
+      <div class="ai-feedback-label">What should be different?</div>
+      <textarea class="ai-feedback-textarea" id="ai-feedback-input"
+        placeholder="e.g. "Focus more on the metrics impact" or "The tone is too formal — make it more direct"…"></textarea>
+      <div class="ai-feedback-actions">
+        <button class="ai-qa-submit-btn" onclick="submitAiFeedback()">Regenerate with feedback →</button>
+        <button class="ai-qa-skip-btn" onclick="hideAiFeedbackForm()">Cancel</button>
+      </div>
+    </div>`;
+}
+
 // ── Render AI summary card ──
 function renderAiCard() {
   if (!_aiSummary) return `<div class="ai-summary-card" id="ai-summary-card"></div>`;
   return `
     <div class="ai-summary-card visible" id="ai-summary-card">
-      <div class="ai-summary-card-header">
-        <div class="ai-summary-label">✨ AI Summary</div>
-        <button class="ai-summary-copy-btn" id="ai-copy-btn" title="Copy to clipboard">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copy
-        </button>
-      </div>
-      <div class="ai-summary-text">${esc(_aiSummary)}</div>
+      ${_renderAiSummaryContent(_aiSummary)}
     </div>`;
 }
 
@@ -481,20 +499,49 @@ function render() {
   _bindEvents();
 }
 
+// ── Copy AI summary to clipboard ──
+async function copyAiSummary() {
+  if (!_aiSummary) return;
+  const btn = document.getElementById('ai-copy-btn');
+  await navigator.clipboard.writeText(_aiSummary);
+  if (btn) {
+    btn.textContent = '✓ Copied';
+    setTimeout(() => {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+    }, 2000);
+  }
+}
+
+// ── Feedback / revision form ──
+function showAiFeedbackForm() {
+  const form = document.getElementById('ai-feedback-form');
+  if (!form) return;
+  form.style.display = 'block';
+  const input = document.getElementById('ai-feedback-input');
+  if (input) input.focus();
+}
+
+function hideAiFeedbackForm() {
+  const form = document.getElementById('ai-feedback-form');
+  if (form) form.style.display = 'none';
+}
+
+async function submitAiFeedback() {
+  const input    = document.getElementById('ai-feedback-input');
+  const feedback = input ? input.value.trim() : '';
+  if (!feedback) { if (input) input.focus(); return; }
+
+  const aiBtn = document.getElementById('digest-ai-btn');
+  const card  = document.getElementById('ai-summary-card');
+  if (aiBtn) { aiBtn.disabled = true; aiBtn.innerHTML = `<span class="ai-spinner"></span> Revising…`; }
+  if (card)  { card.innerHTML = ''; card.classList.remove('visible'); }
+
+  const result = await generateAiSummary([], feedback);
+  _handleAiResult(result);
+}
+
 // ── Bind interactive events after render ──
 function _bindEvents() {
-  // Copy AI summary
-  const copyBtn = document.getElementById('ai-copy-btn');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', async () => {
-      if (!_aiSummary) return;
-      await navigator.clipboard.writeText(_aiSummary);
-      copyBtn.textContent = '✓ Copied';
-      setTimeout(() => {
-        copyBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
-      }, 2000);
-    });
-  }
 
   // Week mode toggle
   const toggle = document.getElementById('digest-week-toggle');
@@ -683,9 +730,7 @@ function _handleAiResult(result) {
   if (aiBtn) { aiBtn.disabled = false; aiBtn.textContent = 'Regenerate Summary'; }
   if (card) {
     card.classList.add('visible');
-    card.innerHTML = `
-      <div class="ai-summary-label">✨ AI Summary</div>
-      <div class="ai-summary-text">${esc(result.text)}</div>`;
+    card.innerHTML = _renderAiSummaryContent(result.text);
   }
   // Update history button count
   const historyBtn = document.getElementById('digest-ai-history-btn');
