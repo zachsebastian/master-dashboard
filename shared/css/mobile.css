@@ -1,0 +1,130 @@
+/* ── Mobile-only styles ─────────────────────────────────────────────────────
+   All rules live inside @media (max-width: 768px).
+   Nothing here affects desktop widths (769px+). Purely additive.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+
+  /* ── Prevent iOS Safari auto-zoom on input focus (needs 16px) ── */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    padding: 0 14px;
+    height: 52px;
+  }
+  .topbar-right { gap: 6px; }
+  /* Hide theme toggle label, keep the track/thumb */
+  #theme-label { display: none; }
+  /* Shrink topbar buttons */
+  .topbar-right .btn,
+  .topbar-right .btn-sm {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+
+  /* ── Dashboard home: main container ── */
+  .main {
+    padding: 24px 16px 60px;
+  }
+  .main--compact {
+    padding: 20px 16px 60px;
+  }
+  .page-title {
+    font-size: 36px;
+    letter-spacing: -1px;
+  }
+  .page-subtitle {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* Module cards → full-width single column */
+  .module-card {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 20px;
+  }
+
+  /* Launchpad rows → drop stat/chip columns, keep icon + body + arrow */
+  .launchpad-row {
+    grid-template-columns: 36px 1fr 28px;
+    gap: 10px;
+    padding: 14px;
+  }
+  .launchpad-row-stats,
+  .launchpad-quick-access,
+  .launchpad-row-recent { display: none; }
+
+  /* Auth / profile cards */
+  .auth-card,
+  .profile-card { padding: 28px 20px; }
+  .profile-name-row { grid-template-columns: 1fr; }
+
+  /* ── Module pages: shared #app wrapper ── */
+  #app { padding: 0 14px 40px; }
+
+  /* ── Today list ── */
+  .today-wrap { padding: 20px 0 60px; }
+  .today-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* Larger tap targets */
+  .today-item { padding: 14px 12px; }
+  .today-item-check { width: 22px; height: 22px; }
+
+  /* Always show item action buttons on touch (no hover state on mobile) */
+  .today-item-right { opacity: 1; }
+
+  .today-delete-btn,
+  .today-edit-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+  .today-add-row .btn-primary,
+  .today-add-input { height: 44px; }
+
+  /* ── Links module hero ── */
+  .links-hero { padding: 20px 0 16px; }
+
+  /* ── Projects: sidebar becomes a fixed overlay on mobile ── */
+  .sidebar {
+    position: fixed !important;
+    top: 52px !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 90vw !important;
+    box-shadow: var(--shadow-lg) !important;
+    transform: translateX(0) !important;
+    transition: transform 0.25s ease !important;
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%) !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    border-right: 1px solid var(--border-md) !important;
+  }
+  .sidebar-resize-handle { display: none !important; }
+
+  /* ── Digest / other pages: reduce horizontal padding ── */
+  .digest-wrap,
+  .wins-wrap,
+  .scratchpad-wrap,
+  .metrics-wrap,
+  .data-inventory-wrap,
+  .case-writer-wrap {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+}
