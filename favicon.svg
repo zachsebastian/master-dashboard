@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0c2a5e"/>
+      <stop offset="100%" stop-color="#1d6fa8"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="shape">
+      <rect width="100" height="100" rx="22"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background gradient -->
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+  <!-- Top shine for depth -->
+  <rect width="100" height="54" rx="22" fill="url(#shine)" clip-path="url(#shape)"/>
+
+  <!-- ── Main top panel ── -->
+  <rect x="10" y="10" width="80" height="44" rx="8" fill="white" fill-opacity="0.97"/>
+
+  <!-- Bar chart inside top panel -->
+  <rect x="20" y="37" width="7" height="9"  rx="2" fill="#1d6fa8" fill-opacity="0.40"/>
+  <rect x="31" y="30" width="7" height="16" rx="2" fill="#1d6fa8" fill-opacity="0.55"/>
+  <rect x="42" y="23" width="7" height="23" rx="2" fill="#1d6fa8" fill-opacity="0.70"/>
+  <rect x="53" y="28" width="7" height="18" rx="2" fill="#1d6fa8" fill-opacity="0.55"/>
+  <rect x="64" y="19" width="7" height="27" rx="2" fill="#1d6fa8" fill-opacity="0.85"/>
+
+  <!-- ── Bottom-left panel ── -->
+  <rect x="10" y="60" width="36" height="30" rx="8" fill="white" fill-opacity="0.90"/>
+  <!-- Tiny progress bar inside bottom-left -->
+  <rect x="17" y="79" width="22" height="3" rx="1.5" fill="#e2e8f0"/>
+  <rect x="17" y="79" width="14" height="3" rx="1.5" fill="#1d6fa8" fill-opacity="0.7"/>
+
+  <!-- ── Bottom-right panel ── -->
+  <rect x="52" y="60" width="38" height="30" rx="8" fill="white" fill-opacity="0.70"/>
+  <!-- Three tiny dots (status indicators) -->
+  <circle cx="64" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.55"/>
+  <circle cx="74" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.35"/>
+  <circle cx="84" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.20"/>
+</svg>
