@@ -8,6 +8,17 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ── Markdown → HTML (bold + italic only; newlines preserved via white-space:pre-wrap) ──
+function _renderMarkdown(text) {
+  if (!text) return '';
+  let html = esc(text);
+  // Bold: **text**
+  html = html.replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>');
+  // Italic: *text* (not part of **)
+  html = html.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+  return html;
+}
+
 // ── Loading state ──
 function renderLoading() {
   const app = document.getElementById('app');
@@ -134,12 +145,55 @@ function _renderAiHistoryForWeek(weekStart) {
   return `
     <div class="rh-ai-history">
       <div class="rh-field-label">✨ AI Summaries (${entries.length})</div>
-      ${entries.map((h, i) => `
-        <div class="rh-ai-block rh-ai-block--history">
-          <div class="rh-ai-date">${esc(_fmtGenerated(h.generated_at))}</div>
-          <div class="rh-ai-text">${esc(h.summary)}</div>
+      ${entries.map(h => `
+        <div class="rh-ai-block rh-ai-block--history" id="rh-ai-block-${esc(h.id)}">
+          <div class="rh-ai-entry-header">
+            <div class="rh-ai-date">${esc(_fmtGenerated(h.generated_at))}</div>
+            <button class="rh-ai-edit-btn" onclick="startHistoryEntryEdit('${esc(h.id)}')">✎ Edit</button>
+          </div>
+          <div class="rh-ai-text">${_renderMarkdown(h.summary)}</div>
         </div>`).join('')}
     </div>`;
+}
+
+// ── History entry inline edit (in past reflections) ──
+function startHistoryEntryEdit(id) {
+  const block = document.getElementById(`rh-ai-block-${id}`);
+  const entry = _aiSummaryHistory.find(h => h.id === id);
+  if (!block || !entry) return;
+  block.innerHTML = `
+    <div class="rh-ai-entry-header">
+      <div class="rh-ai-date">${esc(_fmtGenerated(entry.generated_at))}</div>
+      <div style="display:flex;gap:6px">
+        <button class="rh-ai-edit-btn" style="color:var(--blue);font-weight:700"
+          onclick="saveHistoryEntryEdit('${esc(id)}')">Save</button>
+        <button class="rh-ai-edit-btn" onclick="cancelHistoryEntryEdit('${esc(id)}')">Cancel</button>
+      </div>
+    </div>
+    <textarea class="ai-summary-edit-textarea" id="rh-edit-ta-${esc(id)}"
+      onkeydown="if(event.key==='Escape')cancelHistoryEntryEdit('${esc(id)}')"
+    >${esc(entry.summary)}</textarea>`;
+  const ta = document.getElementById(`rh-edit-ta-${id}`);
+  if (ta) ta.focus();
+}
+
+function cancelHistoryEntryEdit(id) {
+  const block = document.getElementById(`rh-ai-block-${id}`);
+  const entry = _aiSummaryHistory.find(h => h.id === id);
+  if (!block || !entry) return;
+  block.innerHTML = `
+    <div class="rh-ai-entry-header">
+      <div class="rh-ai-date">${esc(_fmtGenerated(entry.generated_at))}</div>
+      <button class="rh-ai-edit-btn" onclick="startHistoryEntryEdit('${esc(id)}')">✎ Edit</button>
+    </div>
+    <div class="rh-ai-text">${_renderMarkdown(entry.summary)}</div>`;
+}
+
+async function saveHistoryEntryEdit(id) {
+  const ta = document.getElementById(`rh-edit-ta-${id}`);
+  if (!ta) return;
+  await updateAiHistoryEntry(id, ta.value);
+  cancelHistoryEntryEdit(id); // re-render the block with updated text
 }
 
 // ── AI History Modal ──
@@ -203,16 +257,53 @@ function _openAiHistoryDetail(i) {
   if (!h) return;
   const body = document.getElementById('ai-hist-body');
   if (!body) return;
-  body.innerHTML = `
+  body.innerHTML = _renderModalDetail(h, i);
+}
+
+function _renderModalDetail(h, i) {
+  return `
     <button class="ai-hist-back" onclick="_backToAiHistoryList()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
       Back
     </button>
-    <div class="ai-hist-detail-meta">
-      <div class="ai-hist-row-week">${esc(_fmtWeekLabel(h.week_start))}</div>
-      <div class="ai-hist-row-date">${esc(_fmtGenerated(h.generated_at))}</div>
+    <div class="ai-hist-detail-meta" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <div class="ai-hist-row-week">${esc(_fmtWeekLabel(h.week_start))}</div>
+        <div class="ai-hist-row-date">${esc(_fmtGenerated(h.generated_at))}</div>
+      </div>
+      <button class="rh-ai-edit-btn" onclick="startModalDetailEdit('${esc(h.id)}',${i})">✎ Edit</button>
     </div>
-    <div class="ai-hist-detail-text">${esc(h.summary)}</div>`;
+    <div class="ai-hist-detail-text">${_renderMarkdown(h.summary)}</div>`;
+}
+
+function startModalDetailEdit(id, i) {
+  const body  = document.getElementById('ai-hist-body');
+  const entry = _aiSummaryHistory.find(h => h.id === id);
+  if (!body || !entry) return;
+  body.innerHTML = `
+    <button class="ai-hist-back" onclick="_openAiHistoryDetail(${i})">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      Cancel
+    </button>
+    <div class="ai-hist-detail-meta">
+      <div class="ai-hist-row-week">${esc(_fmtWeekLabel(entry.week_start))}</div>
+      <div class="ai-hist-row-date">${esc(_fmtGenerated(entry.generated_at))}</div>
+    </div>
+    <textarea class="ai-summary-edit-textarea" id="modal-edit-ta-${esc(id)}"
+      onkeydown="if(event.key==='Escape')_openAiHistoryDetail(${i})"
+    >${esc(entry.summary)}</textarea>
+    <div style="margin-top:10px">
+      <button class="ai-qa-submit-btn" onclick="saveModalDetailEdit('${esc(id)}',${i})">Save changes</button>
+    </div>`;
+  const ta = document.getElementById(`modal-edit-ta-${id}`);
+  if (ta) ta.focus();
+}
+
+async function saveModalDetailEdit(id, i) {
+  const ta = document.getElementById(`modal-edit-ta-${id}`);
+  if (!ta) return;
+  await updateAiHistoryEntry(id, ta.value);
+  _openAiHistoryDetail(i); // re-render detail with updated text
 }
 
 function _backToAiHistoryList() {
@@ -346,10 +437,11 @@ function _renderAiSummaryContent(text) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy
         </button>
+        <button class="ai-summary-revise-btn" onclick="startCurrentSummaryEdit()" title="Edit manually">✎ Edit</button>
         <button class="ai-summary-revise-btn" onclick="showAiFeedbackForm()" title="Revise with feedback">↺ Revise</button>
       </div>
     </div>
-    <div class="ai-summary-text" id="ai-summary-text">${esc(text)}</div>
+    <div class="ai-summary-text" id="ai-summary-text">${_renderMarkdown(text)}</div>
     <div class="ai-feedback-form" id="ai-feedback-form" style="display:none">
       <div class="ai-feedback-label">What should be different?</div>
       <textarea class="ai-feedback-textarea" id="ai-feedback-input"
@@ -524,6 +616,40 @@ function showAiFeedbackForm() {
 function hideAiFeedbackForm() {
   const form = document.getElementById('ai-feedback-form');
   if (form) form.style.display = 'none';
+}
+
+// ── Manual edit of current week's AI summary ──
+function startCurrentSummaryEdit() {
+  const card = document.getElementById('ai-summary-card');
+  if (!card) return;
+  card.innerHTML = `
+    <div class="ai-summary-card-header">
+      <div class="ai-summary-label">✨ AI Summary — Editing</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="ai-summary-copy-btn" onclick="saveCurrentSummaryEdit()"
+          style="background:var(--blue);color:#fff;border-color:var(--blue)">Save</button>
+        <button class="ai-summary-revise-btn" onclick="cancelCurrentSummaryEdit()">Cancel</button>
+      </div>
+    </div>
+    <textarea class="ai-summary-edit-textarea" id="ai-summary-edit-input"
+      onkeydown="if(event.key==='Escape')cancelCurrentSummaryEdit()"
+    >${esc(_aiSummary)}</textarea>`;
+  const ta = document.getElementById('ai-summary-edit-input');
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+function cancelCurrentSummaryEdit() {
+  const card = document.getElementById('ai-summary-card');
+  if (card) card.innerHTML = _renderAiSummaryContent(_aiSummary);
+}
+
+async function saveCurrentSummaryEdit() {
+  const ta = document.getElementById('ai-summary-edit-input');
+  if (!ta) return;
+  const newText = ta.value;
+  await updateCurrentAiSummary(newText);
+  const card = document.getElementById('ai-summary-card');
+  if (card) card.innerHTML = _renderAiSummaryContent(_aiSummary);
 }
 
 async function submitAiFeedback() {

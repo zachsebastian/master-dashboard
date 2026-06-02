@@ -205,6 +205,44 @@
   margin-top: 10px;
 }
 
+/* ── Manual summary edit textarea ── */
+.ai-summary-edit-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 220px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--blue);
+  border-radius: 8px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  margin-top: 8px;
+}
+
+/* ── History entry header (date + edit button row) ── */
+.rh-ai-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rh-ai-edit-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+  flex-shrink: 0;
+}
+.rh-ai-edit-btn:hover { color: var(--blue); background: var(--blue-bg, #e8f3fc); }
+
 .ai-summary-label {
   font-size: 10.5px;
   text-transform: uppercase;

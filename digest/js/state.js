@@ -317,6 +317,38 @@ async function _pickModel(apiKey) {
   }
 }
 
+// ── Save a manually-edited current week summary ──
+async function updateCurrentAiSummary(text) {
+  const uid     = _currentUser.id;
+  const { start } = getWeekRange();
+  const trimmed = text.trim();
+
+  _aiSummary                   = trimmed;
+  _reflection.ai_summary       = trimmed;
+
+  await sb.from('weekly_reflections').upsert({
+    user_id:         uid,
+    week_start:      start,
+    wins:            _reflection.wins,
+    blockers:        _reflection.blockers,
+    carry_forwards:  _reflection.carry_forwards,
+    ai_summary:      trimmed,
+    ai_generated_at: _reflection.ai_generated_at,
+    updated_at:      new Date().toISOString(),
+  }, { onConflict: 'user_id,week_start' });
+}
+
+// ── Save a manually-edited historical summary entry ──
+async function updateAiHistoryEntry(id, text) {
+  const trimmed = text.trim();
+
+  // Update local state
+  const entry = _aiSummaryHistory.find(h => h.id === id);
+  if (entry) entry.summary = trimmed;
+
+  await sb.from('ai_summary_history').update({ summary: trimmed }).eq('id', id);
+}
+
 // ── Fetch pre-analysis clarifying questions ──
 async function fetchAiQuestions() {
   const uid = _currentUser.id;
