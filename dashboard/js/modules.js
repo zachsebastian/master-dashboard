@@ -156,7 +156,8 @@ const ALL_MODULES = [
     href: '/today/',
 
     async fetchStats(sb, userId) {
-      const today = new Date().toISOString().split('T')[0];
+      const _d = new Date();
+      const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
       const { data: items } = await sb.from('today_items')
         .select('id, completed')
         .eq('user_id', userId)
