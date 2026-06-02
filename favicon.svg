@@ -1,43 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#0c2a5e"/>
-      <stop offset="100%" stop-color="#1d6fa8"/>
+    
+    <radialGradient id="bg" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#1b1d26"></stop><stop offset="55%" stop-color="#101119"></stop><stop offset="100%" stop-color="#060710"></stop>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="44%" r="42%">
+      <stop offset="0%" stop-color="#EC5F86" stop-opacity="0.40"></stop><stop offset="60%" stop-color="#EC5F86" stop-opacity="0.08"></stop><stop offset="100%" stop-color="#EC5F86" stop-opacity="0"></stop>
+    </radialGradient>
+    <radialGradient id="vig" cx="50%" cy="50%" r="72%">
+      <stop offset="62%" stop-color="#000000" stop-opacity="0"></stop><stop offset="100%" stop-color="#000000" stop-opacity="0.45"></stop>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"></stop><stop offset="22%" stop-color="#ffffff" stop-opacity="0"></stop>
     </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="shape">
-      <rect width="100" height="100" rx="22"/>
-    </clipPath>
+    <linearGradient id="g0" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0%" stop-color="#f4895c"></stop><stop offset="100%" stop-color="#f07570"></stop></linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0%" stop-color="#ce62b0"></stop><stop offset="100%" stop-color="#916bde"></stop></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0%" stop-color="#5692d4"></stop><stop offset="100%" stop-color="#3FAFC4"></stop></linearGradient>
+    <clipPath id="clip"><path d="M 1024.00 512.00 L 1023.56 683.99 L 1022.24 738.75 L 1020.04 778.30 L 1016.95 810.17 L 1012.95 837.17 L 1008.04 860.66 L 1002.19 881.45 L 995.37 900.02 L 987.56 916.73 L 978.72 931.81 L 968.79 945.43 L 957.72 957.72 L 945.43 968.79 L 931.81 978.72 L 916.73 987.56 L 900.02 995.37 L 881.45 1002.19 L 860.66 1008.04 L 837.17 1012.95 L 810.17 1016.95 L 778.30 1020.04 L 738.75 1022.24 L 683.99 1023.56 L 512.00 1024.00 L 340.01 1023.56 L 285.25 1022.24 L 245.70 1020.04 L 213.83 1016.95 L 186.83 1012.95 L 163.34 1008.04 L 142.55 1002.19 L 123.98 995.37 L 107.27 987.56 L 92.19 978.72 L 78.57 968.79 L 66.28 957.72 L 55.21 945.43 L 45.28 931.81 L 36.44 916.73 L 28.63 900.02 L 21.81 881.45 L 15.96 860.66 L 11.05 837.17 L 7.05 810.17 L 3.96 778.30 L 1.76 738.75 L 0.44 683.99 L 0.00 512.00 L 0.44 340.01 L 1.76 285.25 L 3.96 245.70 L 7.05 213.83 L 11.05 186.83 L 15.96 163.34 L 21.81 142.55 L 28.63 123.98 L 36.44 107.27 L 45.28 92.19 L 55.21 78.57 L 66.28 66.28 L 78.57 55.21 L 92.19 45.28 L 107.27 36.44 L 123.98 28.63 L 142.55 21.81 L 163.34 15.96 L 186.83 11.05 L 213.83 7.05 L 245.70 3.96 L 285.25 1.76 L 340.01 0.44 L 512.00 0.00 L 683.99 0.44 L 738.75 1.76 L 778.30 3.96 L 810.17 7.05 L 837.17 11.05 L 860.66 15.96 L 881.45 21.81 L 900.02 28.63 L 916.73 36.44 L 931.81 45.28 L 945.43 55.21 L 957.72 66.28 L 968.79 78.57 L 978.72 92.19 L 987.56 107.27 L 995.37 123.98 L 1002.19 142.55 L 1008.04 163.34 L 1012.95 186.83 L 1016.95 213.83 L 1020.04 245.70 L 1022.24 285.25 L 1023.56 340.01 L 1024.00 512.00 Z"></path></clipPath>
+    
   </defs>
-
-  <!-- Background gradient -->
-  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
-  <!-- Top shine for depth -->
-  <rect width="100" height="54" rx="22" fill="url(#shine)" clip-path="url(#shape)"/>
-
-  <!-- ── Main top panel ── -->
-  <rect x="10" y="10" width="80" height="44" rx="8" fill="white" fill-opacity="0.97"/>
-
-  <!-- Bar chart inside top panel -->
-  <rect x="20" y="37" width="7" height="9"  rx="2" fill="#1d6fa8" fill-opacity="0.40"/>
-  <rect x="31" y="30" width="7" height="16" rx="2" fill="#1d6fa8" fill-opacity="0.55"/>
-  <rect x="42" y="23" width="7" height="23" rx="2" fill="#1d6fa8" fill-opacity="0.70"/>
-  <rect x="53" y="28" width="7" height="18" rx="2" fill="#1d6fa8" fill-opacity="0.55"/>
-  <rect x="64" y="19" width="7" height="27" rx="2" fill="#1d6fa8" fill-opacity="0.85"/>
-
-  <!-- ── Bottom-left panel ── -->
-  <rect x="10" y="60" width="36" height="30" rx="8" fill="white" fill-opacity="0.90"/>
-  <!-- Tiny progress bar inside bottom-left -->
-  <rect x="17" y="79" width="22" height="3" rx="1.5" fill="#e2e8f0"/>
-  <rect x="17" y="79" width="14" height="3" rx="1.5" fill="#1d6fa8" fill-opacity="0.7"/>
-
-  <!-- ── Bottom-right panel ── -->
-  <rect x="52" y="60" width="38" height="30" rx="8" fill="white" fill-opacity="0.70"/>
-  <!-- Three tiny dots (status indicators) -->
-  <circle cx="64" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.55"/>
-  <circle cx="74" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.35"/>
-  <circle cx="84" cy="79" r="3" fill="#1d6fa8" fill-opacity="0.20"/>
+  <g>
+    <g clip-path="url(#clip)">
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"></rect>
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#glow)"></rect>
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#vig)"></rect>
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#sheen)"></rect>
+      <g>
+      <g transform="rotate(-20 512 512)" fill="none" stroke-linecap="round">
+      <path d="M 616.5 404.4 A 150 150 0 1 1 388.9 426.3" stroke="url(#g0)" stroke-width="62"></path>
+      <path d="M 742.5 400.6 A 256 256 0 1 1 280.6 621.4" stroke="url(#g1)" stroke-width="62"></path>
+      <path d="M 855.9 618.4 A 360 360 0 0 1 315.0 813.3" stroke="url(#g2)" stroke-width="62"></path>
+      <circle cx="512" cy="512" r="36" fill="#f4895c" stroke="none"></circle>
+    </g>
+      </g>
+    </g>
+    <path d="M 1024.00 512.00 L 1023.56 683.99 L 1022.24 738.75 L 1020.04 778.30 L 1016.95 810.17 L 1012.95 837.17 L 1008.04 860.66 L 1002.19 881.45 L 995.37 900.02 L 987.56 916.73 L 978.72 931.81 L 968.79 945.43 L 957.72 957.72 L 945.43 968.79 L 931.81 978.72 L 916.73 987.56 L 900.02 995.37 L 881.45 1002.19 L 860.66 1008.04 L 837.17 1012.95 L 810.17 1016.95 L 778.30 1020.04 L 738.75 1022.24 L 683.99 1023.56 L 512.00 1024.00 L 340.01 1023.56 L 285.25 1022.24 L 245.70 1020.04 L 213.83 1016.95 L 186.83 1012.95 L 163.34 1008.04 L 142.55 1002.19 L 123.98 995.37 L 107.27 987.56 L 92.19 978.72 L 78.57 968.79 L 66.28 957.72 L 55.21 945.43 L 45.28 931.81 L 36.44 916.73 L 28.63 900.02 L 21.81 881.45 L 15.96 860.66 L 11.05 837.17 L 7.05 810.17 L 3.96 778.30 L 1.76 738.75 L 0.44 683.99 L 0.00 512.00 L 0.44 340.01 L 1.76 285.25 L 3.96 245.70 L 7.05 213.83 L 11.05 186.83 L 15.96 163.34 L 21.81 142.55 L 28.63 123.98 L 36.44 107.27 L 45.28 92.19 L 55.21 78.57 L 66.28 66.28 L 78.57 55.21 L 92.19 45.28 L 107.27 36.44 L 123.98 28.63 L 142.55 21.81 L 163.34 15.96 L 186.83 11.05 L 213.83 7.05 L 245.70 3.96 L 285.25 1.76 L 340.01 0.44 L 512.00 0.00 L 683.99 0.44 L 738.75 1.76 L 778.30 3.96 L 810.17 7.05 L 837.17 11.05 L 860.66 15.96 L 881.45 21.81 L 900.02 28.63 L 916.73 36.44 L 931.81 45.28 L 945.43 55.21 L 957.72 66.28 L 968.79 78.57 L 978.72 92.19 L 987.56 107.27 L 995.37 123.98 L 1002.19 142.55 L 1008.04 163.34 L 1012.95 186.83 L 1016.95 213.83 L 1020.04 245.70 L 1022.24 285.25 L 1023.56 340.01 L 1024.00 512.00 Z" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="2"></path>
+  </g>
 </svg>
