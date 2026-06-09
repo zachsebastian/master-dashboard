@@ -184,7 +184,7 @@ function _renderTicketsSection() {
 function _openJiraStatusModal() {
   if (document.getElementById('cw-jira-status-modal')) return;
 
-  const hasJira = _tickets.filter(t => t.jira_ticket);
+  const hasJira = _tickets.filter(t => t.jira_ticket && !t.completed);
   if (!hasJira.length) return;
 
   const ticketList = hasJira.map((t, i) =>
