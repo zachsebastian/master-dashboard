@@ -44,7 +44,7 @@ function render() {
   const active    = sorted.filter(i => !i.completed && !i.on_hold);
   const onHold    = sorted.filter(i => !i.completed &&  i.on_hold);
   const completed = sorted.filter(i =>  i.completed);
-  const total = sorted.length;
+  const total     = active.length + completed.length; // on-hold excluded
   const doneCount = completed.length;
 
   app.innerHTML = `
