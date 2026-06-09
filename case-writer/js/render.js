@@ -191,17 +191,7 @@ function _openJiraStatusModal() {
     `${i + 1}. ${t.title || 'Untitled'} → ${t.jira_ticket}`
   ).join('\n');
 
-  const prompt = `The following tickets have been submitted to Jira. Please check Jira and determine the current status of each one — specifically whether it has been completed, resolved, or closed.
-
-Tickets to check:
-${ticketList}
-
-For each ticket, return:
-- Jira ticket number
-- Current status (e.g. Done, In Progress, Open, Closed, Won't Fix, etc.)
-- Whether it is fully completed/resolved (yes or no)
-
-If you cannot find a ticket, note that as well.`;
+  const prompt = `/jira-ticket-status\n\n${ticketList}`;
 
   const listItemsHtml = hasJira.map(t => `
     <div class="cw-jira-missing-item">
