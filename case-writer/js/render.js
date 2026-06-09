@@ -754,18 +754,10 @@ function _openJiraCheckModal() {
   if (!missingJira.length) return;
 
   const ticketList = missingJira.map((t, i) =>
-    `${i + 1}. ${t.title || 'Untitled'} (submitted ${_fmtDate(t.submitted_at)})`
+    `${i + 1}. ${t.title || 'Untitled'}`
   ).join('\n');
 
-  const prompt = `I have the following submitted tickets that are missing Jira ticket numbers. Please check Jira to see if these tickets have been created. For any that exist, provide the Jira ticket number.
-
-Tickets to look up:
-${ticketList}
-
-If a ticket is found in Jira, return the result in this format:
-[Ticket Title] → PROJ-XXXX
-
-If a ticket is not found, note that as well so I know it may not have been created yet.`;
+  const prompt = `/jira-ticket-lookup\n\n${ticketList}`;
 
   const listItemsHtml = missingJira.map(t => `
     <div class="cw-jira-missing-item">
