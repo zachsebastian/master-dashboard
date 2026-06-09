@@ -159,12 +159,12 @@ const ALL_MODULES = [
       const _d = new Date();
       const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
       const { data: items } = await sb.from('today_items')
-        .select('id, completed')
+        .select('id, completed, on_hold')
         .eq('user_id', userId)
         .eq('item_date', today);
       const all = items || [];
       const completed = all.filter(i => i.completed).length;
-      const total = all.length;
+      const total = all.filter(i => !i.on_hold).length;
       return {
         primary:   { value: `${completed}/${total}`, label: 'Done Today' },
         secondary: null,
