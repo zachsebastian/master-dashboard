@@ -91,9 +91,19 @@ function _renderList() {
 
 function _renderTicketsSection() {
   if (_tickets.length === 0) return '';
+  const missingJira = _tickets.filter(t => !t.jira_ticket);
+  const jiraBtnHtml = missingJira.length > 0 ? `
+    <button class="btn btn-sm" id="cw-check-jira-btn" title="${missingJira.length} ticket${missingJira.length !== 1 ? 's' : ''} missing a Jira number">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Check Jira
+      <span class="cw-jira-missing-badge">${missingJira.length}</span>
+    </button>` : '';
   return `
     <div class="cw-tickets-section">
-      <div class="cw-section-label">Submitted Tickets</div>
+      <div class="cw-section-label-row">
+        <div class="cw-section-label">Submitted Tickets</div>
+        ${jiraBtnHtml}
+      </div>
       <div class="cw-tickets-list">
         ${_tickets.map(t => `
           <div class="cw-ticket-row" data-ticket-id="${escHtml(t.id)}">
@@ -375,6 +385,9 @@ function _bindListEvents() {
     });
   });
 
+  // ── Jira check button ──
+  document.getElementById('cw-check-jira-btn')?.addEventListener('click', _openJiraCheckModal);
+
   // ── Submitted ticket rows ──
   document.querySelectorAll('.cw-ticket-header').forEach(header => {
     header.addEventListener('click', e => {
@@ -600,6 +613,87 @@ function _openAiFillModal() {
 
 function _closeAiFillModal() {
   document.getElementById('cw-ai-modal')?.remove();
+}
+
+// ─────────────────────────────────────────
+// ── Jira check modal ──
+// ─────────────────────────────────────────
+function _openJiraCheckModal() {
+  if (document.getElementById('cw-jira-modal')) return;
+
+  const missingJira = _tickets.filter(t => !t.jira_ticket);
+  if (!missingJira.length) return;
+
+  const ticketList = missingJira.map((t, i) =>
+    `${i + 1}. ${t.title || 'Untitled'} (submitted ${_fmtDate(t.submitted_at)})`
+  ).join('\n');
+
+  const prompt = `I have the following submitted tickets that are missing Jira ticket numbers. Please check Jira to see if these tickets have been created. For any that exist, provide the Jira ticket number.
+
+Tickets to look up:
+${ticketList}
+
+If a ticket is found in Jira, return the result in this format:
+[Ticket Title] → PROJ-XXXX
+
+If a ticket is not found, note that as well so I know it may not have been created yet.`;
+
+  const listItemsHtml = missingJira.map(t => `
+    <div class="cw-jira-missing-item">
+      <span class="cw-jira-missing-dot"></span>
+      <div>
+        <div class="cw-jira-missing-title">${escHtml(t.title || 'Untitled')}</div>
+        <div class="cw-jira-missing-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}</div>
+      </div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id        = 'cw-jira-modal';
+  modal.className = 'cw-ai-modal-overlay';
+  modal.innerHTML = `
+    <div class="cw-ai-modal cw-jira-modal-inner">
+      <div class="cw-ai-modal-header">
+        <div class="cw-ai-modal-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Tickets Missing Jira Numbers
+        </div>
+        <button class="cw-ai-modal-close" id="cw-jira-modal-close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="cw-ai-modal-body">
+        <p class="cw-ai-modal-intro">${missingJira.length} submitted ticket${missingJira.length !== 1 ? 's' : ''} ${missingJira.length !== 1 ? 'don\'t have' : 'doesn\'t have'} a Jira ticket number yet:</p>
+        <div class="cw-jira-missing-list">
+          ${listItemsHtml}
+        </div>
+        <div class="cw-jira-prompt-label">Claude prompt — copy and paste this to look them up:</div>
+        <div class="cw-jira-prompt-box" id="cw-jira-prompt-text">${escHtml(prompt)}</div>
+      </div>
+      <div class="cw-ai-modal-footer">
+        <button class="btn" id="cw-jira-modal-close-btn">Close</button>
+        <button class="btn btn-primary" id="cw-jira-copy-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Prompt
+        </button>
+      </div>
+    </div>`;
+
+  modal.addEventListener('mousedown', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  document.getElementById('cw-jira-modal-close')?.addEventListener('click', () => modal.remove());
+  document.getElementById('cw-jira-modal-close-btn')?.addEventListener('click', () => modal.remove());
+  document.getElementById('cw-jira-copy-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('cw-jira-copy-btn');
+    await navigator.clipboard.writeText(prompt);
+    if (btn) {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+      setTimeout(() => {
+        if (document.getElementById('cw-jira-copy-btn'))
+          document.getElementById('cw-jira-copy-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Prompt`;
+      }, 2000);
+    }
+  });
 }
 
 async function _submitAiFill() {

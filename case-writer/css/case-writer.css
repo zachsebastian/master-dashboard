@@ -148,6 +148,15 @@
 .cw-drafts-section {
   margin-top: 32px;
 }
+.cw-section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cw-section-label-row .cw-section-label {
+  margin-bottom: 0;
+}
 .cw-section-label {
   font-size: 11px;
   font-weight: 700;
@@ -768,4 +777,85 @@
   font-weight: 500;
   margin-bottom: 6px;
   display: block;
+}
+
+/* ── Jira missing badge on button ── */
+.cw-jira-missing-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 100px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  line-height: 1.4;
+}
+
+/* ── Jira modal inner sizing ── */
+.cw-jira-modal-inner {
+  max-width: 560px;
+}
+
+/* ── Missing ticket list in modal ── */
+.cw-jira-missing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.cw-jira-missing-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.cw-jira-missing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber, #d97706);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.cw-jira-missing-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+.cw-jira-missing-meta {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ── Generated prompt box ── */
+.cw-jira-prompt-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.cw-jira-prompt-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  padding: 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+  user-select: text;
 }
