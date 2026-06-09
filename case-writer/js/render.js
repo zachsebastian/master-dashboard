@@ -91,18 +91,28 @@ function _renderList() {
 
 function _renderTicketsSection() {
   if (_tickets.length === 0) return '';
-  const missingJira = _tickets.filter(t => !t.jira_ticket);
-  const jiraBtnHtml = missingJira.length > 0 ? `
+  const missingJira  = _tickets.filter(t => !t.jira_ticket);
+  const hasJira      = _tickets.filter(t =>  t.jira_ticket);
+  const missingBtnHtml = missingJira.length > 0 ? `
     <button class="btn btn-sm" id="cw-check-jira-btn" title="${missingJira.length} ticket${missingJira.length !== 1 ? 's' : ''} missing a Jira number">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      Check Jira
+      Check Submissions
       <span class="cw-jira-missing-badge">${missingJira.length}</span>
+    </button>` : '';
+  const statusBtnHtml = hasJira.length > 0 ? `
+    <button class="btn btn-sm" id="cw-check-status-btn" title="Check completion status for ${hasJira.length} ticket${hasJira.length !== 1 ? 's' : ''} in Jira">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Check Status
+      <span class="cw-jira-status-badge">${hasJira.length}</span>
     </button>` : '';
   return `
     <div class="cw-tickets-section">
       <div class="cw-section-label-row">
         <div class="cw-section-label">Submitted Tickets</div>
-        ${jiraBtnHtml}
+        <div class="cw-section-label-actions">
+          ${missingBtnHtml}
+          ${statusBtnHtml}
+        </div>
       </div>
       <div class="cw-tickets-list">
         ${_tickets.map(t => `
@@ -141,6 +151,86 @@ function _renderTicketsSection() {
         `).join('')}
       </div>
     </div>`;
+}
+
+function _openJiraStatusModal() {
+  if (document.getElementById('cw-jira-status-modal')) return;
+
+  const hasJira = _tickets.filter(t => t.jira_ticket);
+  if (!hasJira.length) return;
+
+  const ticketList = hasJira.map((t, i) =>
+    `${i + 1}. ${t.title || 'Untitled'} → ${t.jira_ticket}`
+  ).join('\n');
+
+  const prompt = `The following tickets have been submitted to Jira. Please check Jira and determine the current status of each one — specifically whether it has been completed, resolved, or closed.
+
+Tickets to check:
+${ticketList}
+
+For each ticket, return:
+- Jira ticket number
+- Current status (e.g. Done, In Progress, Open, Closed, Won't Fix, etc.)
+- Whether it is fully completed/resolved (yes or no)
+
+If you cannot find a ticket, note that as well.`;
+
+  const listItemsHtml = hasJira.map(t => `
+    <div class="cw-jira-missing-item">
+      <span class="cw-jira-status-dot"></span>
+      <div>
+        <div class="cw-jira-missing-title">${escHtml(t.title || 'Untitled')}</div>
+        <div class="cw-jira-missing-meta">${escHtml(t.jira_ticket)} · ${escHtml(_fmtDate(t.submitted_at))}</div>
+      </div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id        = 'cw-jira-status-modal';
+  modal.className = 'cw-ai-modal-overlay';
+  modal.innerHTML = `
+    <div class="cw-ai-modal cw-jira-modal-inner">
+      <div class="cw-ai-modal-header">
+        <div class="cw-ai-modal-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Check Ticket Status
+        </div>
+        <button class="cw-ai-modal-close" id="cw-jira-status-modal-close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="cw-ai-modal-body">
+        <p class="cw-ai-modal-intro">${hasJira.length} ticket${hasJira.length !== 1 ? 's' : ''} with Jira numbers. Use this prompt to check their completion status:</p>
+        <div class="cw-jira-missing-list">
+          ${listItemsHtml}
+        </div>
+        <div class="cw-jira-prompt-label">Claude prompt — copy and paste this to check status:</div>
+        <div class="cw-jira-prompt-box">${escHtml(prompt)}</div>
+      </div>
+      <div class="cw-ai-modal-footer">
+        <button class="btn" id="cw-jira-status-close-btn">Close</button>
+        <button class="btn btn-primary" id="cw-jira-status-copy-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Prompt
+        </button>
+      </div>
+    </div>`;
+
+  modal.addEventListener('mousedown', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  document.getElementById('cw-jira-status-modal-close')?.addEventListener('click', () => modal.remove());
+  document.getElementById('cw-jira-status-close-btn')?.addEventListener('click',   () => modal.remove());
+  document.getElementById('cw-jira-status-copy-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('cw-jira-status-copy-btn');
+    await navigator.clipboard.writeText(prompt);
+    if (btn) {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+      setTimeout(() => {
+        if (document.getElementById('cw-jira-status-copy-btn'))
+          document.getElementById('cw-jira-status-copy-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Prompt`;
+      }, 2000);
+    }
+  });
 }
 
 // ─────────────────────────────────────────
@@ -385,8 +475,9 @@ function _bindListEvents() {
     });
   });
 
-  // ── Jira check button ──
-  document.getElementById('cw-check-jira-btn')?.addEventListener('click', _openJiraCheckModal);
+  // ── Jira check buttons ──
+  document.getElementById('cw-check-jira-btn')?.addEventListener('click',   _openJiraCheckModal);
+  document.getElementById('cw-check-status-btn')?.addEventListener('click', _openJiraStatusModal);
 
   // ── Submitted ticket rows ──
   document.querySelectorAll('.cw-ticket-header').forEach(header => {
