@@ -479,7 +479,9 @@
 }
 
 /* ── On Hold button ── */
+/* ── Hold button — two vertical bars via pseudo-element ── */
 .today-hold-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -489,11 +491,26 @@
   border: none;
   background: transparent;
   color: var(--text-3);
-  font-size: 12px;
   cursor: pointer;
-  line-height: 1;
   transition: background 0.1s, color 0.1s;
   padding: 0;
+}
+
+/* Two bars drawn as a single absolutely-centered pseudo-element */
+.today-hold-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 9px;
+  background:
+    linear-gradient(to right,
+      currentColor 0px, currentColor 1.5px,
+      transparent 1.5px, transparent 4.5px,
+      currentColor 4.5px, currentColor 6px);
+  border-radius: 1px;
 }
 
 .today-hold-btn:hover {
@@ -501,7 +518,7 @@
   color: var(--amber, #d97706);
 }
 
-/* ── Resume button ── */
+/* ── Resume button — right-pointing triangle via pseudo-element ── */
 .today-resume-btn {
   display: flex;
   align-items: center;
@@ -512,11 +529,20 @@
   border: none;
   background: transparent;
   color: var(--amber, #d97706);
-  font-size: 11px;
   cursor: pointer;
-  line-height: 1;
   transition: background 0.1s, color 0.1s;
   padding: 0;
+}
+
+.today-resume-btn::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid currentColor;
+  border-radius: 1px;
 }
 
 .today-resume-btn:hover {

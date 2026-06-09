@@ -5,6 +5,9 @@ let _dragOverId = null;
 // ── Edit state ──
 let _editingItemId = null;
 
+// ── Delete confirmation state ──
+let _pendingDeleteId = null;
+
 // ── Escape helper ──
 function escHtml(str) {
   return String(str == null ? '' : str)
@@ -46,6 +49,7 @@ function render() {
 
   app.innerHTML = `
     ${_resetNeeded ? _renderResetModal() : ''}
+    ${_pendingDeleteId ? _renderDeleteConfirmModal() : ''}
     <div class="today-wrap">
       ${_renderHeader()}
       ${_view === 'today' ? _renderTodayView(active, onHold, completed, total, doneCount) : _renderHistoryView()}
@@ -145,8 +149,8 @@ function _renderItem(item) {
   // Hold / resume button (not shown on completed items)
   const holdToggle = !item.completed
     ? item.on_hold
-      ? `<button class="today-resume-btn" data-resume-id="${escHtml(item.id)}" title="Resume">▶</button>`
-      : `<button class="today-hold-btn"   data-hold-id="${escHtml(item.id)}"   title="Put on hold">⏸</button>`
+      ? `<button class="today-resume-btn" data-resume-id="${escHtml(item.id)}" title="Resume"></button>`
+      : `<button class="today-hold-btn"   data-hold-id="${escHtml(item.id)}"   title="Put on hold"></button>`
     : '';
 
   return `
@@ -226,6 +230,24 @@ function _renderHistoryView() {
   }).join('');
 }
 
+// ── Delete confirmation modal ──
+function _renderDeleteConfirmModal() {
+  return `
+    <div class="reset-overlay" id="delete-confirm-overlay">
+      <div class="reset-modal">
+        <div class="reset-modal-title">Remove from Today List?</div>
+        <div class="reset-modal-body">
+          This will remove the item from today's list.
+          Project tasks will still be available to pull in again tomorrow.
+        </div>
+        <div class="reset-modal-actions">
+          <button class="btn" id="delete-cancel-btn">Cancel</button>
+          <button class="btn btn-danger" id="delete-confirm-btn">Remove</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 // ── Reset modal ──
 function _renderResetModal() {
   return `
@@ -283,14 +305,42 @@ function bindEvents() {
     });
   });
 
-  // Delete buttons
+  // Delete buttons — show confirmation first
   document.querySelectorAll('[data-delete-id]').forEach(el => {
-    el.addEventListener('click', async () => {
-      const id = el.dataset.deleteId;
-      await deleteItem(id);
+    el.addEventListener('click', () => {
+      _pendingDeleteId = el.dataset.deleteId;
       render();
     });
   });
+
+  // Delete confirmation modal
+  const confirmBtn = document.getElementById('delete-confirm-btn');
+  const cancelBtn  = document.getElementById('delete-cancel-btn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+      const id = _pendingDeleteId;
+      _pendingDeleteId = null;
+      await deleteItem(id);
+      render();
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      _pendingDeleteId = null;
+      render();
+    });
+  }
+
+  // Close on overlay click
+  const overlay = document.getElementById('delete-confirm-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        _pendingDeleteId = null;
+        render();
+      }
+    });
+  }
 
   // Hold / resume buttons
   document.querySelectorAll('[data-hold-id]').forEach(el => {
