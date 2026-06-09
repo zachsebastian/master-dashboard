@@ -477,6 +477,14 @@ async function _syncProjectTaskText(item, newText) {
   }
 }
 
+async function toggleItemHold(id) {
+  const item = todayItems.find(i => i.id === id);
+  if (!item) return;
+  const next = !item.on_hold;
+  item.on_hold = next;
+  await sb.from('today_items').update({ on_hold: next }).eq('id', id);
+}
+
 async function deleteItem(id) {
   todayItems = todayItems.filter(i => i.id !== id);
   await sb.from('today_items').delete().eq('id', id);

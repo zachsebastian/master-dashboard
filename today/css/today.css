@@ -478,6 +478,91 @@
   cursor: not-allowed;
 }
 
+/* ── On Hold button ── */
+.today-hold-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.today-hold-btn:hover {
+  background: var(--amber-bg, #fef3c7);
+  color: var(--amber, #d97706);
+}
+
+/* ── Resume button ── */
+.today-resume-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--amber, #d97706);
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.today-resume-btn:hover {
+  background: var(--green-bg, #e6f7f4);
+  color: var(--green, #3dbfa0);
+}
+
+/* ── On Hold item state ── */
+.today-item.on-hold {
+  border-color: var(--amber-border, #fcd34d);
+  background: var(--amber-bg, #fef9ee);
+  opacity: 0.85;
+}
+
+.today-item.on-hold .today-item-text {
+  color: var(--text-2);
+}
+
+/* Always show right actions on on-hold items */
+.today-item.on-hold .today-item-right {
+  opacity: 1;
+}
+
+/* ── On Hold section divider ── */
+.today-onhold-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+}
+
+.today-onhold-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--amber-border, #fcd34d);
+}
+
+.today-onhold-divider-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--amber, #d97706);
+  white-space: nowrap;
+}
+
 /* ── Completed section divider ── */
 .today-completed-divider {
   display: flex;

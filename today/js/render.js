@@ -38,8 +38,9 @@ function render() {
   if (!app) return;
 
   const sorted = getSortedTodayItems();
-  const completed   = sorted.filter(i =>  i.completed);
-  const uncompleted = sorted.filter(i => !i.completed);
+  const active    = sorted.filter(i => !i.completed && !i.on_hold);
+  const onHold    = sorted.filter(i => !i.completed &&  i.on_hold);
+  const completed = sorted.filter(i =>  i.completed);
   const total = sorted.length;
   const doneCount = completed.length;
 
@@ -47,7 +48,7 @@ function render() {
     ${_resetNeeded ? _renderResetModal() : ''}
     <div class="today-wrap">
       ${_renderHeader()}
-      ${_view === 'today' ? _renderTodayView(uncompleted, completed, total, doneCount) : _renderHistoryView()}
+      ${_view === 'today' ? _renderTodayView(active, onHold, completed, total, doneCount) : _renderHistoryView()}
     </div>
   `;
 
@@ -72,16 +73,25 @@ function _renderHeader() {
 }
 
 // ── Today view ──
-function _renderTodayView(uncompleted, completed, total, doneCount) {
+function _renderTodayView(active, onHold, completed, total, doneCount) {
   return `
     ${_renderStats(doneCount, total)}
     <div class="today-section-label">Today's Priorities</div>
     <div class="today-list" id="today-list">
-      ${uncompleted.length === 0 && completed.length === 0
+      ${active.length === 0 && onHold.length === 0 && completed.length === 0
         ? _renderEmpty()
-        : uncompleted.map(item => _renderItem(item)).join('')
+        : active.map(item => _renderItem(item)).join('')
       }
     </div>
+    ${onHold.length > 0 ? `
+      <div class="today-onhold-divider">
+        <div class="today-onhold-divider-line"></div>
+        <div class="today-onhold-divider-label">On Hold (${escHtml(String(onHold.length))})</div>
+        <div class="today-onhold-divider-line"></div>
+      </div>
+      <div class="today-list">
+        ${onHold.map(item => _renderItem(item)).join('')}
+      </div>` : ''}
     ${completed.length > 0 ? `
       <div class="today-completed-divider">
         <div class="today-completed-divider-line"></div>
@@ -107,7 +117,7 @@ function _renderTodayView(uncompleted, completed, total, doneCount) {
 
 // ── Single item ──
 function _renderItem(item) {
-  const isDraggable = !item.completed;
+  const isDraggable = !item.completed && !item.on_hold;
   const isEditing   = _editingItemId === item.id;
 
   if (isEditing) {
@@ -132,8 +142,15 @@ function _renderItem(item) {
       </div>`;
   }
 
+  // Hold / resume button (not shown on completed items)
+  const holdToggle = !item.completed
+    ? item.on_hold
+      ? `<button class="today-resume-btn" data-resume-id="${escHtml(item.id)}" title="Resume">▶</button>`
+      : `<button class="today-hold-btn"   data-hold-id="${escHtml(item.id)}"   title="Put on hold">⏸</button>`
+    : '';
+
   return `
-    <div class="today-item${item.completed ? ' completed' : ''}"
+    <div class="today-item${item.completed ? ' completed' : ''}${item.on_hold ? ' on-hold' : ''}"
          data-id="${escHtml(item.id)}"
          ${isDraggable ? `draggable="true"` : ''}>
       <div class="today-item-check${item.completed ? ' checked' : ''}"
@@ -147,6 +164,7 @@ function _renderItem(item) {
       </div>
       <div class="today-item-right">
         ${isDraggable ? `<span class="today-drag-handle" title="Drag to reorder">⠿</span>` : ''}
+        ${holdToggle}
         <button class="today-edit-btn" data-edit-id="${escHtml(item.id)}" title="Edit">✎</button>
         <button class="today-delete-btn" data-delete-id="${escHtml(item.id)}" title="Delete">×</button>
       </div>
@@ -270,6 +288,21 @@ function bindEvents() {
     el.addEventListener('click', async () => {
       const id = el.dataset.deleteId;
       await deleteItem(id);
+      render();
+    });
+  });
+
+  // Hold / resume buttons
+  document.querySelectorAll('[data-hold-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      await toggleItemHold(el.dataset.holdId);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-resume-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      await toggleItemHold(el.dataset.resumeId);
       render();
     });
   });
@@ -426,12 +459,12 @@ function _bindDragEvents() {
       uncompletedIds.splice(srcIdx, 1);
       uncompletedIds.splice(destIdx, 0, _dragSrcId);
 
-      // Append completed ids at the end to keep their relative order
-      const completedIds = getSortedTodayItems()
-        .filter(i => i.completed)
-        .map(i => i.id);
+      // Append on-hold then completed ids to keep their relative order
+      const allSorted   = getSortedTodayItems();
+      const onHoldIds   = allSorted.filter(i => i.on_hold && !i.completed).map(i => i.id);
+      const completedIds = allSorted.filter(i => i.completed).map(i => i.id);
 
-      await reorderItems([...uncompletedIds, ...completedIds]);
+      await reorderItems([...uncompletedIds, ...onHoldIds, ...completedIds]);
       render();
     });
   });
