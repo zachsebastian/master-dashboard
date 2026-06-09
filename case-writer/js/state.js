@@ -101,6 +101,19 @@ async function saveSubmittedTicket(title, contentHtml, fieldValues) {
   return data;
 }
 
+async function toggleTicketCompleted(id) {
+  const ticket = _tickets.find(t => t.id === id);
+  if (!ticket) return false;
+  const next = !ticket.completed;
+  const { error } = await sb
+    .from('case_writer_tickets')
+    .update({ completed: next })
+    .eq('id', id);
+  if (error) { console.error('toggleTicketCompleted:', error); return false; }
+  ticket.completed = next;
+  return true;
+}
+
 async function deleteTicket(id) {
   await sb.from('case_writer_tickets').delete().eq('id', id);
   _tickets = _tickets.filter(t => t.id !== id);

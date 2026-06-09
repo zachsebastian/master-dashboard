@@ -89,10 +89,57 @@ function _renderList() {
     </div>`;
 }
 
+function _renderTicketRow(t) {
+  return `
+    <div class="cw-ticket-row${t.completed ? ' cw-ticket-completed' : ''}" data-ticket-id="${escHtml(t.id)}">
+      <div class="cw-ticket-header">
+        <div class="cw-ticket-check-wrap">
+          <button class="cw-ticket-check-btn${t.completed ? ' checked' : ''}"
+                  data-complete-id="${escHtml(t.id)}"
+                  title="${t.completed ? 'Mark incomplete' : 'Mark complete'}">
+            ${t.completed ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+          </button>
+        </div>
+        <div class="cw-ticket-info">
+          <div class="cw-ticket-title">${escHtml(t.title || 'Untitled')}</div>
+          <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}${t.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(t.jira_ticket)}</span>` : ''}</div>
+        </div>
+        <div class="cw-ticket-actions">
+          ${!t.completed ? `<button class="btn btn-sm cw-reopen-ticket-btn" data-ticket-id="${escHtml(t.id)}">Re-open as Draft</button>` : ''}
+          <button class="btn btn-sm btn-danger cw-delete-ticket-btn" data-ticket-id="${escHtml(t.id)}">Delete</button>
+          <span class="cw-ticket-chevron">›</span>
+        </div>
+      </div>
+      <div class="cw-ticket-content" style="display:none">
+        <div class="cw-ticket-meta-row">
+          <div class="cw-ticket-meta-field">
+            <label class="cw-ticket-jira-label" for="cw-jira-${escHtml(t.id)}">Jira Ticket #</label>
+            <div class="cw-ticket-jira-input-wrap">
+              <input class="cw-input cw-ticket-jira-input" id="cw-jira-${escHtml(t.id)}" type="text" placeholder="e.g. PROJ-1234" value="${escHtml(t.jira_ticket || '')}">
+              <button class="btn btn-sm cw-save-jira-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
+            </div>
+          </div>
+          <div class="cw-ticket-meta-field">
+            <label class="cw-ticket-jira-label" for="cw-date-${escHtml(t.id)}">Date Submitted</label>
+            <div class="cw-ticket-jira-input-wrap">
+              <input class="cw-input cw-ticket-jira-input" id="cw-date-${escHtml(t.id)}" type="date" value="${escHtml(t.submitted_at ? t.submitted_at.split('T')[0] : '')}">
+              <button class="btn btn-sm cw-save-date-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
+            </div>
+          </div>
+        </div>
+        <div class="cw-ticket-body-content">${t.content_html}</div>
+      </div>
+    </div>`;
+}
+
 function _renderTicketsSection() {
   if (_tickets.length === 0) return '';
-  const missingJira  = _tickets.filter(t => !t.jira_ticket);
-  const hasJira      = _tickets.filter(t =>  t.jira_ticket);
+
+  const activeTickets    = _tickets.filter(t => !t.completed);
+  const completedTickets = _tickets.filter(t =>  t.completed);
+  const missingJira      = activeTickets.filter(t => !t.jira_ticket);
+  const hasJira          = activeTickets.filter(t =>  t.jira_ticket);
+
   const missingBtnHtml = missingJira.length > 0 ? `
     <button class="btn btn-sm" id="cw-check-jira-btn" title="${missingJira.length} ticket${missingJira.length !== 1 ? 's' : ''} missing a Jira number">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -105,6 +152,17 @@ function _renderTicketsSection() {
       Check Status
       <span class="cw-jira-status-badge">${hasJira.length}</span>
     </button>` : '';
+
+  const completedSectionHtml = completedTickets.length > 0 ? `
+    <div class="cw-tickets-completed-divider">
+      <div class="cw-tickets-completed-line"></div>
+      <div class="cw-tickets-completed-label">Completed (${completedTickets.length})</div>
+      <div class="cw-tickets-completed-line"></div>
+    </div>
+    <div class="cw-tickets-list">
+      ${completedTickets.map(t => _renderTicketRow(t)).join('')}
+    </div>` : '';
+
   return `
     <div class="cw-tickets-section">
       <div class="cw-section-label-row">
@@ -115,41 +173,11 @@ function _renderTicketsSection() {
         </div>
       </div>
       <div class="cw-tickets-list">
-        ${_tickets.map(t => `
-          <div class="cw-ticket-row" data-ticket-id="${escHtml(t.id)}">
-            <div class="cw-ticket-header">
-              <div class="cw-ticket-info">
-                <div class="cw-ticket-title">${escHtml(t.title || 'Untitled')}</div>
-                <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}${t.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(t.jira_ticket)}</span>` : ''}</div>
-              </div>
-              <div class="cw-ticket-actions">
-                <button class="btn btn-sm cw-reopen-ticket-btn" data-ticket-id="${escHtml(t.id)}">Re-open as Draft</button>
-                <button class="btn btn-sm btn-danger cw-delete-ticket-btn" data-ticket-id="${escHtml(t.id)}">Delete</button>
-                <span class="cw-ticket-chevron">›</span>
-              </div>
-            </div>
-            <div class="cw-ticket-content" style="display:none">
-              <div class="cw-ticket-meta-row">
-                <div class="cw-ticket-meta-field">
-                  <label class="cw-ticket-jira-label" for="cw-jira-${escHtml(t.id)}">Jira Ticket #</label>
-                  <div class="cw-ticket-jira-input-wrap">
-                    <input class="cw-input cw-ticket-jira-input" id="cw-jira-${escHtml(t.id)}" type="text" placeholder="e.g. PROJ-1234" value="${escHtml(t.jira_ticket || '')}">
-                    <button class="btn btn-sm cw-save-jira-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
-                  </div>
-                </div>
-                <div class="cw-ticket-meta-field">
-                  <label class="cw-ticket-jira-label" for="cw-date-${escHtml(t.id)}">Date Submitted</label>
-                  <div class="cw-ticket-jira-input-wrap">
-                    <input class="cw-input cw-ticket-jira-input" id="cw-date-${escHtml(t.id)}" type="date" value="${escHtml(t.submitted_at ? t.submitted_at.split('T')[0] : '')}">
-                    <button class="btn btn-sm cw-save-date-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
-                  </div>
-                </div>
-              </div>
-              <div class="cw-ticket-body-content">${t.content_html}</div>
-            </div>
-          </div>
-        `).join('')}
+        ${activeTickets.length > 0
+          ? activeTickets.map(t => _renderTicketRow(t)).join('')
+          : '<div class="cw-tickets-empty">No active submitted tickets.</div>'}
       </div>
+      ${completedSectionHtml}
     </div>`;
 }
 
@@ -471,6 +499,16 @@ function _bindListEvents() {
       if (!confirm('Delete this draft? This cannot be undone.')) return;
       btn.disabled = true;
       await deleteDraft(btn.dataset.draftId);
+      render();
+    });
+  });
+
+  // ── Mark complete / incomplete ──
+  document.querySelectorAll('[data-complete-id]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      btn.disabled = true;
+      await toggleTicketCompleted(btn.dataset.completeId);
       render();
     });
   });
