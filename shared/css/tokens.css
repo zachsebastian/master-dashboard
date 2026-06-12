@@ -25,6 +25,8 @@
   --orange-bg: #fdf0e3;
   --purple: #6b3fa0;
   --purple-bg: #f0eaf8;
+  --teal: #5a7a6e;
+  --teal-bg: #e3ede9;
   --r-sm: 6px;
   --r-lg: 14px;
 }
@@ -52,6 +54,8 @@ html[data-theme="dark"] {
   --orange-bg: rgba(224,138,60,0.12);
   --purple: #a07ad4;
   --purple-bg: rgba(160,122,212,0.12);
+  --teal: #7aab9e;
+  --teal-bg: rgba(90,122,110,0.15);
 }
 
 /* ── Base ── */

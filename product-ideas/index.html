@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Ideas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
+<link rel="stylesheet" href="/shared/css/tokens.css">
+<link rel="stylesheet" href="/product-ideas/css/product-ideas.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/shared/css/mobile.css">
+</head>
+<body>
+
+<!-- Impersonation banner -->
+<div class="impersonation-banner" id="impersonation-banner">
+  <span>Viewing as <strong id="impersonation-email"></strong></span>
+  <button class="btn-return" onclick="returnToAdmin()">← Return to My Account</button>
+  <div></div>
+</div>
+
+<!-- Topbar -->
+<div id="topbar"></div>
+
+<!-- App root -->
+<div id="app"></div>
+
+<script src="/shared/js/supabase-client.js"></script>
+<script src="/shared/js/banner.js"></script>
+<script src="/shared/js/module-header.js"></script>
+<script src="/product-ideas/js/state.js"></script>
+<script src="/product-ideas/js/render.js"></script>
+<script src="/product-ideas/js/app.js"></script>
+<script src="/shared/js/pwa.js"></script>
+</body>
+</html>

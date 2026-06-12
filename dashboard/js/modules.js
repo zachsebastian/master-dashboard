@@ -381,6 +381,39 @@ const ALL_MODULES = [
       };
     },
   },
+  {
+    id: 'product-ideas',
+    name: 'Product Ideas',
+    type: 'launchpad',
+    iconBg: 'var(--teal-bg)',
+    iconColor: 'var(--teal)',
+    accentVar: '--teal',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.18 4.48-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.18 13.48 5 11.38 5 9a7 7 0 0 1 7-7z"/></svg>`,
+    desc: 'Document improvement ideas across the products you work with.',
+    href: '/product-ideas/',
+
+    async fetchStats(sb, userId) {
+      const [productsRes, allIdeasRes, latestRes] = await Promise.all([
+        sb.from('pi_products').select('id, name').eq('user_id', userId),
+        sb.from('pi_ideas').select('id, status').eq('user_id', userId),
+        sb.from('pi_ideas').select('id, title, product_id').eq('user_id', userId)
+          .order('created_at', { ascending: false }).limit(3),
+      ]);
+      const products  = productsRes.data  || [];
+      const allIdeas  = allIdeasRes.data  || [];
+      const latest    = latestRes.data    || [];
+      const total     = allIdeas.length;
+      const submitted = allIdeas.filter(i => i.status === 'submitted').length;
+      const productMap = Object.fromEntries(products.map(p => [p.id, p.name]));
+      return {
+        primary:       { value: total, label: total === 1 ? 'Idea' : 'Ideas' },
+        secondary:     { value: submitted, label: 'Submitted' },
+        spark:         null,
+        latestEntries: latest.map(i => ({ when: null, target: i.title, note: productMap[i.product_id] || '' })),
+        summaryFragment: `${total} idea${total === 1 ? '' : 's'} across ${products.length} product${products.length === 1 ? '' : 's'}`,
+      };
+    },
+  },
 ];
 
 // ── Drag state ──
