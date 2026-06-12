@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v1';
+const CACHE = 'dashboard-suite-v2';
 
 const PRECACHE = [
   '/',
@@ -21,6 +21,8 @@ const PRECACHE = [
   '/data-inventory/index.html',
   '/case-writer/',
   '/case-writer/index.html',
+  '/product-ideas/',
+  '/product-ideas/index.html',
   '/shared/css/tokens.css',
   '/shared/css/mobile.css',
   '/shared/js/supabase-client.js',
@@ -70,6 +72,10 @@ const PRECACHE = [
   '/case-writer/js/app.js',
   '/case-writer/js/render.js',
   '/case-writer/js/state.js',
+  '/product-ideas/css/product-ideas.css',
+  '/product-ideas/js/app.js',
+  '/product-ideas/js/render.js',
+  '/product-ideas/js/state.js',
   '/icons/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
