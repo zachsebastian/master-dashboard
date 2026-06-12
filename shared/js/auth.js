@@ -5,10 +5,15 @@
 // Check if the signed-in user has first + last name in their profile.
 // Returns true if complete, false if the profile screen was shown.
 async function checkProfile(user) {
-  const { data: profile } = await sb.from('profiles')
+  const { data: profile, error } = await sb.from('profiles')
     .select('first_name, last_name')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (error) {
+    console.error('Profile fetch failed:', error.message);
+    return true;
+  }
 
   if (profile?.first_name?.trim() && profile?.last_name?.trim()) return true;
 

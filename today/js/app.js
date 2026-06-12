@@ -27,7 +27,7 @@ async function initAuth() {
   if (!session?.user) { window.location.href = '/'; return; }
 
   _currentUser = session.user;
-  initImpersonationBanner();
+  await initImpersonationBanner();
 
   const [prefsRes, modulesRes] = await Promise.all([
     sb.from('user_preferences').select('theme').eq('user_id', session.user.id).maybeSingle(),

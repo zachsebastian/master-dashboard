@@ -7,18 +7,18 @@ function _esc(str) {
 }
 
 function _sourceLabel(s) {
-  return { self: 'Self', user_feedback: 'User feedback', teammate: 'Teammate', other: 'Other' }[s] || s;
+  return { self: 'Self', user_feedback: 'User feedback', teammate: 'Teammate', other: 'Other' }[s] || _esc(s);
 }
 
 function _priorityPill(p) {
   const cls   = { low: 'pi-pill-low', medium: 'pi-pill-medium', high: 'pi-pill-high' }[p] || '';
-  const label = { low: 'Low', medium: 'Medium', high: 'High' }[p] || p;
+  const label = { low: 'Low', medium: 'Medium', high: 'High' }[p] || _esc(p);
   return `<span class="pi-pill ${cls}">${label}</span>`;
 }
 
 function _statusPill(s) {
   const cls   = { ideation: 'pi-pill-ideation', scoping: 'pi-pill-scoping', submitted: 'pi-pill-submitted' }[s] || '';
-  const label = { ideation: 'Ideation', scoping: 'Scoping', submitted: 'Submitted' }[s] || s;
+  const label = { ideation: 'Ideation', scoping: 'Scoping', submitted: 'Submitted' }[s] || _esc(s);
   return `<span class="pi-pill ${cls}">${label}</span>`;
 }
 
@@ -364,7 +364,10 @@ function _bindManageEvents() {
       const input = nameEl.querySelector('input');
       input.focus(); input.select();
 
+      let saved = false;
       async function save() {
+        if (saved) return;
+        saved = true;
         const val = input.value.trim();
         if (!val || val === current) { render(); return; }
         await updateProduct(id, { name: val });

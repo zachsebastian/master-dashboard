@@ -1,4 +1,8 @@
 // ── Module → Supabase table mapping ──
+function esc(str) {
+  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 const MODULE_TABLE = {
   projects: 'dashboards',
   metrics:  'metrics',
@@ -36,11 +40,11 @@ async function renderAdminPage() {
   const userProfiles  = (profiles || []).filter(p => !p.is_admin);
 
   function nameCell(p, isYou) {
-    const full = (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}` : '';
+    const full = (p.first_name && p.last_name) ? `${esc(p.first_name)} ${esc(p.last_name)}` : '';
     const youTag = isYou ? ' <span class="admin-tag" style="margin-left:6px;">You</span>' : '';
     return full
-      ? `<div style="font-weight:600;display:flex;align-items:center;">${full}${youTag}</div><div style="font-size:12px;color:var(--text-3)">${p.email}</div>`
-      : `<div style="display:flex;align-items:center;">${p.email}${youTag}</div>`;
+      ? `<div style="font-weight:600;display:flex;align-items:center;">${full}${youTag}</div><div style="font-size:12px;color:var(--text-3)">${esc(p.email)}</div>`
+      : `<div style="display:flex;align-items:center;">${esc(p.email)}${youTag}</div>`;
   }
 
   function buildBadges(userId) {
@@ -160,7 +164,7 @@ function openDataModal(userId, userName) {
       <div style="padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;">
         <div>
           <div style="font-size:15px;font-weight:700;letter-spacing:-0.3px;">Data Management</div>
-          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">${userName}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">${esc(userName)}</div>
         </div>
         <button onclick="document.getElementById('data-modal-overlay').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-3);padding:0 2px;line-height:1;">×</button>
       </div>

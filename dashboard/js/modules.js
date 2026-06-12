@@ -889,13 +889,11 @@ async function _commitModuleOrder() {
   }));
   renderModules(updatedRows, _lastStats);
 
-  // Persist to DB
-  await Promise.all(items.map((el, i) =>
-    sb.from('user_modules')
-      .update({ sort_order: i })
-      .eq('user_id', currentUser.id)
-      .eq('module', el.dataset.moduleId)
-  ));
+  // Persist to DB — single upsert instead of N individual updates
+  await sb.from('user_modules').upsert(
+    items.map((el, i) => ({ user_id: currentUser.id, module: el.dataset.moduleId, sort_order: i })),
+    { onConflict: 'user_id,module' }
+  );
 }
 
 // ── Sparkline ──
