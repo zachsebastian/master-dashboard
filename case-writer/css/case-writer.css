@@ -430,18 +430,15 @@
 
 /* ── AI Assist button ── */
 @keyframes cw-rainbow-border {
-  0%   { border-color: #7c6af7; box-shadow: 0 0 0 2px rgba(124,106,247,0.25); }
-  20%  { border-color: #4a9fd4; box-shadow: 0 0 0 2px rgba(74,159,212,0.25); }
-  40%  { border-color: #3dbfa0; box-shadow: 0 0 0 2px rgba(61,191,160,0.25); }
-  60%  { border-color: #e0a030; box-shadow: 0 0 0 2px rgba(224,160,48,0.25); }
-  80%  { border-color: #e05c7a; box-shadow: 0 0 0 2px rgba(224,92,122,0.25); }
-  100% { border-color: #7c6af7; box-shadow: 0 0 0 2px rgba(124,106,247,0.25); }
+  0%   { border-color: #527a48; box-shadow: 0 0 0 2px rgba(82,122,72,0.20); }
+  50%  { border-color: #7aab6e; box-shadow: 0 0 0 3px rgba(122,171,110,0.30); }
+  100% { border-color: #527a48; box-shadow: 0 0 0 2px rgba(82,122,72,0.20); }
 }
 
 .cw-ai-fill-btn {
-  background: linear-gradient(135deg, rgba(124,106,247,0.12), rgba(74,159,212,0.12));
-  border-color: #7c6af7;
-  color: #7c6af7;
+  background: linear-gradient(135deg, rgba(74,110,66,0.10), rgba(90,122,110,0.08));
+  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
   transition: background 0.2s, color 0.2s;
 }
@@ -493,7 +490,7 @@
   align-items: center;
   gap: 7px;
 }
-.cw-ai-modal-title svg { color: #7c6af7; }
+.cw-ai-modal-title svg { color: var(--purple); }
 .cw-ai-modal-close {
   background: none;
   border: none;

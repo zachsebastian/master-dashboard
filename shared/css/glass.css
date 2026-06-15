@@ -1,0 +1,225 @@
+/* ════════════════════════════════════════════════════════════════════════
+   GREENHOUSE GLASS — component glass layer
+   Loaded AFTER each module's stylesheet. Applies frosted-glass material,
+   warm backdrops, and uniformity fixes across every module.
+   Three tiers: panel (primary glass) · card (secondary) · overlay (modal).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tier 1 · Primary glass panels — float above the garden ── */
+.module-card,
+.launchpad-row,
+.activity-strip,
+.auth-card,
+.profile-card,
+.profile-page-card,
+.profile-panel,
+.admin-table,
+.empty-state,
+.metric-panel,
+.panel,
+.summary-card,
+.link-card,
+.scratch-input-area,
+.scratch-note,
+.di-card,
+.di-master-card,
+.cw-template-card,
+.cw-ticket-row,
+.cw-manage-row,
+.wl-candidate-card,
+.present-wrap {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  backdrop-filter: var(--glass-blur-sm);
+  border: 1px solid var(--glass-edge-side);
+  border-top-color: var(--glass-edge-top);
+  border-bottom-color: var(--glass-edge-bottom);
+  box-shadow: var(--shadow-md);
+}
+
+/* Hover lift — settle up one level, glass catches more light */
+.module-card:hover,
+.launchpad-row:hover,
+.link-card:hover:not(.edit-active),
+.metric-panel:hover,
+.wl-candidate-card:hover {
+  background: var(--glass-bg-raised);
+  box-shadow: var(--shadow-hover);
+}
+.module-card:hover { transform: translateY(-1px) scale(1.003); }
+.launchpad-row:hover { transform: translateY(-1px); }
+
+/* Panels keep recessed headers/footers readable on glass */
+.panel-header,
+.task-add-row { background: rgba(90,75,50,0.04); }
+html[data-theme="dark"] .panel-header,
+html[data-theme="dark"] .task-add-row { background: rgba(0,0,0,0.14); }
+
+/* ── Tier 2 · Overlay glass — modals, the one focal surface ── */
+.modal,
+.sc-modal,
+.lq-modal,
+.reset-modal,
+.ai-hist-modal,
+.cw-ai-modal,
+.pi-modal,
+.wl-modal {
+  background: var(--glass-bg-raised);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge-side);
+  border-top-color: var(--glass-edge-top);
+  border-bottom-color: var(--glass-edge-bottom);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Warm bark backdrops — never black ── */
+.modal-backdrop,
+.modal-overlay,
+.sc-overlay,
+.lq-overlay,
+.reset-overlay,
+.ai-hist-overlay,
+.cw-ai-modal-overlay,
+.pi-modal-overlay,
+.wl-modal-overlay {
+  background: var(--backdrop);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  backdrop-filter: blur(10px) saturate(1.05);
+}
+
+/* ── The glass edge: a light catch on top that fades into the surface ──
+   Per-side border colors above are the fallback; capable browsers get a
+   true gradient hairline via a masked ring. No accent bars on cards. */
+.module-card,
+.launchpad-row { position: relative; overflow: hidden; }
+.activity-strip,
+.auth-card,
+.profile-card,
+.profile-page-card,
+.admin-table,
+.empty-state,
+.metric-panel,
+.panel,
+.summary-card,
+.link-card,
+.scratch-input-area,
+.scratch-note,
+.di-card,
+.di-master-card,
+.cw-template-card,
+.cw-ticket-row,
+.cw-manage-row,
+.wl-candidate-card,
+.present-wrap,
+.modal,
+.sc-modal,
+.lq-modal,
+.reset-modal,
+.ai-hist-modal,
+.cw-ai-modal,
+.pi-modal,
+.wl-modal { position: relative; }
+/* (.profile-panel is already position:absolute — anchors its ring natively) */
+
+@supports ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
+  .module-card, .launchpad-row, .activity-strip, .auth-card, .profile-card,
+  .profile-page-card, .profile-panel, .admin-table, .empty-state, .metric-panel,
+  .panel, .summary-card, .link-card, .scratch-input-area, .scratch-note,
+  .di-card, .di-master-card, .cw-template-card, .cw-ticket-row, .cw-manage-row,
+  .wl-candidate-card, .present-wrap, .modal, .sc-modal, .lq-modal, .reset-modal,
+  .ai-hist-modal, .cw-ai-modal, .pi-modal, .wl-modal,
+  .module-card:hover, .module-card--phantom:hover, .launchpad-row:hover,
+  .link-card:hover:not(.edit-active), .metric-panel:hover, .wl-candidate-card:hover {
+    border-color: transparent;
+  }
+  .module-card::before, .launchpad-row::before, .activity-strip::before,
+  .auth-card::before, .profile-card::before, .profile-page-card::before,
+  .profile-panel::before, .admin-table::before, .empty-state::before,
+  .metric-panel::before, .panel::before, .summary-card::before,
+  .link-card::before, .scratch-input-area::before, .scratch-note::before,
+  .di-card::before, .di-master-card::before, .cw-template-card::before,
+  .cw-ticket-row::before, .cw-manage-row::before, .wl-candidate-card::before,
+  .present-wrap::before, .modal::before, .sc-modal::before, .lq-modal::before,
+  .reset-modal::before, .ai-hist-modal::before, .cw-ai-modal::before,
+  .pi-modal::before, .wl-modal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--glass-edge-grad);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* Metrics' legacy colored panel stripe — removed with the accent bars */
+.metric-panel-stripe { display: none; }
+
+/* ── Uniformity · buttons sit on one scale per context ── */
+button { font-family: inherit; }
+.btn, .btn-sm, .btn-primary { border-radius: var(--r-sm); }
+
+/* ── Uniformity · one focus language: the moss glow ── */
+.form-input:focus,
+.task-add-input:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Recessed wells stay opaque so the glass hierarchy reads ── */
+.form-input,
+.task-add-input,
+textarea,
+select { background-color: var(--surface-2); }
+
+/* ── View tabs — frosted pill rail, active pane lifts ── */
+.view-tab.active,
+.today-view-btn.active,
+.digest-week-btn.active {
+  background: var(--glass-bg-raised);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Sidebars (projects / metrics lists) — frosted linen ── */
+.sidebar {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  backdrop-filter: var(--glass-blur-sm);
+}
+
+/* ── Links: icon edit overlay was SaaS blue → moss glass ── */
+.icon-edit-overlay { background: rgba(74,110,66,0.62) !important; }
+
+/* ── Serif grace notes — quotes are editorial moments ── */
+.phantom-quote,
+.lq-row-quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 17px;
+  font-weight: 400;
+}
+.phantom-eyebrow { color: var(--teal); }
+
+/* ── Motion discipline ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .module-card:hover, .launchpad-row:hover { transform: none; }
+}

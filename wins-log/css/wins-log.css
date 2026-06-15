@@ -50,7 +50,7 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 10px;
-  background: rgba(224, 160, 48, 0.15);
+  background: rgba(212, 146, 74, 0.16);
   color: var(--orange, #e0a030);
   font-size: 11px;
   font-weight: 700;
@@ -65,7 +65,7 @@
 .wl-scan-btn {
   font-weight: 600;
   font-size: 13px;
-  background: linear-gradient(135deg, rgba(224,160,48,0.1), rgba(224,160,48,0.05));
+  background: linear-gradient(135deg, rgba(212,146,74,0.12), rgba(212,146,74,0.05));
   border-color: var(--orange, #e0a030);
   color: var(--orange, #e0a030);
   white-space: nowrap;
@@ -141,7 +141,7 @@
 .wl-cat-customer-impact    { background: var(--blue-bg);           color: var(--blue);           }
 .wl-cat-process-improvement{ background: var(--purple-bg);         color: var(--purple);         }
 .wl-cat-delivery           { background: var(--green-bg);          color: var(--green);          }
-.wl-cat-relationship       { background: rgba(224,160,48,0.14);    color: var(--orange, #e0a030);}
+.wl-cat-relationship       { background: var(--orange-bg);          color: var(--orange, #e0a030);}
 
 /* ── Candidates grid ── */
 .wl-candidates-grid {
@@ -290,7 +290,7 @@
 }
 .wl-btn-delete { color: var(--red, #e05c7a); }
 .wl-btn-delete:hover {
-  background: rgba(224, 92, 122, 0.1);
+  background: var(--red-bg);
   border-color: var(--red, #e05c7a);
 }
 
@@ -467,7 +467,7 @@
 .wl-modal-error {
   font-size: 13px;
   color: var(--red, #e05c7a);
-  background: rgba(224, 92, 122, 0.1);
+  background: var(--red-bg);
   border-radius: 6px;
   padding: 8px 12px;
 }

@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v2';
+const CACHE = 'dashboard-suite-v3';
 
 const PRECACHE = [
   '/',
@@ -24,6 +24,7 @@ const PRECACHE = [
   '/product-ideas/',
   '/product-ideas/index.html',
   '/shared/css/tokens.css',
+  '/shared/css/glass.css',
   '/shared/css/mobile.css',
   '/shared/js/supabase-client.js',
   '/shared/js/auth.js',
