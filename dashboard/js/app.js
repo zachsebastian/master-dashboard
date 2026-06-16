@@ -158,6 +158,9 @@ function setBackgrounds(lightUrl, darkUrl) {
 new MutationObserver(_applyCurrentBackground)
   .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
+// Re-sync background when page is restored from bfcache
+window.addEventListener('pageshow', e => { if (e.persisted) _applyCurrentBackground(); });
+
 // ── Card glass style + background blur ──
 function applyCardStyle(opacity, blur, bgBlur) {
   document.documentElement.style.setProperty('--card-bg-alpha', opacity ?? 0.38);
