@@ -83,8 +83,10 @@ async function onSignedIn(user) {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 
-  // Theme
-  await loadAndApplyTheme(user.id);
+  // Theme, background, and card style
+  const prefs = await loadAndApplyTheme(user.id);
+  setBackgrounds(prefs?.bg_image_light_url || null, prefs?.bg_image_dark_url || null);
+  applyCardStyle(prefs?.card_opacity ?? 0.38, prefs?.card_blur ?? 6, prefs?.bg_blur ?? 0);
 
   // Modules + stats
   const { data: modRows } = await sb.from('user_modules')
@@ -130,6 +132,39 @@ async function onSignedIn(user) {
   renderActivityTicker(allActivity);
 }
 
+// ── Background image ──
+let _bgLight = null;
+let _bgDark  = null;
+
+function _applyCurrentBackground() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const url = isDark ? _bgDark : _bgLight;
+  if (url) {
+    document.documentElement.style.setProperty('--bg-image-url', `url('${url.replace(/'/g, "\\'")}')`);
+    document.body.classList.add('has-bg-image');
+  } else {
+    document.documentElement.style.removeProperty('--bg-image-url');
+    document.body.classList.remove('has-bg-image');
+  }
+}
+
+function setBackgrounds(lightUrl, darkUrl) {
+  _bgLight = lightUrl || null;
+  _bgDark  = darkUrl  || null;
+  _applyCurrentBackground();
+}
+
+// Swap background when theme toggles
+new MutationObserver(_applyCurrentBackground)
+  .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// ── Card glass style + background blur ──
+function applyCardStyle(opacity, blur, bgBlur) {
+  document.documentElement.style.setProperty('--card-bg-alpha', opacity ?? 0.38);
+  document.documentElement.style.setProperty('--card-blur-px', (blur ?? 6) + 'px');
+  document.documentElement.style.setProperty('--bg-blur-px', (bgBlur ?? 0) + 'px');
+}
+
 // ── Profile page ──
 function showProfilePage() {
   document.getElementById('main-view').style.display   = 'none';
@@ -142,6 +177,192 @@ function showProfilePage() {
   document.getElementById('profpage-name-status').textContent   = '';
   document.getElementById('profpage-apikey-status').textContent = '';
   document.getElementById('profpage-reset-status').textContent  = '';
+  renderAppearanceSection();
+}
+
+async function renderAppearanceSection() {
+  const container = document.getElementById('profpage-appearance-content');
+  if (!container) return;
+
+  const [{ data: bgList }, { data: myPrefs }] = await Promise.all([
+    sb.from('dashboard_backgrounds').select('id, mode, name, url').eq('user_id', currentUser.id).order('created_at'),
+    sb.from('user_preferences').select('bg_image_light_url, bg_image_dark_url, card_opacity, card_blur, bg_blur').eq('user_id', currentUser.id).maybeSingle(),
+  ]);
+
+  const lightBgs       = (bgList || []).filter(b => b.mode === 'light');
+  const darkBgs        = (bgList || []).filter(b => b.mode === 'dark');
+  const activeLightUrl = myPrefs?.bg_image_light_url || null;
+  const activeDarkUrl  = myPrefs?.bg_image_dark_url  || null;
+
+  function bgRow(mode, bgs, activeUrl) {
+    const label       = mode === 'light' ? 'Light Mode' : 'Dark Mode';
+    const activeEntry = bgs.find(b => b.url?.split('?')[0] === activeUrl?.split('?')[0]);
+    const divider     = mode === 'dark' ? 'border-top:1px solid var(--border);padding-top:14px;margin-top:6px;' : '';
+    return `
+      <div style="${divider}">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${label}</div>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="bg-select-${mode}" class="form-input" style="margin:0;font-size:13px;padding:5px 10px;width:auto;height:auto;"
+                onchange="activateBackground('${mode}', this)">
+                <option value="">No background</option>
+                ${bgs.map(b => `<option value="${b.id}" data-url="${escHtml(b.url)}" ${activeEntry?.id === b.id ? 'selected' : ''}>${escHtml(b.name)}</option>`).join('')}
+              </select>
+              ${activeEntry ? `<button class="btn-sm" style="color:var(--red)" onclick="deleteBackground('${mode}','${activeEntry.id}')">Remove</button>` : ''}
+            </div>
+            <label class="btn-sm" style="cursor:pointer;">
+              Upload new…
+              <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadBackground(this,'${mode}')">
+            </label>
+            <span id="bg-status-${mode}" style="font-size:12px;"></span>
+          </div>
+          ${activeEntry ? `<img src="${escHtml(activeUrl)}" style="width:100px;height:60px;object-fit:cover;border-radius:var(--r-md);border:1px solid var(--border-md);flex-shrink:0;">` : ''}
+        </div>
+      </div>`;
+  }
+
+  const opacity    = myPrefs?.card_opacity ?? 0.38;
+  const blur       = myPrefs?.card_blur    ?? 6;
+  const bgBlur     = myPrefs?.bg_blur      ?? 0;
+  const opacityPct = Math.round(opacity * 100);
+
+  const cardStyleHtml = `
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Card Style</div>
+      <div style="display:grid;grid-template-columns:130px 1fr 44px;gap:10px 12px;align-items:center;">
+        <label style="font-size:13px;color:var(--text-2);">Card Opacity</label>
+        <input type="range" id="card-opacity-slider" min="0" max="100" value="${opacityPct}"
+          style="accent-color:var(--accent)"
+          oninput="previewCardStyle()" onchange="saveCardStyle()">
+        <span id="card-opacity-label" style="font-size:12px;color:var(--text-3);text-align:right;">${opacityPct}%</span>
+
+        <label style="font-size:13px;color:var(--text-2);">Card Blur</label>
+        <input type="range" id="card-blur-slider" min="0" max="20" value="${blur}"
+          style="accent-color:var(--accent)"
+          oninput="previewCardStyle()" onchange="saveCardStyle()">
+        <span id="card-blur-label" style="font-size:12px;color:var(--text-3);text-align:right;">${blur}px</span>
+
+        <label style="font-size:13px;color:var(--text-2);">Background Blur</label>
+        <input type="range" id="bg-blur-slider" min="0" max="20" value="${bgBlur}"
+          style="accent-color:var(--accent)"
+          oninput="previewCardStyle()" onchange="saveCardStyle()">
+        <span id="bg-blur-label" style="font-size:12px;color:var(--text-3);text-align:right;">${bgBlur}px</span>
+      </div>
+      <span id="card-style-status" style="font-size:12px;display:block;margin-top:8px;min-height:16px;"></span>
+    </div>`;
+
+  container.innerHTML = bgRow('light', lightBgs, activeLightUrl) + bgRow('dark', darkBgs, activeDarkUrl) + cardStyleHtml;
+}
+
+function previewCardStyle() {
+  const opacity = document.getElementById('card-opacity-slider').value / 100;
+  const blur    = document.getElementById('card-blur-slider').value;
+  const bgBlur  = document.getElementById('bg-blur-slider').value;
+  document.getElementById('card-opacity-label').textContent = Math.round(opacity * 100) + '%';
+  document.getElementById('card-blur-label').textContent    = blur + 'px';
+  document.getElementById('bg-blur-label').textContent      = bgBlur + 'px';
+  applyCardStyle(opacity, blur, bgBlur);
+}
+
+async function saveCardStyle() {
+  const opacity = document.getElementById('card-opacity-slider').value / 100;
+  const blur    = parseInt(document.getElementById('card-blur-slider').value, 10);
+  const bgBlur  = parseInt(document.getElementById('bg-blur-slider').value, 10);
+  const status  = document.getElementById('card-style-status');
+  applyCardStyle(opacity, blur, bgBlur);
+  await sb.from('user_preferences').upsert(
+    { user_id: currentUser.id, card_opacity: opacity, card_blur: blur, bg_blur: bgBlur, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  status.textContent = '✓ Saved';
+  status.style.color = 'var(--green)';
+  setTimeout(() => { status.textContent = ''; }, 2000);
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function uploadBackground(input, mode) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById(`bg-status-${mode}`);
+  statusEl.textContent = 'Uploading…';
+  statusEl.style.color = 'var(--text-3)';
+
+  const ext         = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const name        = file.name.replace(/\.[^.]+$/, '') || 'Background';
+  const uid         = crypto.randomUUID();
+  const storagePath = `${currentUser.id}/${mode}/${uid}.${ext}`;
+
+  const { error: upErr } = await sb.storage.from('backgrounds').upload(storagePath, file, { upsert: false });
+  if (upErr) {
+    statusEl.textContent = '⚠ ' + upErr.message;
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  const { data: { publicUrl } } = sb.storage.from('backgrounds').getPublicUrl(storagePath);
+  const url = `${publicUrl}?t=${Date.now()}`;
+
+  const { error: dbErr } = await sb.from('dashboard_backgrounds').insert({
+    user_id: currentUser.id, mode, name, storage_path: storagePath, url,
+  });
+  if (dbErr) {
+    statusEl.textContent = '⚠ Uploaded but failed to record: ' + dbErr.message;
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  const col = mode === 'light' ? 'bg_image_light_url' : 'bg_image_dark_url';
+  await sb.from('user_preferences').upsert(
+    { user_id: currentUser.id, [col]: url, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  if (mode === 'light') setBackgrounds(url, _bgDark);
+  else                  setBackgrounds(_bgLight, url);
+
+  statusEl.textContent = '✓ Uploaded';
+  statusEl.style.color = 'var(--green)';
+  setTimeout(() => renderAppearanceSection(), 900);
+}
+
+async function activateBackground(mode, selectEl) {
+  const opt = selectEl.options[selectEl.selectedIndex];
+  const url = opt.dataset.url || null;
+  const col = mode === 'light' ? 'bg_image_light_url' : 'bg_image_dark_url';
+  await sb.from('user_preferences').upsert(
+    { user_id: currentUser.id, [col]: url || null, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  if (mode === 'light') setBackgrounds(url, _bgDark);
+  else                  setBackgrounds(_bgLight, url);
+  renderAppearanceSection();
+}
+
+async function deleteBackground(mode, id) {
+  const { data: bg } = await sb.from('dashboard_backgrounds')
+    .select('url, storage_path').eq('id', id).maybeSingle();
+
+  await sb.from('dashboard_backgrounds').delete().eq('id', id).eq('user_id', currentUser.id);
+
+  if (bg?.storage_path) {
+    await sb.storage.from('backgrounds').remove([bg.storage_path]);
+  }
+
+  const col       = mode === 'light' ? 'bg_image_light_url' : 'bg_image_dark_url';
+  const activeUrl = mode === 'light' ? _bgLight : _bgDark;
+  if (bg?.url?.split('?')[0] === activeUrl?.split('?')[0]) {
+    await sb.from('user_preferences').upsert(
+      { user_id: currentUser.id, [col]: null, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+    if (mode === 'light') setBackgrounds(null, _bgDark);
+    else                  setBackgrounds(_bgLight, null);
+  }
+
+  renderAppearanceSection();
 }
 
 async function saveProfileName() {

@@ -15,14 +15,14 @@ async function applyTheme(theme, userId) {
 
 async function loadAndApplyTheme(userId) {
   const { data: prefs } = await sb.from('user_preferences')
-    .select('theme').eq('user_id', userId).maybeSingle();
+    .select('theme, bg_image_light_url, bg_image_dark_url, card_opacity, card_blur, bg_blur').eq('user_id', userId).maybeSingle();
   const theme = prefs?.theme || localStorage.getItem('theme') || 'light';
   await applyTheme(theme);
   if (!prefs) {
     await sb.from('user_preferences')
       .upsert({ user_id: userId, theme }, { onConflict: 'user_id' });
   }
-  return theme;
+  return prefs || { theme };
 }
 
 async function toggleTheme(userId) {

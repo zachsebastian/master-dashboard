@@ -25,10 +25,10 @@ async function renderAdminPage() {
   const content = document.getElementById('admin-page-content');
   content.innerHTML = '<div style="color:var(--text-3);font-size:13px">Loading…</div>';
 
-  const { data: profiles } = await sb.from('profiles')
-    .select('user_id, email, first_name, last_name, is_admin, anthropic_api_key')
-    .order('email');
-  const { data: allMods } = await sb.from('user_modules').select('user_id, module');
+  const [{ data: profiles }, { data: allMods }] = await Promise.all([
+    sb.from('profiles').select('user_id, email, first_name, last_name, is_admin, anthropic_api_key').order('email'),
+    sb.from('user_modules').select('user_id, module'),
+  ]);
 
   const modsByUser = {};
   (allMods || []).forEach(r => {

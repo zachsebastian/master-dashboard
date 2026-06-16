@@ -89,9 +89,11 @@
 
   <!-- Main dashboard view -->
   <div class="main" id="main-view">
-    <div class="hero-eyebrow" id="hero-eyebrow"></div>
-    <div class="page-title" id="page-title">Your tools</div>
-    <div class="page-subtitle" id="page-subtitle">Select a module to open it.</div>
+    <div class="hero-block">
+      <div class="hero-eyebrow" id="hero-eyebrow"></div>
+      <div class="page-title" id="page-title">Your tools</div>
+      <div class="page-subtitle" id="page-subtitle">Select a module to open it.</div>
+    </div>
     <div class="module-outer" id="module-outer"></div>
     <div class="empty-state" id="empty-state" style="display:none">
       <div class="empty-state-icon">
@@ -156,6 +158,11 @@
           <button class="btn-sm" id="profpage-apikey-btn" onclick="saveAnthropicKey()" style="font-weight:600">Save Key</button>
           <span id="profpage-apikey-status" style="font-size:12px;"></span>
         </div>
+      </div>
+
+      <div class="profile-page-card">
+        <div class="section-title">Appearance</div>
+        <div id="profpage-appearance-content"><div style="color:var(--text-3);font-size:13px">Loading…</div></div>
       </div>
 
       <div class="profile-page-card">
