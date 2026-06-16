@@ -87,6 +87,8 @@ async function onSignedIn(user) {
   const prefs = await loadAndApplyTheme(user.id);
   setBackgrounds(prefs?.bg_image_light_url || null, prefs?.bg_image_dark_url || null);
   applyCardStyle(prefs?.card_opacity ?? 0.38, prefs?.card_blur ?? 6, prefs?.bg_blur ?? 0);
+  const heroPrefs = loadHeroMaskPrefs();
+  applyHeroMask(heroPrefs.radius, heroPrefs.feather);
 
   // Modules + stats
   const { data: modRows } = await sb.from('user_modules')
@@ -168,6 +170,30 @@ function applyCardStyle(opacity, blur, bgBlur) {
   document.documentElement.style.setProperty('--bg-blur-px', (bgBlur ?? 0) + 'px');
 }
 
+// ── Hero halo mask (rounded corners + feathered edges) ──
+// Defaults kept in sync with the CSS :root --hero-mask fallback.
+const HERO_RADIUS_DEFAULT  = 46;
+const HERO_FEATHER_DEFAULT = 15;
+
+function heroMaskUrl(radius, feather) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 180' preserveAspectRatio='none'><filter id='f' x='-25%' y='-45%' width='150%' height='190%'><feGaussianBlur stdDeviation='${feather}'/></filter><rect x='22' y='22' width='356' height='136' rx='${radius}' fill='#fff' filter='url(#f)'/></svg>`;
+  const enc = svg.replace(/%/g, '%25').replace(/#/g, '%23');
+  return `url("data:image/svg+xml,${enc}")`;
+}
+
+function applyHeroMask(radius, feather) {
+  document.documentElement.style.setProperty(
+    '--hero-mask',
+    heroMaskUrl(radius ?? HERO_RADIUS_DEFAULT, feather ?? HERO_FEATHER_DEFAULT)
+  );
+}
+
+function loadHeroMaskPrefs() {
+  const radius  = parseInt(localStorage.getItem('heroRadius')  ?? HERO_RADIUS_DEFAULT,  10);
+  const feather = parseInt(localStorage.getItem('heroFeather') ?? HERO_FEATHER_DEFAULT, 10);
+  return { radius, feather };
+}
+
 // ── Profile page ──
 function showProfilePage() {
   document.getElementById('main-view').style.display   = 'none';
@@ -229,6 +255,7 @@ async function renderAppearanceSection() {
   const blur       = myPrefs?.card_blur    ?? 6;
   const bgBlur     = myPrefs?.bg_blur      ?? 0;
   const opacityPct = Math.round(opacity * 100);
+  const { radius: heroRadius, feather: heroFeather } = loadHeroMaskPrefs();
 
   const cardStyleHtml = `
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;">
@@ -251,7 +278,20 @@ async function renderAppearanceSection() {
           style="accent-color:var(--accent)"
           oninput="previewCardStyle()" onchange="saveCardStyle()">
         <span id="bg-blur-label" style="font-size:12px;color:var(--text-3);text-align:right;">${bgBlur}px</span>
+
+        <label style="font-size:13px;color:var(--text-2);">Hero Corner Radius</label>
+        <input type="range" id="hero-radius-slider" min="0" max="90" value="${heroRadius}"
+          style="accent-color:var(--accent)"
+          oninput="previewCardStyle()" onchange="saveCardStyle()">
+        <span id="hero-radius-label" style="font-size:12px;color:var(--text-3);text-align:right;">${heroRadius}</span>
+
+        <label style="font-size:13px;color:var(--text-2);">Hero Edge Feather</label>
+        <input type="range" id="hero-feather-slider" min="0" max="40" value="${heroFeather}"
+          style="accent-color:var(--accent)"
+          oninput="previewCardStyle()" onchange="saveCardStyle()">
+        <span id="hero-feather-label" style="font-size:12px;color:var(--text-3);text-align:right;">${heroFeather}</span>
       </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Hero knobs control the halo behind the greeting (visible with a background set). Saved on this device.</div>
       <span id="card-style-status" style="font-size:12px;display:block;margin-top:8px;min-height:16px;"></span>
     </div>`;
 
@@ -259,21 +299,31 @@ async function renderAppearanceSection() {
 }
 
 function previewCardStyle() {
-  const opacity = document.getElementById('card-opacity-slider').value / 100;
-  const blur    = document.getElementById('card-blur-slider').value;
-  const bgBlur  = document.getElementById('bg-blur-slider').value;
+  const opacity     = document.getElementById('card-opacity-slider').value / 100;
+  const blur        = document.getElementById('card-blur-slider').value;
+  const bgBlur      = document.getElementById('bg-blur-slider').value;
+  const heroRadius  = document.getElementById('hero-radius-slider').value;
+  const heroFeather = document.getElementById('hero-feather-slider').value;
   document.getElementById('card-opacity-label').textContent = Math.round(opacity * 100) + '%';
   document.getElementById('card-blur-label').textContent    = blur + 'px';
   document.getElementById('bg-blur-label').textContent      = bgBlur + 'px';
+  document.getElementById('hero-radius-label').textContent  = heroRadius;
+  document.getElementById('hero-feather-label').textContent = heroFeather;
   applyCardStyle(opacity, blur, bgBlur);
+  applyHeroMask(heroRadius, heroFeather);
 }
 
 async function saveCardStyle() {
-  const opacity = document.getElementById('card-opacity-slider').value / 100;
-  const blur    = parseInt(document.getElementById('card-blur-slider').value, 10);
-  const bgBlur  = parseInt(document.getElementById('bg-blur-slider').value, 10);
-  const status  = document.getElementById('card-style-status');
+  const opacity     = document.getElementById('card-opacity-slider').value / 100;
+  const blur        = parseInt(document.getElementById('card-blur-slider').value, 10);
+  const bgBlur      = parseInt(document.getElementById('bg-blur-slider').value, 10);
+  const heroRadius  = parseInt(document.getElementById('hero-radius-slider').value, 10);
+  const heroFeather = parseInt(document.getElementById('hero-feather-slider').value, 10);
+  const status      = document.getElementById('card-style-status');
   applyCardStyle(opacity, blur, bgBlur);
+  applyHeroMask(heroRadius, heroFeather);
+  localStorage.setItem('heroRadius', heroRadius);
+  localStorage.setItem('heroFeather', heroFeather);
   await sb.from('user_preferences').upsert(
     { user_id: currentUser.id, card_opacity: opacity, card_blur: blur, bg_blur: bgBlur, updated_at: new Date().toISOString() },
     { onConflict: 'user_id' }

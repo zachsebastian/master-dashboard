@@ -2,6 +2,12 @@
 :root                    { --card-glass: 255 255 254; }
 html[data-theme="dark"]  { --card-glass: 46 45 42;   }
 
+/* Default hero halo mask (rounded-rect + Gaussian feather). Overridden at
+   runtime by applyHeroMask() from the Appearance > Card Style sliders. */
+:root {
+  --hero-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 180' preserveAspectRatio='none'><filter id='f' x='-25%25' y='-45%25' width='150%25' height='190%25'><feGaussianBlur stdDeviation='15'/></filter><rect x='22' y='22' width='356' height='136' rx='46' fill='%23fff' filter='url(%23f)'/></svg>");
+}
+
 /* ── Dashboard background image ── */
 /* Rendered via ::before so filter:blur only affects the image, not content */
 body.has-bg-image::before {
@@ -16,8 +22,12 @@ body.has-bg-image::before {
   z-index: -1;
 }
 
-/* Hero halo — glass lives in ::before so filter:blur feathers the edges
-   (including border-radius curves) without touching the text */
+/* Hero halo — glass lives in ::before so the backdrop blur + tint can be
+   feathered with an alpha mask. A mask (not filter:blur) is the only thing
+   that fades a backdrop-filter at the edges. The mask is an SVG rounded
+   rectangle (rx = corner radius) run through a Gaussian blur (stdDeviation
+   = feather width): rx rounds the corners, the blur fades every edge —
+   corners included — to nothing, so there's no hard 90° outline. */
 body.has-bg-image .hero-block {
   display: inline-block;
   position: relative;
@@ -30,12 +40,12 @@ body.has-bg-image .hero-block {
 body.has-bg-image .hero-block::before {
   content: '';
   position: absolute;
-  inset: -32px -36px;
-  border-radius: calc(var(--r-xl) + 20px);
+  inset: -28px -32px;
   background: rgb(var(--card-glass) / var(--card-bg-alpha, 0.38));
   -webkit-backdrop-filter: blur(var(--card-blur-px, 6px)) saturate(1.1);
   backdrop-filter: blur(var(--card-blur-px, 6px)) saturate(1.1);
-  filter: blur(20px);
+  -webkit-mask: var(--hero-mask) center / 100% 100% no-repeat;
+  mask: var(--hero-mask) center / 100% 100% no-repeat;
   z-index: -1;
 }
 body.has-bg-image .hero-block .page-subtitle {
