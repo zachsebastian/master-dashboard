@@ -105,6 +105,7 @@ async function loadDigestData() {
       return {
         name:      p.name,
         status:    p.status,
+        rockId:    p.rockId || null,
         nextSteps: p.nextSteps || '',
         blockers:  p.blockers  || [],
         entries,
@@ -136,7 +137,10 @@ async function loadDigestData() {
     .lte('submitted_at', end   + 'T23:59:59')
     .order('submitted_at', { ascending: true });
 
-  _digestData = { weekRange: { start, end, label }, todayItems: todayItems || [], projects, metrics, caseTickets: caseTickets || [] };
+  // Rock hierarchy (for grouping completed tasks by rock)
+  const rocks = await loadRocks(uid);
+
+  _digestData = { weekRange: { start, end, label }, todayItems: todayItems || [], projects, metrics, caseTickets: caseTickets || [], rocks };
   return _digestData;
 }
 

@@ -63,6 +63,56 @@ function renderTodaySection(todayItems) {
     </div>`).join('');
 }
 
+// ── Render "Completed by Rock" section ──
+// Groups this week's completed project tasks under each project's rock, with an
+// Uncategorized bucket for projects that have no rock assigned.
+function renderRocksDigestSection(projects, rocks) {
+  const groups = new Map(); // key -> { name, tasks: [{ text, project }] }
+  for (const p of projects) {
+    const tasks = [];
+    for (const e of (p.entries || [])) (e.completedTasks || []).forEach(t => tasks.push(t));
+    if (!tasks.length) continue;
+    const key = p.rockId || '_none';
+    if (!groups.has(key)) {
+      const r = p.rockId ? rockById(rocks, p.rockId) : null;
+      groups.set(key, { name: r ? r.name : null, tasks: [] });
+    }
+    tasks.forEach(t => groups.get(key).tasks.push({ text: t, project: p.name }));
+  }
+
+  const total = [...groups.values()].reduce((s, g) => s + g.tasks.length, 0);
+  if (!total) return '';
+
+  // Named rocks first (alpha), Uncategorized last
+  const entries = [...groups.entries()].sort((a, b) => {
+    if (a[0] === '_none') return 1;
+    if (b[0] === '_none') return -1;
+    return (a[1].name || '').localeCompare(b[1].name || '');
+  });
+
+  const body = entries.map(([, g]) => `
+    <div class="digest-day-group">
+      <div class="digest-day-label">
+        ${g.name ? `<span class="rock-bubble">🪨 ${esc(g.name)}</span>` : `<span class="digest-rock-uncat">Uncategorized</span>`}
+        <span class="digest-rock-count">${g.tasks.length} done</span>
+      </div>
+      ${g.tasks.map(t => `
+        <div class="digest-task-item">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>
+          ${esc(t.text)} <span class="digest-rock-from">— ${esc(t.project)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+
+  return `
+    <div class="digest-section">
+      <div class="digest-section-header">
+        <span class="digest-section-title">Completed by Rock · ${total}</span>
+        <span class="digest-section-count">${total}</span>
+      </div>
+      ${body}
+    </div>`;
+}
+
 // ── Render projects section ──
 function renderProjectsSection(projects) {
   if (!projects || !projects.length) {
@@ -467,8 +517,8 @@ function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [], caseTickets: [] };
-  const { weekRange, todayItems, projects, metrics, caseTickets } = data;
+  const data = _digestData || { weekRange: { start: '', end: '', label: '—' }, todayItems: [], projects: [], metrics: [], caseTickets: [], rocks: [] };
+  const { weekRange, todayItems, projects, metrics, caseTickets, rocks } = data;
 
   const projectCount    = projects.length;
   const metricCount     = metrics.length;
@@ -528,6 +578,9 @@ function render() {
         </div>
         ${renderTodaySection(todayItems)}
       </div>` : ''}
+
+      <!-- Completed by Rock -->
+      ${renderRocksDigestSection(projects, rocks || [])}
 
       <!-- Projects section -->
       <div class="digest-section">

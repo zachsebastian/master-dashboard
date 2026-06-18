@@ -173,6 +173,20 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .chip.due.overdue     { background: var(--red-bg);    color: var(--red);    border-color: transparent; }
 .chip.due.soon        { background: var(--orange-bg); color: var(--orange); border-color: transparent; }
 
+/* ── Rock control (detail view) ── */
+.rock-select-inline {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+  background: var(--green-bg); color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+  max-width: 220px;
+}
+.rock-chip-empty {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+  background: var(--surface-2); color: var(--text-3);
+  border: 1px dashed var(--border-md); text-decoration: none;
+}
+.rock-chip-empty:hover { color: var(--green); border-color: var(--green); }
+
 /* ── Link chip ── */
 .link-chip {
   padding: 0;

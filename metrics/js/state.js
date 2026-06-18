@@ -37,15 +37,8 @@ const SAMPLE_METRICS = [
   }
 ];
 
-const SAMPLE_ROCKS = [
-  { id: 'r1', name: 'Reduce support escalation rate' },
-  { id: 'r2', name: 'Complete onboarding overhaul' },
-  { id: 'r3', name: 'Improve team resolution speed' },
-];
-
 const initialState = {
   metrics: SAMPLE_METRICS,
-  rocks: SAMPLE_ROCKS,
   metricRocks: {},
   metricEntryIndex: {},
   metricStatus: {},
@@ -65,6 +58,7 @@ let _saveStatus = 'saved';
 let _currentUser = null;
 let _appReady = false;
 let _supabaseRowId = null;
+let _rocks = []; // shared rock hierarchy (read-only here), loaded from the rocks table
 
 // ── Supabase data layer ──
 async function loadFromSupabase() {
@@ -86,6 +80,14 @@ async function loadFromSupabase() {
     } else {
       state = { ...initialState };
     }
+
+    // Rocks now live in the shared `rocks` table. Migrate any legacy in-blob
+    // rocks out, drop them from in-memory state so they aren't re-saved, then
+    // load the shared hierarchy for the rock pickers.
+    await ensureRocksMigrated(_currentUser.id);
+    if (state.rocks) delete state.rocks;
+    _rocks = await loadRocks(_currentUser.id);
+
     applyTheme();
     _appReady = true;
     render();

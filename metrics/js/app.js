@@ -174,7 +174,6 @@ async function initAuth() {
     hasSidebar: true,
     tabs: true,
     leftActions: `
-      <button class="btn" onclick="openModal('manage-rocks')">🪨 Rocks</button>
       <button class="btn" onclick="openModal('new-metric')">+ New metric</button>
     `
   });

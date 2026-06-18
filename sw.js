@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v5';
+const CACHE = 'dashboard-suite-v6';
 
 const PRECACHE = [
   '/',
@@ -23,6 +23,8 @@ const PRECACHE = [
   '/case-writer/index.html',
   '/product-ideas/',
   '/product-ideas/index.html',
+  '/rock-management/',
+  '/rock-management/index.html',
   '/shared/css/tokens.css',
   '/shared/css/glass.css',
   '/shared/css/mobile.css',
@@ -31,6 +33,7 @@ const PRECACHE = [
   '/shared/js/theme.js',
   '/shared/js/module-header.js',
   '/shared/js/banner.js',
+  '/shared/js/rocks.js',
   '/shared/js/pwa.js',
   '/dashboard/css/dashboard.css',
   '/dashboard/js/app.js',
@@ -77,6 +80,10 @@ const PRECACHE = [
   '/product-ideas/js/app.js',
   '/product-ideas/js/render.js',
   '/product-ideas/js/state.js',
+  '/rock-management/css/rock-management.css',
+  '/rock-management/js/app.js',
+  '/rock-management/js/render.js',
+  '/rock-management/js/state.js',
   '/icons/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

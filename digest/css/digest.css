@@ -308,6 +308,12 @@
   margin-bottom: 6px;
 }
 
+/* ── Completed-by-rock grouping ── */
+.digest-day-label .rock-bubble { text-transform: none; letter-spacing: 0; }
+.digest-rock-uncat  { color: var(--text-3); }
+.digest-rock-count  { margin-left: 8px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-3); }
+.digest-rock-from   { color: var(--text-3); font-size: 11px; }
+
 /* ── Digest items ── */
 .digest-item {
   display: flex;

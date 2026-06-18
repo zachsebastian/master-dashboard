@@ -44,39 +44,6 @@ function setMetricRock(metricId, rockId) {
   state.metricRocks[metricId] = rockId || null;
   save(); render();
 }
-function saveRocks() {
-  const rows = document.querySelectorAll('.rock-row[data-rock-id]');
-  const rocks = [];
-  rows.forEach(row => {
-    const inp = row.querySelector('.rock-edit-input');
-    const name = inp ? inp.value.trim() : '';
-    const id = row.dataset.rockId;
-    if (name) rocks.push({ id, name });
-  });
-  const newRows = document.querySelectorAll('.rock-row[data-new]');
-  newRows.forEach(row => {
-    const inp = row.querySelector('.rock-new-input');
-    const name = inp ? inp.value.trim() : '';
-    if (name) rocks.push({ id: 'r' + Date.now() + Math.floor(Math.random()*9999), name });
-  });
-  state.rocks = rocks;
-  if (state.metricRocks) {
-    const valid = new Set(rocks.map(r => r.id));
-    Object.keys(state.metricRocks).forEach(mid => { if (!valid.has(state.metricRocks[mid])) delete state.metricRocks[mid]; });
-  }
-  state.modal = null; modalData = {};
-  save(); render();
-}
-function addRockRow() {
-  const list = document.getElementById('rocks-edit-list');
-  if (!list) return;
-  const div = document.createElement('div');
-  div.className = 'rock-row';
-  div.dataset.new = '1';
-  div.innerHTML = `<input class="form-input rock-new-input" style="font-size:13px;padding:6px 10px;flex:1" placeholder="New rock name…"><button class="btn btn-sm btn-danger" style="flex-shrink:0" onclick="this.closest('.rock-row').remove()">×</button>`;
-  list.appendChild(div);
-  div.querySelector('input').focus();
-}
 function setEntryIndex(metricId, idx) {
   if (!state.metricEntryIndex) state.metricEntryIndex = {};
   state.metricEntryIndex[metricId] = parseInt(idx, 10) || 0;

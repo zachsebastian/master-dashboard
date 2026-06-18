@@ -266,10 +266,8 @@ function renderMetricPanel(m) {
   const idx = (state.metricEntryIndex && state.metricEntryIndex[m.id]) || 0;
   const entry = m.entries[idx] || null;
   const prevEntry = m.entries[idx + 1] || null;
-  const rocks = state.rocks || [];
   const selectedRock = (state.metricRocks && state.metricRocks[m.id]) || '';
-  const rockOptions = `<option value="">— No rock assigned —</option>` +
-    rocks.map(r => `<option value="${r.id}" ${selectedRock===r.id?'selected':''}>${r.name}</option>`).join('');
+  const rockOptions = `<option value="">— No rock assigned —</option>` + anyRockOptionsHtml(_rocks, selectedRock);
   const periodOptions = m.entries.map((e, i) =>
     `<option value="${i}" ${i === idx ? 'selected' : ''}>${fmtPeriodShort(e)}</option>`
   ).join('');
@@ -313,10 +311,8 @@ function renderMetricPanel(m) {
 
 function renderTaskMetricPanel(m) {
   const { total, complete, inProgress, notStarted, pct } = taskStats(m);
-  const rocks = state.rocks || [];
   const selectedRock = (state.metricRocks && state.metricRocks[m.id]) || '';
-  const rockOptions = `<option value="">— No rock assigned —</option>` +
-    rocks.map(r => `<option value="${r.id}" ${selectedRock===r.id?'selected':''}>${r.name}</option>`).join('');
+  const rockOptions = `<option value="">— No rock assigned —</option>` + anyRockOptionsHtml(_rocks, selectedRock);
   const fillColor = pct === 100 ? 'var(--green)' : m.color;
   return `
     <div class="metric-panel" onclick="setActive('${m.id}',true)">
@@ -668,35 +664,7 @@ function renderModal(type, metric) {
     </div>`;
   }
 
-  if (type === 'manage-rocks') return renderRocksModal();
   return '';
-}
-
-function renderRocksModal() {
-  const rocks = state.rocks || [];
-  const rockRows = rocks.map(r => `
-    <div class="rock-row" data-rock-id="${r.id}">
-      <input class="form-input rock-edit-input" data-id="${r.id}" style="font-size:13px;padding:6px 10px;flex:1" value="${r.name.replace(/"/g,'&quot;')}">
-      <button class="btn btn-sm btn-danger" style="flex-shrink:0" onclick="this.closest('.rock-row').remove()">×</button>
-    </div>
-  `).join('');
-  return `<div class="modal-backdrop" onclick="closeModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header"><div class="modal-title">🪨 Manage Rocks</div><button class="modal-close" onclick="closeModal()">×</button></div>
-      <div class="modal-body">
-        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.5">Rocks are quarterly objectives you can assign to each metric on the Summary page.</p>
-        <div class="rocks-list" id="rocks-edit-list">${rockRows}</div>
-        <button class="btn btn-sm" onclick="addRockRow()" style="width:100%;justify-content:center;margin-top:4px">+ Add rock</button>
-      </div>
-      <div class="modal-footer">
-        <div class="modal-footer-left"></div>
-        <div class="modal-footer-right">
-          <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveRocks()">Save rocks</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
 }
 
 function rerenderDerived() {

@@ -1,0 +1,125 @@
+/* ── Rock Management ── */
+.rm-wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+.rm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.rm-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin: 0 0 6px;
+}
+.rm-sub {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.5;
+}
+
+.rm-tree { display: flex; flex-direction: column; gap: 16px; }
+
+/* Company card */
+.rm-company {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+
+/* Nesting */
+.rm-children {
+  margin: 8px 0 2px 14px;
+  padding-left: 16px;
+  border-left: 2px solid var(--border-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rm-children--deep {
+  margin: 8px 0 2px 12px;
+  padding-left: 14px;
+  border-left: 1px dashed var(--border-md);
+  gap: 6px;
+}
+.rm-team { display: flex; flex-direction: column; }
+
+/* Row */
+.rm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rm-row--team .rm-name,
+.rm-row--individual .rm-name { font-size: 13.5px; }
+
+.rm-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  width: 74px;
+  text-align: center;
+}
+.rm-badge--company    { background: var(--teal-bg);  color: var(--teal); }
+.rm-badge--team       { background: var(--green-bg); color: var(--green); }
+.rm-badge--individual { background: var(--blue-bg);  color: var(--blue); }
+
+.rm-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  color: var(--text);
+}
+.rm-name:hover  { border-color: var(--border-md); }
+.rm-name:focus  { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+
+.rm-row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.rm-move {
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  max-width: 150px;
+}
+.rm-del { line-height: 1; }
+
+.rm-hint { font-size: 12px; color: var(--text-3); padding: 2px 0; }
+
+/* Empty state */
+.rm-empty {
+  text-align: center;
+  padding: 64px 20px;
+  border: 1px dashed var(--border-md);
+  border-radius: var(--r-lg);
+}
+.rm-empty-icon  { font-size: 32px; margin-bottom: 12px; }
+.rm-empty-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.rm-empty-msg   { font-size: 13px; color: var(--text-3); max-width: 360px; margin: 0 auto; }
+
+@media (max-width: 640px) {
+  .rm-wrap { padding: 24px 16px 60px; }
+  .rm-head { flex-direction: column; gap: 14px; }
+  .rm-row { flex-wrap: wrap; }
+  .rm-move { max-width: none; }
+}

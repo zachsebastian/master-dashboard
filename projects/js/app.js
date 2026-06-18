@@ -86,6 +86,7 @@ async function boot() {
   applyTheme();
 
   await loadStateFromSupabase();
+  _rocks = await loadRocks(_currentUser.id);
 
   // Deep-link: /projects/?project=<id> scrolls straight to that project
   const _deepProjectId = new URLSearchParams(window.location.search).get('project');

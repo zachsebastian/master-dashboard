@@ -78,6 +78,25 @@ function _renderLinkChip(p) {
   return `<button class="chip link-chip link-chip--empty" onclick="setLinkEditMode('${esc(p.id)}')">🔗 Add link</button>`;
 }
 
+// ── Rock control (detail view) ──
+function renderProjectRockControl(p) {
+  const rockOpts = anyRockOptionsHtml(_rocks, p.rockId || '');
+  if (!rockOpts) {
+    return `<a class="chip rock-chip-empty" href="/rock-management/" title="Create rocks first">🪨 Set up rocks</a>`;
+  }
+  return `<select class="rock-select-inline" title="Rock" onchange="setProjectRock('${p.id}', this.value)">
+      <option value="">🪨 No rock</option>${rockOpts}
+    </select>`;
+}
+
+function setProjectRock(id, rockId) {
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  p.rockId = rockId || null;
+  saveState();
+  render();
+}
+
 // ── Render ──
 function render() {
   renderSidebar();
@@ -181,6 +200,8 @@ function renderSummaryView() {
           <div style="font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Left</div>
         </div>
       </div>` : '';
+    const rockBubble = rockBubbleHtml(_rocks, p.rockId);
+    const rockRow = rockBubble ? `<div class="project-card-meta-row">${rockBubble}</div>` : '';
     const tagsRow = p.tags.length ? `<div class="project-card-meta-row">${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join('')}</div>` : '';
     const dueRow = dueMeta ? `<div class="project-card-meta-row"><span class="chip due ${dueMeta.cls}">📅 ${dueMeta.label}</span></div>` : '';
     const blockerRow = p.blockers.length ? `<div class="project-card-meta-row"><span class="chip" style="background:var(--red-bg);color:var(--red);border-color:transparent">⚠️ ${p.blockers.length} blocker${p.blockers.length > 1 ? 's' : ''}</span></div>` : '';
@@ -208,6 +229,7 @@ function renderSummaryView() {
           <div class="progress-label"><span>${lastEntry ? fmtDate(lastEntry.date) : 'No entries'}</span><span style="font-weight:700;color:var(--text)">${p.completion}%</span></div>
         </div>
         ${taskRow}
+        ${rockRow}
         ${dueRow}
         ${tagsRow}
         ${blockerRow}
@@ -365,6 +387,7 @@ function renderDetailView() {
       <option value="medium" ${p.priority === 'medium' ? 'selected' : ''}>Medium</option>
       <option value="low" ${p.priority === 'low' ? 'selected' : ''}>Low</option>
     </select>
+    ${renderProjectRockControl(p)}
     ${dueMeta ? `<span class="chip due ${dueMeta.cls}">📅 ${dueMeta.label}</span>` : ''}
     ${p.tags.map(t => `<span class="chip tag">${esc(t)}</span>`).join('')}
     ${_renderLinkChip(p)}

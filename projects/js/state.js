@@ -39,6 +39,7 @@ const DEFAULT_STATE = {
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 let _currentUser = null;
 let _saveTimer = null;
+let _rocks = []; // shared rock hierarchy (read-only here), loaded on boot
 
 // ── Completion helper ──
 function calcCompletion(p) {

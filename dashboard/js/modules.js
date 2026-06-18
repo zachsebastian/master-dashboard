@@ -107,13 +107,12 @@ const ALL_MODULES = [
     iconColor: 'var(--green)',
     accentVar: '--green',
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="4" height="7" rx="1"/><rect x="9" y="9" width="4" height="12" rx="1"/><rect x="16" y="4" width="4" height="17" rx="1"/><line x1="2" y1="21" x2="22" y2="21"/></svg>`,
-    desc: 'Monitor your key business metrics, track rocks, and visualize trends over time.',
+    desc: 'Monitor your key business metrics, link them to rocks, and visualize trends over time.',
     href: '/metrics/',
     table: 'metrics',
 
     computeStats(data) {
       const metrics = (data && data.metrics) || [];
-      const rocks   = (data && data.rocks)   || [];
       const visible = metrics.filter(m => m.visible !== false).length;
       const allEntries = metrics.flatMap(m => (m.entries || []).map(e => ({ ...e, metricName: m.name })));
       const now = Date.now();
@@ -133,14 +132,14 @@ const ALL_MODULES = [
         .sort((a, b) => new Date(b.periodEnd || b.periodStart) - new Date(a.periodEnd || a.periodStart));
       return {
         primary:   { value: visible, label: 'Metrics' },
-        secondary: { value: rocks.length, label: 'Rocks' },
+        secondary: { value: allEntries.length, label: 'Entries' },
         spark: buckets.some(b => b > 0) ? buckets : null,
         latestEntries: sorted.slice(0, 6).map(e => ({
           when: e.periodEnd || e.periodStart, target: e.metricName,
           note: e.period ? `logged for ${e.period}` : 'logged metric',
         })),
         summaryFragment: visible === 0 ? 'No metrics yet'
-          : `${visible} metric${visible === 1 ? '' : 's'}${rocks.length ? `, ${rocks.length} rock${rocks.length === 1 ? '' : 's'}` : ''}`,
+          : `${visible} metric${visible === 1 ? '' : 's'}`,
       };
     },
   },
@@ -411,6 +410,34 @@ const ALL_MODULES = [
         spark:         null,
         latestEntries: latest.map(i => ({ when: null, target: i.title, note: productMap[i.product_id] || '' })),
         summaryFragment: `${total} idea${total === 1 ? '' : 's'} across ${products.length} product${products.length === 1 ? '' : 's'}`,
+      };
+    },
+  },
+  {
+    id: 'rock-management',
+    name: 'Rock Management',
+    type: 'launchpad',
+    iconBg: 'var(--amber-bg)',
+    iconColor: 'var(--amber)',
+    accentVar: '--amber',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg>`,
+    desc: 'Define company, team, and individual rocks. Projects and metrics attach to them.',
+    href: '/rock-management/',
+
+    async fetchStats(sb, userId) {
+      const { data } = await sb.from('rocks').select('id, level').eq('user_id', userId);
+      const rocks   = data || [];
+      const total   = rocks.length;
+      const company = rocks.filter(r => r.level === 'company').length;
+      const team    = rocks.filter(r => r.level === 'team').length;
+      return {
+        primary:       { value: total, label: total === 1 ? 'Rock' : 'Rocks' },
+        secondary:     { value: team, label: 'Team' },
+        spark:         null,
+        latestEntries: [],
+        summaryFragment: total === 0
+          ? 'No rocks defined yet'
+          : `${company} company · ${team} team rock${team === 1 ? '' : 's'}`,
       };
     },
   },
