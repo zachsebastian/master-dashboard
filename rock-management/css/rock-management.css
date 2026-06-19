@@ -26,15 +26,6 @@
   line-height: 1.5;
 }
 
-/* The global .btn-primary is a full-width form-submit button; keep the primary
-   look here but size it inline like every other action button. */
-.rm-wrap .btn-primary {
-  width: auto;
-  padding: 7px 14px;
-  font-size: 13px;
-  margin-top: 0;
-}
-
 .rm-tree { display: flex; flex-direction: column; gap: 16px; }
 
 /* Company card */

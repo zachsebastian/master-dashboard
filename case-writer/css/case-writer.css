@@ -21,42 +21,7 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Button overrides (fully override tokens.css) ── */
-.btn {
-  padding: 7px 14px;
-  border: 1px solid var(--border-md);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 13px; font-weight: 500;
-  cursor: pointer; font-family: inherit;
-  transition: background 0.1s;
-  white-space: nowrap;
-  display: inline-flex; align-items: center;
-}
-.btn:hover { background: var(--surface-3); }
-
-.btn-primary {
-  background: var(--blue);
-  color: #fff;
-  border-color: transparent;
-  font-weight: 600;
-  width: auto;
-  margin-top: 0;
-  padding: 7px 18px;
-  border-radius: var(--r-sm);
-  font-size: 13px; font-family: inherit;
-  cursor: pointer;
-  transition: opacity 0.15s;
-  display: inline-flex; align-items: center;
-  white-space: nowrap;
-}
-.btn-primary:hover { opacity: 0.88; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-sm { font-size: 12px; padding: 4px 10px; }
-.btn-danger { color: var(--red); border-color: rgba(224,92,75,0.3); }
-.btn-danger:hover { background: var(--red-bg, #fbeae8); }
+/* Buttons come from the shared canonical system in tokens.css. */
 
 /* ── Content wrap ── */
 .cw-wrap {
