@@ -62,8 +62,8 @@ function _renderLinkChip(p) {
         <input type="text" class="link-edit-input link-edit-label-input" id="link-edit-label-${esc(p.id)}"
                value="${esc(p.urlLabel || '')}" placeholder="Display name (optional)"
                onkeydown="if(event.key==='Enter'){event.preventDefault();saveLinkEdit('${esc(p.id)}')}else if(event.key==='Escape')cancelLinkEdit()">
-        <button class="btn btn-sm btn-primary" style="padding:2px 10px;font-size:12px" onclick="saveLinkEdit('${esc(p.id)}')">Save</button>
-        <button class="btn btn-sm" style="padding:2px 8px;font-size:12px" onclick="cancelLinkEdit()">✕</button>
+        <button class="btn btn-sm btn-primary" onclick="saveLinkEdit('${esc(p.id)}')">Save</button>
+        <button class="btn btn-sm" onclick="cancelLinkEdit()">✕</button>
       </span>`;
   }
 
@@ -78,15 +78,44 @@ function _renderLinkChip(p) {
   return `<button class="chip link-chip link-chip--empty" onclick="setLinkEditMode('${esc(p.id)}')">🔗 Add link</button>`;
 }
 
-// ── Rock control (detail view) ──
+// ── Rock control (detail view) — dependent Level → Rock dropdowns ──
 function renderProjectRockControl(p) {
-  const rockOpts = anyRockOptionsHtml(_rocks, p.rockId || '');
-  if (!rockOpts) {
+  if (!_rocks.length) {
     return `<a class="chip rock-chip-empty" href="/rock-management/" title="Create rocks first">🪨 Set up rocks</a>`;
   }
-  return `<select class="rock-select-inline" title="Rock" onchange="setProjectRock('${p.id}', this.value)">
-      <option value="">🪨 No rock</option>${rockOpts}
+  const current = rockById(_rocks, p.rockId);
+  const level   = current ? current.level : '';
+  const levelSel = `
+    <select class="rock-level-inline" title="Rock level" onchange="onProjectRockLevelChange('${p.id}', this.value)">
+      <option value="" ${!level ? 'selected' : ''}>🪨 Level…</option>
+      <option value="company"    ${level === 'company'    ? 'selected' : ''}>Company</option>
+      <option value="team"       ${level === 'team'       ? 'selected' : ''}>Team</option>
+      <option value="individual" ${level === 'individual' ? 'selected' : ''}>Individual</option>
     </select>`;
+  const rockSel = `
+    <select class="rock-select-inline" id="rock-select-${esc(p.id)}" title="Rock"
+      onchange="setProjectRock('${p.id}', this.value)" ${level ? '' : 'disabled'}>
+      ${projectRockSelectInner(level, p.rockId)}
+    </select>`;
+  return levelSel + rockSel;
+}
+
+function projectRockSelectInner(level, selectedId) {
+  if (!level) return `<option value="">Select level first…</option>`;
+  return `<option value="">— No rock —</option>` + rockOptionsForLevel(_rocks, level, selectedId);
+}
+
+// Repopulate the dependent rock dropdown when the level changes, and clear any
+// existing assignment (it belonged to a different level). No full re-render so
+// the chosen level stays put while the user picks a rock.
+function onProjectRockLevelChange(projectId, level) {
+  const sel = document.getElementById(`rock-select-${projectId}`);
+  if (sel) {
+    sel.disabled  = !level;
+    sel.innerHTML = projectRockSelectInner(level, null);
+  }
+  const p = state.projects.find(x => x.id === projectId);
+  if (p && p.rockId) { p.rockId = null; saveState(); }
 }
 
 function setProjectRock(id, rockId) {
@@ -324,9 +353,9 @@ function renderDetailView() {
       <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}${isBlocked ? ` <span class="task-blocked-chip">Blocked</span>` : ''}</div>
       ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
       ${!isDone ? `<div style="display:flex;gap:4px">
-        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" id="today-btn-${t.id}" onclick="addTaskToToday('${p.id}','${t.id}',this)">+ Today</button>
-        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
-        <button class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:11px" onclick="deleteTask('${p.id}','${t.id}')">✕</button>
+        <button class="btn btn-sm" id="today-btn-${t.id}" onclick="addTaskToToday('${p.id}','${t.id}',this)">+ Today</button>
+        <button class="btn btn-sm" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTask('${p.id}','${t.id}')">✕</button>
       </div>` : ''}
     </div>`;
   }).join('') : `<div style="padding:16px 20px;font-size:12px;color:var(--text-3);font-style:italic">No tasks yet.</div>`;

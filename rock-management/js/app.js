@@ -42,6 +42,7 @@ async function initAuth() {
   initModuleHeader({ name: 'Rock', subtitle: 'Management' });
 
   await loadAll();
+  collapseAll();
   render();
 
   sb.auth.onAuthStateChange(event => {

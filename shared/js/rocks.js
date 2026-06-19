@@ -57,29 +57,59 @@ function buildRockTree(rocks) {
 
 // ── Option builders for <select> pickers ──
 
+// A rock is offered in a picker if it's active, or if it's the current
+// selection (so existing associations to archived rocks survive).
+function _rockSelectable(r, selectedId) {
+  return !r.archived || r.id === selectedId;
+}
+
 // Team rocks only, grouped under their company. For the PROJECT picker.
 // Caller is responsible for any leading "no rock" <option>.
 function teamRockOptionsHtml(rocks, selectedId) {
   return rocksByLevel(rocks, 'company').map(c => {
-    const teams = rocksByLevel(rocks, 'team', c.id);
+    const teams = rocksByLevel(rocks, 'team', c.id).filter(t => _rockSelectable(t, selectedId));
     if (!teams.length) return '';
     const opts = teams.map(t =>
-      `<option value="${_escRock(t.id)}" ${t.id === selectedId ? 'selected' : ''}>${_escRock(t.name)}</option>`
+      `<option value="${_escRock(t.id)}" ${t.id === selectedId ? 'selected' : ''}>${_escRock(t.name)}${t.archived ? ' (archived)' : ''}</option>`
     ).join('');
     return `<optgroup label="${_escRock(c.name)}">${opts}</optgroup>`;
   }).join('');
 }
 
 // Every rock at every level, indented by depth. For the METRICS picker.
+// Archived rocks are skipped (unless they're the current selection); a hidden
+// parent doesn't indent its still-visible children.
 function anyRockOptionsHtml(rocks, selectedId) {
   const out = [];
   const emit = (r, depth) => {
-    const pad = depth === 0 ? '' : (depth === 1 ? '› ' : '·· ');
-    out.push(`<option value="${_escRock(r.id)}" ${r.id === selectedId ? 'selected' : ''}>${pad}${_escRock(r.name)}</option>`);
-    rocksByLevel(rocks, ROCK_CHILD_LEVEL[r.level], r.id).forEach(child => emit(child, depth + 1));
+    const visible = _rockSelectable(r, selectedId);
+    if (visible) {
+      const pad = depth === 0 ? '' : (depth === 1 ? '› ' : '·· ');
+      out.push(`<option value="${_escRock(r.id)}" ${r.id === selectedId ? 'selected' : ''}>${pad}${_escRock(r.name)}${r.archived ? ' (archived)' : ''}</option>`);
+    }
+    rocksByLevel(rocks, ROCK_CHILD_LEVEL[r.level], r.id).forEach(child => emit(child, visible ? depth + 1 : depth));
   };
   rocksByLevel(rocks, 'company').forEach(c => emit(c, 0));
   return out.join('');
+}
+
+// All rocks at a single level (flat). For dependent level→rock pickers.
+// Team/individual options get a parent suffix to disambiguate, e.g.
+// "Onboarding overhaul (Reduce churn)". Archived rocks are excluded unless
+// they're the current selection.
+function rockOptionsForLevel(rocks, level, selectedId) {
+  return rocksByLevel(rocks, level)
+    .filter(r => _rockSelectable(r, selectedId))
+    .map(r => {
+      let label = r.name;
+      if (level !== 'company') {
+        const lineage = rockLineage(rocks, r.id);
+        const parent  = lineage[lineage.length - 2];
+        if (parent) label += ` (${parent.name})`;
+      }
+      if (r.archived) label += ' (archived)';
+      return `<option value="${_escRock(r.id)}" ${r.id === selectedId ? 'selected' : ''}>${_escRock(label)}</option>`;
+    }).join('');
 }
 
 // ── Read-only bubble (team-name pill) ──

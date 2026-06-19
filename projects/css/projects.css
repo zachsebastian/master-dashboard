@@ -3,22 +3,7 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .app { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
 
-/* ── Buttons ── */
-.btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 13px; font-weight: 500; padding: 6px 14px;
-  border-radius: var(--r-sm); border: 1px solid var(--border-md);
-  background: var(--surface-2); color: var(--text);
-  cursor: pointer; transition: background 0.1s, opacity 0.1s;
-  white-space: nowrap; line-height: 1.2;
-}
-.btn:hover { background: var(--surface-2); }
-.btn.btn-primary { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: var(--shadow-sm); }
-.btn.btn-primary:hover { opacity: 0.85; }
-.btn.btn-sm { font-size: 12px; padding: 4px 10px; }
-.btn.btn-sm.btn-primary { width: auto; }
-.btn.btn-danger { color: var(--red); border-color: rgba(224,92,75,0.3); }
-.btn.btn-danger:hover { background: var(--red-bg); }
+/* Buttons now come from the shared canonical system in tokens.css. */
 
 /* ── View tabs ── */
 .view-tabs {
@@ -174,11 +159,28 @@ body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .chip.due.soon        { background: var(--orange-bg); color: var(--orange); border-color: transparent; }
 
 /* ── Rock control (detail view) ── */
+/* Custom caret (appearance:none) so we control the exact gap — the native
+   arrow reserves its own space on top of padding and leaves a big gap. */
+.rock-level-inline,
 .rock-select-inline {
-  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
-  background: var(--green-bg); color: var(--green);
+  appearance: none; -webkit-appearance: none;
+  font-size: 11px; font-weight: 600; padding: 3px 22px 3px 9px; border-radius: 20px;
+  background-repeat: no-repeat; background-position: right 8px center;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rock-level-inline {
+  background-color: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border-md);
+}
+.rock-select-inline {
+  background-color: var(--green-bg); color: var(--green);
   border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
   max-width: 220px;
+}
+.rock-select-inline:disabled {
+  background: var(--surface-2); color: var(--text-3);
+  border-color: var(--border-md); opacity: 0.7; cursor: not-allowed;
 }
 .rock-chip-empty {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;

@@ -425,8 +425,8 @@ const ALL_MODULES = [
     href: '/rock-management/',
 
     async fetchStats(sb, userId) {
-      const { data } = await sb.from('rocks').select('id, level').eq('user_id', userId);
-      const rocks   = data || [];
+      const { data } = await sb.from('rocks').select('id, level, archived').eq('user_id', userId);
+      const rocks   = (data || []).filter(r => !r.archived);
       const total   = rocks.length;
       const company = rocks.filter(r => r.level === 'company').length;
       const team    = rocks.filter(r => r.level === 'team').length;
