@@ -441,6 +441,32 @@ const ALL_MODULES = [
       };
     },
   },
+  {
+    id: 'feedback',
+    name: 'Feedback Log',
+    type: 'launchpad',
+    iconBg: 'var(--orange-bg)',
+    iconColor: 'var(--orange)',
+    accentVar: '--orange',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    desc: 'Private notes on people, teams, and the org — AI-summarized. Never shown anywhere else.',
+    href: '/feedback/',
+
+    async fetchStats(sb, userId) {
+      const { data } = await sb.from('feedback_entries').select('id, subject').eq('user_id', userId);
+      const entries  = data || [];
+      const subjects = new Set(entries.map(e => (e.subject || '').trim()).filter(Boolean));
+      return {
+        primary:       { value: entries.length, label: entries.length === 1 ? 'Entry' : 'Entries' },
+        secondary:     { value: subjects.size, label: 'Subjects' },
+        spark:         null,
+        latestEntries: [],  // intentionally private — never surface notes in the activity ticker
+        summaryFragment: entries.length === 0
+          ? 'No feedback logged yet'
+          : `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} · ${subjects.size} subject${subjects.size === 1 ? '' : 's'}`,
+      };
+    },
+  },
 ];
 
 // ── Drag state ──

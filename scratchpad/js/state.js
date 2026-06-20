@@ -2,6 +2,13 @@
 let notes = [];
 let _currentUser = null;
 let _saveTimer = null;
+let _enabledModuleIds = new Set(); // modules this user has access to
+
+// ── Load which modules the user has enabled (for the module picker) ──
+async function loadEnabledModules() {
+  const { data } = await sb.from('user_modules').select('module').eq('user_id', _currentUser.id);
+  _enabledModuleIds = new Set((data || []).map(r => r.module));
+}
 
 // ── Load ──
 async function loadNotes() {
@@ -14,12 +21,13 @@ async function loadNotes() {
 }
 
 // ── Add ──
-async function addNote(text) {
+async function addNote(text, module) {
   const { data: note, error } = await sb.from('scratch_notes').insert({
     user_id:  _currentUser.id,
     text:     text.trim(),
     pinned:   false,
     reviewed: false,
+    module:   module || null,
   }).select().single();
   if (error || !note) return;
   notes.unshift(note);
@@ -41,12 +49,30 @@ async function togglePin(id) {
   await sb.from('scratch_notes').update({ pinned: note.pinned }).eq('id', id);
 }
 
+// ── Edit ──
+async function editNote(id, text, module) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.text   = text.trim();
+  note.module = module || null;
+  await sb.from('scratch_notes').update({ text: note.text, module: note.module }).eq('id', id);
+}
+
 // ── Toggle reviewed ──
-async function toggleReviewed(id) {
+async function toggleReviewed(id, reviewedNote) {
   const note = notes.find(n => n.id === id);
   if (!note) return;
   note.reviewed = !note.reviewed;
-  await sb.from('scratch_notes').update({ reviewed: note.reviewed }).eq('id', id);
+  const update = { reviewed: note.reviewed };
+  if (note.reviewed) {
+    note.reviewed_note = reviewedNote || null;
+    update.reviewed_note = note.reviewed_note;
+  } else {
+    // Clearing reviewed also clears the note
+    note.reviewed_note = null;
+    update.reviewed_note = null;
+  }
+  await sb.from('scratch_notes').update(update).eq('id', id);
 }
 
 // ── Sort: pinned first, then reverse chronological ──

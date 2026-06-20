@@ -56,12 +56,27 @@
   user-select: none;
 }
 
+/* ── Notes list header (count + export) ── */
+.scratch-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28px;
+}
+.scratch-list-count {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+}
+
 /* ── Notes list ── */
 .scratch-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 /* ── Individual note ── */
@@ -235,4 +250,155 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Inline edit ── */
+.scratch-edit-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 64px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.scratch-edit-textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+.scratch-note-actions--edit { opacity: 1; margin-left: 0; }
+.scratch-action-btn.primary {
+  background: var(--accent-grad);
+  color: #fdfaf2;
+  border-color: transparent;
+  font-weight: 600;
+}
+.scratch-action-btn.primary:hover { filter: brightness(1.05); background: var(--accent-grad); color: #fdfaf2; }
+
+/* ── Input buttons ── */
+.scratch-input-buttons { display: flex; align-items: center; gap: 8px; }
+
+/* ── Export modal ── */
+.scratch-modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.scratch-modal {
+  width: 560px; max-width: 100%;
+  max-height: 86vh; display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg, 0 16px 48px rgba(0,0,0,0.24));
+  padding: 18px 20px 16px;
+}
+.scratch-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.scratch-modal-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.scratch-modal-sub { font-size: 12.5px; color: var(--text-3); margin: 6px 0 12px; }
+.scratch-export-filters { display: flex; gap: 18px; margin: 6px 0 10px; }
+.scratch-export-filter {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none;
+}
+.scratch-export-filter input { cursor: pointer; margin: 0; }
+.scratch-export-text {
+  width: 100%; box-sizing: border-box; flex: 1;
+  resize: vertical; min-height: 180px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px; line-height: 1.6; color: var(--text);
+  padding: 12px;
+}
+.scratch-export-text:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+.scratch-modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ── Module pointer ── */
+.scratch-module-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  color: var(--text-2);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.12s, border-color 0.12s;
+}
+.scratch-module-badge:hover { color: var(--text); border-color: var(--accent); }
+
+.scratch-module-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.scratch-module-select {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  max-width: 180px;
+}
+.scratch-note-meta--edit { justify-content: space-between; }
+
+/* ── Review-note prompt (inline, shown before confirming "Mark Reviewed") ── */
+.scratch-review-prompt {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scratch-review-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.scratch-review-optional {
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.scratch-review-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 52px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 8px 10px;
+}
+.scratch-review-textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+
+/* ── Review note displayed on a reviewed card ── */
+.scratch-review-note {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-style: italic;
+  margin: -4px 0 10px;
+  line-height: 1.5;
 }

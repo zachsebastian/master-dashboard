@@ -1,5 +1,6 @@
 // ── Render-layer state ──
 let _openProductIds = new Set();
+let _showArchived   = false;
 
 // ── Helpers ──
 function _esc(str) {
@@ -20,6 +21,12 @@ function _statusPill(s) {
   const cls   = { ideation: 'pi-pill-ideation', scoping: 'pi-pill-scoping', submitted: 'pi-pill-submitted' }[s] || '';
   const label = { ideation: 'Ideation', scoping: 'Scoping', submitted: 'Submitted' }[s] || _esc(s);
   return `<span class="pi-pill ${cls}">${label}</span>`;
+}
+
+function _devBadge(idea) {
+  if (!idea.dev_submitted) return '';
+  const label = idea.jira_ticket ? _esc(idea.jira_ticket) : 'Dev';
+  return `<span class="pi-pill pi-pill-dev">${label}</span>`;
 }
 
 // ── Main render ──
@@ -54,9 +61,13 @@ function _renderListView() {
         <button class="btn pi-btn-secondary" onclick="window.__piGoManage()">Add a product</button>
       </div>`;
   } else {
-    bodyHtml = `<div class="pi-accordion">
-      ${products.map(p => _renderAccordionItem(p, ideas.filter(i => i.product_id === p.id))).join('')}
-    </div>`;
+    const activeIdeas   = ideas.filter(i => !i.archived);
+    const archivedIdeas = ideas.filter(i =>  i.archived);
+    bodyHtml = `
+      <div class="pi-accordion">
+        ${products.map(p => _renderAccordionItem(p, activeIdeas.filter(i => i.product_id === p.id))).join('')}
+      </div>
+      ${archivedIdeas.length ? _renderArchivedSection(archivedIdeas, products) : ''}`;
   }
 
   return `
@@ -102,6 +113,7 @@ function _renderAccordionItem(product, ideas) {
           <span class="pi-idea-source">${_sourceLabel(i.source)}</span>
           ${_priorityPill(i.priority)}
           ${_statusPill(i.status)}
+          ${_devBadge(i)}
         </div>`).join('');
 
   return `
@@ -124,6 +136,31 @@ function _renderAccordionItem(product, ideas) {
       <div class="pi-accordion-body">
         ${rowsHtml}
       </div>
+    </div>`;
+}
+
+// ── Archived section ──
+function _renderArchivedSection(archivedIdeas, products) {
+  const rowsHtml = archivedIdeas.map(i => {
+    const product = products.find(p => p.id === i.product_id);
+    return `
+      <div class="pi-archived-row" data-edit-id="${i.id}">
+        <span class="pi-archived-product">${_esc(product?.name || '')}</span>
+        <span class="pi-idea-title">${_esc(i.title)}</span>
+        ${i.jira_ticket ? `<span class="pi-pill pi-pill-dev">${_esc(i.jira_ticket)}</span>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="pi-archived-section">
+      <div class="pi-archived-header" onclick="window.__piToggleArchived()">
+        <svg class="pi-chevron${_showArchived ? ' pi-chevron-open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+        Archived
+        <span class="pi-idea-count">${archivedIdeas.length}</span>
+      </div>
+      ${_showArchived ? `<div class="pi-archived-body">${rowsHtml}</div>` : ''}
     </div>`;
 }
 
@@ -229,10 +266,22 @@ function _openModal(productId, ideaId) {
           </select>
         </div>
       </div>
+      <div class="pi-form-dev-section">
+        <label class="pi-form-dev-label">
+          <input type="checkbox" id="pi-f-dev-submitted" ${idea?.dev_submitted ? 'checked' : ''}>
+          <span>Submitted to dev</span>
+        </label>
+        <div id="pi-f-jira-wrap" class="pi-form-jira-wrap"${!idea?.dev_submitted ? ' style="display:none"' : ''}>
+          <input class="pi-form-input pi-form-input--jira" id="pi-f-jira" type="text"
+            placeholder="Jira ticket (e.g. PROJ-1234)" maxlength="50"
+            value="${_esc(idea?.jira_ticket || '')}">
+        </div>
+      </div>
     </div>
     <div class="pi-modal-footer">
-      <div>
-        ${isEdit ? `<button class="pi-btn-delete" id="pi-delete-btn">Delete idea</button>` : ''}
+      <div class="pi-modal-footer-left">
+        ${isEdit ? `<button class="pi-btn-delete" id="pi-delete-btn">Delete</button>` : ''}
+        ${isEdit ? `<button class="pi-btn-archive" id="pi-archive-btn">${idea?.archived ? 'Unarchive' : 'Archive'}</button>` : ''}
       </div>
       <div class="pi-modal-footer-right">
         <button class="btn" id="pi-cancel-btn">Cancel</button>
@@ -263,17 +312,26 @@ function _bindModalEvents(isEdit, idea) {
     if (e.target.id === 'pi-modal-overlay') _closeModal();
   });
 
+  // Toggle Jira input visibility when "Submitted to dev" checkbox changes
+  document.getElementById('pi-f-dev-submitted').addEventListener('change', e => {
+    const wrap = document.getElementById('pi-f-jira-wrap');
+    if (wrap) wrap.style.display = e.target.checked ? '' : 'none';
+  });
+
   document.getElementById('pi-save-btn').addEventListener('click', async () => {
     const title = document.getElementById('pi-f-title').value.trim();
     if (!title) { document.getElementById('pi-f-title').focus(); return; }
 
+    const devSubmitted = document.getElementById('pi-f-dev-submitted').checked;
     const payload = {
-      product_id:  document.getElementById('pi-f-product').value,
+      product_id:    document.getElementById('pi-f-product').value,
       title,
-      description: document.getElementById('pi-f-desc').value.trim(),
-      source:      document.getElementById('pi-f-source').value,
-      priority:    document.getElementById('pi-f-priority').value,
-      status:      document.getElementById('pi-f-status').value,
+      description:   document.getElementById('pi-f-desc').value.trim(),
+      source:        document.getElementById('pi-f-source').value,
+      priority:      document.getElementById('pi-f-priority').value,
+      status:        document.getElementById('pi-f-status').value,
+      dev_submitted: devSubmitted,
+      jira_ticket:   devSubmitted ? (document.getElementById('pi-f-jira').value.trim() || null) : null,
     };
 
     const btn = document.getElementById('pi-save-btn');
@@ -295,7 +353,14 @@ function _bindModalEvents(isEdit, idea) {
 
   if (isEdit) {
     document.getElementById('pi-delete-btn').addEventListener('click', async () => {
+      if (!confirm('Delete this idea? This cannot be undone.')) return;
       await deleteIdea(idea.id);
+      _closeModal();
+      render();
+    });
+
+    document.getElementById('pi-archive-btn').addEventListener('click', async () => {
+      await updateIdea(idea.id, { archived: !idea.archived });
       _closeModal();
       render();
     });
@@ -390,6 +455,7 @@ function _bindManageEvents() {
 }
 
 // ── Global hooks (called from inline onclick) ──
-window.__piOpenModal = (productId, ideaId) => _openModal(productId, ideaId);
-window.__piGoManage  = () => { setView('manage'); render(); };
-window.__piGoList    = () => { setView('list');   render(); };
+window.__piOpenModal      = (productId, ideaId) => _openModal(productId, ideaId);
+window.__piGoManage       = () => { setView('manage'); render(); };
+window.__piGoList         = () => { setView('list');   render(); };
+window.__piToggleArchived = () => { _showArchived = !_showArchived; render(); };

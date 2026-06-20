@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v10';
+const CACHE = 'dashboard-suite-v14';
 
 const PRECACHE = [
   '/',
@@ -25,6 +25,8 @@ const PRECACHE = [
   '/product-ideas/index.html',
   '/rock-management/',
   '/rock-management/index.html',
+  '/feedback/',
+  '/feedback/index.html',
   '/shared/css/tokens.css',
   '/shared/css/glass.css',
   '/shared/css/mobile.css',
@@ -34,6 +36,7 @@ const PRECACHE = [
   '/shared/js/module-header.js',
   '/shared/js/banner.js',
   '/shared/js/rocks.js',
+  '/shared/js/app-modules.js',
   '/shared/js/pwa.js',
   '/dashboard/css/dashboard.css',
   '/dashboard/js/app.js',
@@ -84,6 +87,10 @@ const PRECACHE = [
   '/rock-management/js/app.js',
   '/rock-management/js/render.js',
   '/rock-management/js/state.js',
+  '/feedback/css/feedback.css',
+  '/feedback/js/app.js',
+  '/feedback/js/render.js',
+  '/feedback/js/state.js',
   '/icons/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

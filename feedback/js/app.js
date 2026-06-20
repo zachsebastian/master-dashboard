@@ -4,6 +4,7 @@ async function toggleTheme() {
   const next   = isDark ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
+  applyTheme();
   if (_currentUser) {
     await sb.from('user_preferences').upsert(
       { user_id: _currentUser.id, theme: next, updated_at: new Date().toISOString() },
@@ -25,8 +26,8 @@ async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
 
-  _currentUser = session.user;
-  initImpersonationBanner();
+  setCurrentUser(session.user);
+  await initImpersonationBanner();
 
   const { data: prefs } = await sb.from('user_preferences')
     .select('theme').eq('user_id', session.user.id).maybeSingle();
@@ -34,19 +35,10 @@ async function initAuth() {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
 
-  initModuleHeader({
-    name: 'Scratch',
-    subtitle: 'Pad',
-    leftActions: ''
-  });
+  initModuleHeader({ name: 'Feedback', subtitle: 'Log' });
 
-  await Promise.all([loadNotes(), loadEnabledModules()]);
+  await Promise.all([loadEntries(), loadSummaries()]);
   render();
-
-  // Auto-focus textarea if ?capture=1
-  if (new URLSearchParams(window.location.search).get('capture') === '1') {
-    setTimeout(() => document.getElementById('scratch-textarea')?.focus(), 50);
-  }
 
   sb.auth.onAuthStateChange(event => {
     if (event === 'SIGNED_OUT') window.location.href = '/';
