@@ -587,21 +587,12 @@
   font-size: 14px;
 }
 
-/* ── Prioritized tickets section ── */
-.cw-prioritized-section {
-  margin-top: 32px;
-  border: 1px solid var(--amber, #d97706);
-  border-radius: var(--r-lg);
-  padding: 16px 18px 12px;
-  background: linear-gradient(to bottom, rgba(217,119,6,0.04), transparent);
-}
-
+/* ── Prioritized label accent ── */
 .cw-section-label--prioritized {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--amber, #d97706);
-  margin-bottom: 12px;
 }
 
 .cw-ticket-priority-badge {

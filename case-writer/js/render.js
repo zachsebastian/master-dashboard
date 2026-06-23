@@ -85,7 +85,8 @@ function _renderList() {
       </div>
       ${templatesHtml}
       ${draftsHtml}
-      ${_renderTicketsSection()}
+      ${_renderPrioritizedSection()}
+      ${_renderSubmittedSection()}
     </div>`;
 }
 
@@ -139,29 +140,55 @@ function _renderTicketRow(t) {
     </div>`;
 }
 
-function _renderTicketsSection() {
+function _renderPrioritizedSection() {
+  const prioritized = _tickets
+    .filter(t => !t.completed && t.priority != null)
+    .sort((a, b) => a.priority - b.priority);
+
+  if (prioritized.length === 0) return '';
+
+  const hasJira       = prioritized.filter(t => t.jira_ticket);
+  const statusBtnHtml = hasJira.length > 0 ? `
+    <button class="btn btn-sm" id="cw-check-priority-status-btn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Check Status
+      <span class="cw-jira-status-badge">${hasJira.length}</span>
+    </button>` : '';
+
+  return `
+    <div class="cw-tickets-section">
+      <div class="cw-section-label-row">
+        <div class="cw-section-label cw-section-label--prioritized">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Prioritized Tickets
+        </div>
+        <div class="cw-section-label-actions">${statusBtnHtml}</div>
+      </div>
+      <div class="cw-tickets-list">
+        ${prioritized.map(t => _renderTicketRow(t)).join('')}
+      </div>
+    </div>`;
+}
+
+function _renderSubmittedSection() {
   if (_tickets.length === 0) return '';
 
-  const activeTickets    = _tickets.filter(t => !t.completed);
+  const unprioritized    = _tickets.filter(t => !t.completed && t.priority == null);
   const completedTickets = _tickets.filter(t =>  t.completed);
 
-  // Prioritized: active tickets with a priority number, sorted lowest→highest
-  const prioritized   = activeTickets
-    .filter(t => t.priority != null)
-    .sort((a, b) => a.priority - b.priority);
-  const unprioritized = activeTickets.filter(t => t.priority == null);
+  if (unprioritized.length === 0 && completedTickets.length === 0) return '';
 
-  const missingJira = activeTickets.filter(t => !t.jira_ticket);
-  const hasJira     = activeTickets.filter(t =>  t.jira_ticket);
+  const missingJira   = unprioritized.filter(t => !t.jira_ticket);
+  const hasJira       = unprioritized.filter(t =>  t.jira_ticket);
 
   const missingBtnHtml = missingJira.length > 0 ? `
-    <button class="btn btn-sm" id="cw-check-jira-btn" title="${missingJira.length} ticket${missingJira.length !== 1 ? 's' : ''} missing a Jira number">
+    <button class="btn btn-sm" id="cw-check-jira-btn">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Check Submissions
       <span class="cw-jira-missing-badge">${missingJira.length}</span>
     </button>` : '';
   const statusBtnHtml = hasJira.length > 0 ? `
-    <button class="btn btn-sm" id="cw-check-status-btn" title="Check completion status for ${hasJira.length} ticket${hasJira.length !== 1 ? 's' : ''} in Jira">
+    <button class="btn btn-sm" id="cw-check-status-btn">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Check Status
       <span class="cw-jira-status-badge">${hasJira.length}</span>
@@ -177,19 +204,7 @@ function _renderTicketsSection() {
       ${completedTickets.map(t => _renderTicketRow(t)).join('')}
     </div>` : '';
 
-  const prioritizedSectionHtml = prioritized.length > 0 ? `
-    <div class="cw-prioritized-section">
-      <div class="cw-section-label cw-section-label--prioritized">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Prioritized Tickets
-      </div>
-      <div class="cw-tickets-list">
-        ${prioritized.map(t => _renderTicketRow(t)).join('')}
-      </div>
-    </div>` : '';
-
   return `
-    ${prioritizedSectionHtml}
     <div class="cw-tickets-section">
       <div class="cw-section-label-row">
         <div class="cw-section-label">Submitted Tickets</div>
@@ -201,9 +216,7 @@ function _renderTicketsSection() {
       <div class="cw-tickets-list">
         ${unprioritized.length > 0
           ? unprioritized.map(t => _renderTicketRow(t)).join('')
-          : activeTickets.length > 0
-            ? '<div class="cw-tickets-empty">All active tickets are prioritized above.</div>'
-            : '<div class="cw-tickets-empty">No active submitted tickets.</div>'}
+          : '<div class="cw-tickets-empty">No unprioritzed submitted tickets.</div>'}
       </div>
       ${completedSectionHtml}
     </div>`;
@@ -532,8 +545,9 @@ function _bindListEvents() {
   });
 
   // ── Jira check buttons ──
-  document.getElementById('cw-check-jira-btn')?.addEventListener('click',   _openJiraCheckModal);
-  document.getElementById('cw-check-status-btn')?.addEventListener('click', _openJiraStatusModal);
+  document.getElementById('cw-check-jira-btn')?.addEventListener('click',            _openJiraCheckModal);
+  document.getElementById('cw-check-status-btn')?.addEventListener('click',          _openJiraStatusModal);
+  document.getElementById('cw-check-priority-status-btn')?.addEventListener('click', _openPrioritizedStatusModal);
 
   // ── Submitted ticket rows ──
   document.querySelectorAll('.cw-ticket-header').forEach(header => {
@@ -850,6 +864,75 @@ function _openJiraCheckModal() {
       setTimeout(() => {
         if (document.getElementById('cw-jira-copy-btn'))
           document.getElementById('cw-jira-copy-btn').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Prompt`;
+      }, 2000);
+    }
+  });
+}
+
+function _openPrioritizedStatusModal() {
+  if (document.getElementById('cw-priority-status-modal')) return;
+
+  const tickets = _tickets
+    .filter(t => t.jira_ticket && !t.completed && t.priority != null)
+    .sort((a, b) => a.priority - b.priority);
+  if (!tickets.length) return;
+
+  const ticketList = tickets.map((t, i) =>
+    `${i + 1}. #${t.priority} — ${t.title || 'Untitled'} → ${t.jira_ticket}`
+  ).join('\n');
+  const prompt = `/jira-ticket-status\n\n${ticketList}`;
+
+  const listItemsHtml = tickets.map(t => `
+    <div class="cw-jira-missing-item">
+      <span class="cw-jira-status-dot"></span>
+      <div>
+        <div class="cw-jira-missing-title">${escHtml(t.title || 'Untitled')}</div>
+        <div class="cw-jira-missing-meta">${escHtml(t.jira_ticket)} · Priority #${escHtml(String(t.priority))} · ${escHtml(_fmtDate(t.submitted_at))}</div>
+      </div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id        = 'cw-priority-status-modal';
+  modal.className = 'cw-ai-modal-overlay';
+  modal.innerHTML = `
+    <div class="cw-ai-modal cw-jira-modal-inner">
+      <div class="cw-ai-modal-header">
+        <div class="cw-ai-modal-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Check Prioritized Ticket Status
+        </div>
+        <button class="cw-ai-modal-close" id="cw-priority-status-close-x">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="cw-ai-modal-body">
+        <p class="cw-ai-modal-intro">${tickets.length} prioritized ticket${tickets.length !== 1 ? 's' : ''} with Jira numbers, in priority order:</p>
+        <div class="cw-jira-missing-list">${listItemsHtml}</div>
+        <div class="cw-jira-prompt-label">Claude prompt — copy and paste this to check status:</div>
+        <div class="cw-jira-prompt-box">${escHtml(prompt)}</div>
+      </div>
+      <div class="cw-ai-modal-footer">
+        <button class="btn" id="cw-priority-status-close-btn">Close</button>
+        <button class="btn btn-primary" id="cw-priority-status-copy-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Prompt
+        </button>
+      </div>
+    </div>`;
+
+  modal.addEventListener('mousedown', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  document.getElementById('cw-priority-status-close-x')?.addEventListener('click',   () => modal.remove());
+  document.getElementById('cw-priority-status-close-btn')?.addEventListener('click', () => modal.remove());
+  document.getElementById('cw-priority-status-copy-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('cw-priority-status-copy-btn');
+    await navigator.clipboard.writeText(prompt);
+    if (btn) {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+      setTimeout(() => {
+        const b = document.getElementById('cw-priority-status-copy-btn');
+        if (b) b.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Prompt`;
       }, 2000);
     }
   });
