@@ -207,6 +207,7 @@ function _renderTicketsSection() {
       </div>
       ${completedSectionHtml}
     </div>`;
+}
 
 function _openJiraStatusModal() {
   if (document.getElementById('cw-jira-status-modal')) return;
