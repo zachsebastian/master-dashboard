@@ -102,7 +102,7 @@ function _renderTicketRow(t) {
         </div>
         <div class="cw-ticket-info">
           <div class="cw-ticket-title">${escHtml(t.title || 'Untitled')}</div>
-          <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}${t.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(t.jira_ticket)}</span>` : ''}</div>
+          <div class="cw-ticket-meta">${escHtml(t.template_name)} · ${escHtml(_fmtDate(t.submitted_at))}${t.jira_ticket ? ` · <span class="cw-ticket-jira-badge">${escHtml(t.jira_ticket)}</span>` : ''}${t.priority != null ? ` · <span class="cw-ticket-priority-badge">#${escHtml(String(t.priority))}</span>` : ''}</div>
         </div>
         <div class="cw-ticket-actions">
           ${!t.completed ? `<button class="btn btn-sm cw-reopen-ticket-btn" data-ticket-id="${escHtml(t.id)}">Re-open as Draft</button>` : ''}
@@ -126,6 +126,13 @@ function _renderTicketRow(t) {
               <button class="btn btn-sm cw-save-date-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
             </div>
           </div>
+          <div class="cw-ticket-meta-field">
+            <label class="cw-ticket-jira-label" for="cw-priority-${escHtml(t.id)}">Priority #</label>
+            <div class="cw-ticket-jira-input-wrap">
+              <input class="cw-input cw-ticket-jira-input" id="cw-priority-${escHtml(t.id)}" type="number" min="1" step="1" placeholder="e.g. 1" value="${escHtml(t.priority != null ? String(t.priority) : '')}">
+              <button class="btn btn-sm cw-save-priority-btn" data-ticket-id="${escHtml(t.id)}">Save</button>
+            </div>
+          </div>
         </div>
         <div class="cw-ticket-body-content">${t.content_html}</div>
       </div>
@@ -137,8 +144,15 @@ function _renderTicketsSection() {
 
   const activeTickets    = _tickets.filter(t => !t.completed);
   const completedTickets = _tickets.filter(t =>  t.completed);
-  const missingJira      = activeTickets.filter(t => !t.jira_ticket);
-  const hasJira          = activeTickets.filter(t =>  t.jira_ticket);
+
+  // Prioritized: active tickets with a priority number, sorted lowest→highest
+  const prioritized   = activeTickets
+    .filter(t => t.priority != null)
+    .sort((a, b) => a.priority - b.priority);
+  const unprioritized = activeTickets.filter(t => t.priority == null);
+
+  const missingJira = activeTickets.filter(t => !t.jira_ticket);
+  const hasJira     = activeTickets.filter(t =>  t.jira_ticket);
 
   const missingBtnHtml = missingJira.length > 0 ? `
     <button class="btn btn-sm" id="cw-check-jira-btn" title="${missingJira.length} ticket${missingJira.length !== 1 ? 's' : ''} missing a Jira number">
@@ -163,7 +177,19 @@ function _renderTicketsSection() {
       ${completedTickets.map(t => _renderTicketRow(t)).join('')}
     </div>` : '';
 
+  const prioritizedSectionHtml = prioritized.length > 0 ? `
+    <div class="cw-prioritized-section">
+      <div class="cw-section-label cw-section-label--prioritized">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Prioritized Tickets
+      </div>
+      <div class="cw-tickets-list">
+        ${prioritized.map(t => _renderTicketRow(t)).join('')}
+      </div>
+    </div>` : '';
+
   return `
+    ${prioritizedSectionHtml}
     <div class="cw-tickets-section">
       <div class="cw-section-label-row">
         <div class="cw-section-label">Submitted Tickets</div>
@@ -173,13 +199,14 @@ function _renderTicketsSection() {
         </div>
       </div>
       <div class="cw-tickets-list">
-        ${activeTickets.length > 0
-          ? activeTickets.map(t => _renderTicketRow(t)).join('')
-          : '<div class="cw-tickets-empty">No active submitted tickets.</div>'}
+        ${unprioritized.length > 0
+          ? unprioritized.map(t => _renderTicketRow(t)).join('')
+          : activeTickets.length > 0
+            ? '<div class="cw-tickets-empty">All active tickets are prioritized above.</div>'
+            : '<div class="cw-tickets-empty">No active submitted tickets.</div>'}
       </div>
       ${completedSectionHtml}
     </div>`;
-}
 
 function _openJiraStatusModal() {
   if (document.getElementById('cw-jira-status-modal')) return;
@@ -587,8 +614,28 @@ function _bindListEvents() {
         const meta   = row?.querySelector('.cw-ticket-meta');
         if (meta) {
           const ticket = _tickets.find(t => t.id === id);
-          if (ticket) meta.innerHTML = `${escHtml(ticket.template_name)} · ${escHtml(_fmtDate(ticket.submitted_at))}${val ? ` · <span class="cw-ticket-jira-badge">${escHtml(val)}</span>` : ''}`;
+          if (ticket) meta.innerHTML = `${escHtml(ticket.template_name)} · ${escHtml(_fmtDate(ticket.submitted_at))}${val ? ` · <span class="cw-ticket-jira-badge">${escHtml(val)}</span>` : ''}${ticket.priority != null ? ` · <span class="cw-ticket-priority-badge">#${ticket.priority}</span>` : ''}`;
         }
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+    });
+  });
+
+  document.querySelectorAll('.cw-save-priority-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id    = btn.dataset.ticketId;
+      const input = document.getElementById(`cw-priority-${id}`);
+      if (!input) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      const ok = await updateTicketPriority(id, input.value);
+      if (ok) {
+        btn.textContent = '✓ Saved';
+        // Re-render so the ticket moves to/from the prioritized section
+        setTimeout(() => render(), 600);
       } else {
         btn.disabled = false;
         btn.textContent = 'Save';

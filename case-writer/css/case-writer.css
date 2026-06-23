@@ -548,18 +548,18 @@
   letter-spacing: 0.02em;
 }
 
-/* ── Meta fields row (Jira + Date) inside expanded ticket ── */
+/* ── Meta fields row (Jira + Date + Priority) inside expanded ticket ── */
 .cw-ticket-meta-row {
   display: flex;
-  gap: 64px;
-  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
   margin-bottom: 14px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
 .cw-ticket-meta-field {
-  flex: 0 0 auto;
-  width: calc(35% - 6px);
+  flex: 1 1 160px;
+  min-width: 140px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -585,6 +585,36 @@
 }
 .cw-ticket-body-content {
   font-size: 14px;
+}
+
+/* ── Prioritized tickets section ── */
+.cw-prioritized-section {
+  margin-top: 32px;
+  border: 1px solid var(--amber, #d97706);
+  border-radius: var(--r-lg);
+  padding: 16px 18px 12px;
+  background: linear-gradient(to bottom, rgba(217,119,6,0.04), transparent);
+}
+
+.cw-section-label--prioritized {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--amber, #d97706);
+  margin-bottom: 12px;
+}
+
+.cw-ticket-priority-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(217,119,6,0.12);
+  color: var(--amber, #d97706);
+  margin-left: 4px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
 }
 
 /* ── Submitted tickets section ── */

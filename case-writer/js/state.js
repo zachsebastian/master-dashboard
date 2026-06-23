@@ -132,6 +132,19 @@ async function updateTicketDate(id, dateStr) {
   return true;
 }
 
+async function updateTicketPriority(id, rawValue) {
+  const val = (rawValue === '' || rawValue === null) ? null : parseInt(rawValue, 10);
+  const priority = (val === null || isNaN(val) || val < 1) ? null : val;
+  const { error } = await sb
+    .from('case_writer_tickets')
+    .update({ priority })
+    .eq('id', id);
+  if (error) { console.error('updateTicketPriority:', error); return false; }
+  const ticket = _tickets.find(t => t.id === id);
+  if (ticket) ticket.priority = priority;
+  return true;
+}
+
 async function updateTicketJira(id, jiraTicket) {
   const { error } = await sb
     .from('case_writer_tickets')
