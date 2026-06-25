@@ -130,23 +130,30 @@ function _renderItem(item) {
   const isEditing   = _editingItemId === item.id;
 
   if (isEditing) {
+    const id = item.id;
+    const showProjectPicker = item.source === 'manual' && _projects.length > 0;
     return `
       <div class="today-item today-item--editing"
-           data-id="${escHtml(item.id)}">
+           data-id="${escHtml(id)}">
         <div class="today-item-check${item.completed ? ' checked' : ''}"
-             data-check-id="${escHtml(item.id)}"
+             data-check-id="${escHtml(id)}"
              title="${item.completed ? 'Mark incomplete' : 'Mark complete'}"></div>
         <div class="today-item-body">
           <input class="today-item-edit-input"
-                 id="edit-input-${escHtml(item.id)}"
-                 data-edit-input-id="${escHtml(item.id)}"
+                 id="edit-input-${escHtml(id)}"
+                 data-edit-input-id="${escHtml(id)}"
                  value="${escHtml(item.text)}"
                  maxlength="500"
                  autocomplete="off">
+          ${showProjectPicker ? `
+          <select class="today-edit-project-select" id="edit-project-${escHtml(id)}" title="Link to project (optional)">
+            <option value="">Link to project…</option>
+            ${_projects.map(p => `<option value="${escHtml(p.id)}">${escHtml(p.name)}</option>`).join('')}
+          </select>` : ''}
         </div>
         <div class="today-item-right today-item-right--editing">
-          <button class="today-edit-save-btn" data-save-id="${escHtml(item.id)}" title="Save">✓</button>
-          <button class="today-edit-cancel-btn" data-cancel-id="${escHtml(item.id)}" title="Cancel">×</button>
+          <button class="today-edit-save-btn" data-save-id="${escHtml(id)}" title="Save">✓</button>
+          <button class="today-edit-cancel-btn" data-cancel-id="${escHtml(id)}" title="Cancel">×</button>
         </div>
       </div>`;
   }
@@ -379,8 +386,11 @@ function bindEvents() {
       const id    = el.dataset.saveId;
       const input = document.getElementById(`edit-input-${id}`);
       const newText = input ? input.value : '';
+      const projectSelect = document.getElementById(`edit-project-${id}`);
+      const projectId = projectSelect?.value || null;
       _editingItemId = null;
       await updateItemText(id, newText);
+      if (projectId) await associateItemWithProject(id, projectId);
       render();
     });
   });
@@ -400,8 +410,11 @@ function bindEvents() {
         e.preventDefault();
         const id = input.dataset.editInputId;
         const newText = input.value;
+        const projectSelect = document.getElementById(`edit-project-${id}`);
+        const projectId = projectSelect?.value || null;
         _editingItemId = null;
         await updateItemText(id, newText);
+        if (projectId) await associateItemWithProject(id, projectId);
         render();
       } else if (e.key === 'Escape') {
         _editingItemId = null;

@@ -329,6 +329,32 @@ async function _addTaskToProject(projectId, taskId, text) {
   return !error;
 }
 
+// ── Associate an existing manual item with a project ──
+async function associateItemWithProject(id, projectId) {
+  const item = todayItems.find(i => i.id === id);
+  if (!item || item.source !== 'manual') return false;
+
+  const project = _projects.find(p => p.id === projectId);
+  if (!project) return false;
+
+  const taskId = _uid();
+  const ok = await _addTaskToProject(projectId, taskId, item.text);
+  if (!ok) return false;
+
+  const updates = {
+    source:          'project',
+    source_ref_id:   project.id,
+    source_ref_name: project.name,
+    source_task_id:  taskId,
+  };
+
+  const { error } = await sb.from('today_items').update(updates).eq('id', id);
+  if (error) { console.error('associateItemWithProject:', error); return false; }
+
+  Object.assign(item, updates);
+  return true;
+}
+
 // ── CRUD ──
 async function addManualItem(text, projectId) {
   const uid   = _currentUser.id;
