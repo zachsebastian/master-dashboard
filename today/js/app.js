@@ -47,7 +47,7 @@ async function initAuth() {
       : '',
   });
 
-  await loadTodayState();
+  await Promise.all([loadTodayState(), loadProjects()]);
 
   if (_resetNeeded) {
     // Render immediately — modal will be shown on top

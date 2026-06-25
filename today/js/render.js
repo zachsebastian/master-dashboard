@@ -112,6 +112,11 @@ function _renderTodayView(active, onHold, completed, total, doneCount) {
         class="today-add-input"
         placeholder="Add a priority for today…"
         maxlength="500">
+      ${_projects.length > 0 ? `
+      <select class="today-add-project-select" id="today-add-project" title="Link to project (optional)">
+        <option value="">Link to project…</option>
+        ${_projects.map(p => `<option value="${escHtml(p.id)}">${escHtml(p.name)}</option>`).join('')}
+      </select>` : ''}
       <button class="btn btn-primary" id="today-add-btn">Add</button>
     </div>
     <div class="today-pull-more-row">
@@ -413,13 +418,14 @@ function bindEvents() {
     addBtn.addEventListener('click', async () => {
       const text = addInput.value.trim();
       if (!text) return;
+      const projectSelect = document.getElementById('today-add-project');
+      const projectId = projectSelect?.value || null;
       addBtn.disabled   = true;
       addInput.disabled = true;
-      await addManualItem(text);
+      await addManualItem(text, projectId);
       addBtn.disabled   = false;
       addInput.disabled = false;
       render();
-      // Re-focus input after render
       const newInput = document.getElementById('today-add-input');
       if (newInput) newInput.focus();
     });

@@ -8,6 +8,7 @@ let _currentUser = null;
 let _view        = 'today';   // 'today' | 'history'
 let _resetNeeded = false;
 let _unfinishedCount = 0;
+let _projects    = [];   // non-archived projects for project picker
 
 // ── Date helpers ──
 function getTodayDate() {
@@ -293,19 +294,77 @@ async function pullMoreTasks() {
   return added;
 }
 
+// ── Load projects for picker ──
+async function loadProjects() {
+  const { data } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', _currentUser.id)
+    .maybeSingle();
+  _projects = (data?.data?.projects || []).filter(p => p.status !== 'archived');
+}
+
+// ── Write a new task into a project in the dashboard blob ──
+async function _addTaskToProject(projectId, taskId, text) {
+  const uid = _currentUser.id;
+  const { data: row } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  if (!row?.data?.projects) return false;
+
+  const project = row.data.projects.find(p => p.id === projectId);
+  if (!project) return false;
+
+  if (!project.tasks) project.tasks = [];
+  project.tasks.push({ id: taskId, text: text.trim() });
+
+  const { error } = await sb
+    .from('dashboards')
+    .update({ data: row.data, updated_at: new Date().toISOString() })
+    .eq('user_id', uid);
+
+  return !error;
+}
+
 // ── CRUD ──
-async function addManualItem(text) {
+async function addManualItem(text, projectId) {
   const uid   = _currentUser.id;
   const today = getTodayDate();
   const maxOrder = todayItems.reduce((m, i) => Math.max(m, i.sort_order), -1);
 
+  let source       = 'manual';
+  let sourceRefId  = null;
+  let sourceRefName = null;
+  let sourceTaskId = null;
+
+  if (projectId) {
+    const project = _projects.find(p => p.id === projectId);
+    if (project) {
+      sourceTaskId = _uid();
+      const ok = await _addTaskToProject(projectId, sourceTaskId, text);
+      if (ok) {
+        source        = 'project';
+        sourceRefId   = project.id;
+        sourceRefName = project.name;
+      } else {
+        sourceTaskId = null;
+      }
+    }
+  }
+
   const row = {
-    user_id:    uid,
-    text:       text.trim(),
-    completed:  false,
-    source:     'manual',
-    sort_order: maxOrder + 1,
-    item_date:  today,
+    user_id:         uid,
+    text:            text.trim(),
+    completed:       false,
+    source,
+    source_ref_id:   sourceRefId,
+    source_ref_name: sourceRefName,
+    source_task_id:  sourceTaskId,
+    sort_order:      maxOrder + 1,
+    item_date:       today,
   };
 
   const { data, error } = await sb
