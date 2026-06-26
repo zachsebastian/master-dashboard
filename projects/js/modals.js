@@ -239,9 +239,16 @@ function buildModal(type, data) {
     const p = state.projects.find(x => x.id === data.pid);
     const task = p ? (p.tasks || []).find(t => t.id === data.tid) : null;
     const otherProjects = state.projects.filter(x => x.id !== data.pid);
-    const projectOptions = otherProjects.length
-      ? otherProjects.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')
-      : `<option value="" disabled>No other projects</option>`;
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    const active    = otherProjects.filter(x => x.status !== 'done' && x.status !== 'on-hold').sort(byName);
+    const onHold    = otherProjects.filter(x => x.status === 'on-hold').sort(byName);
+    const completed = otherProjects.filter(x => x.status === 'done').sort(byName);
+    const buildOpts = arr => arr.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
+    const projectOptions = otherProjects.length ? [
+      active.length    ? `<optgroup label="Active">${buildOpts(active)}</optgroup>`    : '',
+      onHold.length    ? `<optgroup label="On Hold">${buildOpts(onHold)}</optgroup>`   : '',
+      completed.length ? `<optgroup label="Completed">${buildOpts(completed)}</optgroup>` : '',
+    ].join('') : `<option value="" disabled>No other projects</option>`;
     return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:440px">
       <div class="modal-header"><div class="modal-title">Edit task</div><button class="modal-close" onclick="closeModal()">×</button></div>
       <div class="modal-body">
