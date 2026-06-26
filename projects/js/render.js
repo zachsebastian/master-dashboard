@@ -133,7 +133,8 @@ function render() {
 }
 
 function renderSidebar() {
-  const list = document.getElementById('project-list');
+  const list          = document.getElementById('project-list');
+  const onholdList    = document.getElementById('onhold-list');
   const completedList = document.getElementById('completed-list');
   if (!list) return;
   const sidebar = document.getElementById('sidebar');
@@ -142,7 +143,8 @@ function renderSidebar() {
   const toggleBtn = document.getElementById('sidebar-toggle-btn');
   if (toggleBtn) toggleBtn.textContent = state.sidebarOpen ? 'hide sidebar' : 'show sidebar';
 
-  const activeProjects = state.projects.filter(p => p.status !== 'done').sort(byPriority);
+  const activeProjects    = state.projects.filter(p => p.status !== 'done' && p.status !== 'on-hold').sort(byPriority);
+  const onholdProjects    = state.projects.filter(p => p.status === 'on-hold').sort(byPriority);
   const completedProjects = state.projects.filter(p => p.status === 'done').sort(byPriority);
 
   const buildItem = p => {
@@ -162,6 +164,12 @@ function renderSidebar() {
   list.innerHTML = activeProjects.length
     ? activeProjects.map(buildItem).join('')
     : `<div style="padding:8px;font-size:12px;color:var(--text-3)">No active projects.</div>`;
+
+  if (onholdList) {
+    onholdList.innerHTML = onholdProjects.length
+      ? onholdProjects.map(buildItem).join('')
+      : `<div style="padding:8px;font-size:12px;color:var(--text-3);font-style:italic">None.</div>`;
+  }
 
   if (completedList) {
     completedList.innerHTML = completedProjects.length
@@ -266,8 +274,18 @@ function renderSummaryView() {
     </div>`;
   };
 
-  const activeProjects = projects.filter(p => p.status !== 'done').sort(byPriority);
+  const activeProjects    = projects.filter(p => p.status !== 'done' && p.status !== 'on-hold').sort(byPriority);
+  const onholdProjects    = projects.filter(p => p.status === 'on-hold').sort(byPriority);
   const completedProjects = projects.filter(p => p.status === 'done').sort(byPriority);
+
+  const onholdSection = onholdProjects.length ? `
+    <div style="margin-top:36px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;color:var(--text-2)">On Hold</div>
+        <div style="font-size:12px;color:var(--text-3)">${onholdProjects.length} project${onholdProjects.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="project-grid" style="opacity:0.8">${onholdProjects.map(buildCard).join('')}</div>
+    </div>` : '';
 
   const completedSection = completedProjects.length ? `
     <div style="margin-top:36px">
@@ -286,6 +304,7 @@ function renderSummaryView() {
   </div>
   ${strip}
   <div class="project-grid">${activeProjects.map(buildCard).join('')}</div>
+  ${onholdSection}
   ${completedSection}`;
 }
 
