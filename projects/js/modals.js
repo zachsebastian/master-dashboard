@@ -238,6 +238,10 @@ function buildModal(type, data) {
   if (type === 'edit-task') {
     const p = state.projects.find(x => x.id === data.pid);
     const task = p ? (p.tasks || []).find(t => t.id === data.tid) : null;
+    const otherProjects = state.projects.filter(x => x.id !== data.pid);
+    const projectOptions = otherProjects.length
+      ? otherProjects.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')
+      : `<option value="" disabled>No other projects</option>`;
     return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:440px">
       <div class="modal-header"><div class="modal-title">Edit task</div><button class="modal-close" onclick="closeModal()">×</button></div>
       <div class="modal-body">
@@ -245,12 +249,20 @@ function buildModal(type, data) {
           <label class="form-label">Task</label>
           <input class="form-input" id="t-edit-text" value="${task ? esc(task.text) : ''}" autofocus>
         </div>
+        <div id="move-task-section" style="display:none;margin-top:4px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Move to project</label>
+            <select class="form-input" id="t-move-dest">${projectOptions}</select>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
-        <div class="modal-footer-left"></div>
+        <div class="modal-footer-left">
+          <button class="btn" id="move-task-toggle-btn" onclick="toggleMoveTaskSection('${data.pid}','${data.tid}')">Move to project…</button>
+        </div>
         <div class="modal-footer-right">
           <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveEditTask('${data.pid}','${data.tid}')">Save</button>
+          <button class="btn btn-primary" id="save-task-btn" onclick="saveEditTask('${data.pid}','${data.tid}')">Save</button>
         </div>
       </div>
     </div></div>`;
@@ -572,6 +584,53 @@ function saveEditTask(pid, tid) {
   if (!text) { alert('Task cannot be empty.'); return; }
   const task = (p.tasks || []).find(t => t.id === tid);
   if (task) task.text = text;
+  closeModal(); saveState(); render();
+}
+
+function toggleMoveTaskSection(pid, tid) {
+  const section = document.getElementById('move-task-section');
+  const toggleBtn = document.getElementById('move-task-toggle-btn');
+  const saveBtn = document.getElementById('save-task-btn');
+  if (!section) return;
+  const isOpen = section.style.display !== 'none';
+  if (isOpen) {
+    section.style.display = 'none';
+    toggleBtn.textContent = 'Move to project…';
+    toggleBtn.classList.remove('btn-active');
+    saveBtn.style.display = '';
+  } else {
+    section.style.display = 'block';
+    toggleBtn.textContent = 'Cancel move';
+    toggleBtn.classList.add('btn-active');
+    saveBtn.style.display = 'none';
+    // Swap the primary action to Move
+    const footer = toggleBtn.closest('.modal-footer');
+    if (footer && !footer.querySelector('#move-task-confirm-btn')) {
+      const moveBtn = document.createElement('button');
+      moveBtn.className = 'btn btn-primary';
+      moveBtn.id = 'move-task-confirm-btn';
+      moveBtn.textContent = 'Move task';
+      moveBtn.onclick = () => moveTask(pid, tid);
+      footer.querySelector('.modal-footer-right').appendChild(moveBtn);
+    }
+  }
+}
+
+function moveTask(pid, tid) {
+  const destId = document.getElementById('t-move-dest')?.value;
+  if (!destId) return;
+  const src  = state.projects.find(x => x.id === pid);
+  const dest = state.projects.find(x => x.id === destId);
+  if (!src || !dest) return;
+  const taskIdx = (src.tasks || []).findIndex(t => t.id === tid);
+  if (taskIdx === -1) return;
+  const [task] = src.tasks.splice(taskIdx, 1);
+  // Reset completion so it shows as open in the destination project
+  task.completedInEntry = null;
+  if (!dest.tasks) dest.tasks = [];
+  dest.tasks.push(task);
+  src.completion  = calcCompletion(src);
+  dest.completion = calcCompletion(dest);
   closeModal(); saveState(); render();
 }
 
