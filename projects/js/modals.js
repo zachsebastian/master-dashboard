@@ -39,6 +39,7 @@ function openAddBlockerModal(pid) { renderModal('add-blocker', { pid }); }
 function openAddTaskModal(pid) { renderModal('add-task', { pid }); }
 function openImportTasksModal(pid) { renderModal('import-tasks', { pid }); }
 function openEditTaskModal(pid, tid) { renderModal('edit-task', { pid, tid }); }
+function openExportModal() { renderModal('export', {}); }
 
 // ── Modal entry point ──
 function renderModal(type, data) {
@@ -353,6 +354,33 @@ function buildModal(type, data) {
         <div class="modal-footer-right">
           <button class="btn" onclick="closeModal()">Cancel</button>
           <button class="btn btn-primary" onclick="saveEditBlocker('${data.pid}',${data.idx})">Save</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  // ── Export Projects ──
+  if (type === 'export') {
+    return `<div class="modal-backdrop" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()" style="width:400px">
+      <div class="modal-header"><div class="modal-title">Export Projects</div><button class="modal-close" onclick="closeModal()">×</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-2);margin:0 0 16px">Downloads a JSON file you can paste directly into Claude for review and updates.</p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+            <input type="checkbox" id="exp-onhold" style="width:16px;height:16px;cursor:pointer">
+            Include On Hold projects
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+            <input type="checkbox" id="exp-completed" style="width:16px;height:16px;cursor:pointer">
+            Include Completed projects
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-footer-left"></div>
+        <div class="modal-footer-right">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="doExportProjects()">Download JSON</button>
         </div>
       </div>
     </div></div>`;
@@ -697,4 +725,67 @@ async function addTaskToToday(pid, tid, btn) {
   }
 
   btn.textContent = '✓ Added';
+}
+
+// ── Export Projects ──
+function doExportProjects() {
+  const includeOnHold    = document.getElementById('exp-onhold')?.checked   || false;
+  const includeCompleted = document.getElementById('exp-completed')?.checked || false;
+
+  const statusLabel = { 'not-started': 'Not Started', 'in-progress': 'In Progress', 'on-hold': 'On Hold', 'done': 'Done' };
+
+  const projects = state.projects.filter(p => {
+    if (p.status === 'on-hold' && !includeOnHold)    return false;
+    if (p.status === 'done'    && !includeCompleted)  return false;
+    return true;
+  });
+
+  const exported = projects.map(p => {
+    const rock       = p.rockId ? rockById(_rocks, p.rockId) : null;
+    const openTasks  = (p.tasks || []).filter(t => !t.completedInEntry).map(t => t.text);
+    const doneTasks  = (p.tasks || []).filter(t =>  t.completedInEntry).map(t => t.text);
+    const blockers   = (p.blockers || [])
+      .filter(b => !(typeof b === 'object' && b.resolved))
+      .map(b => typeof b === 'string' ? b : b.text);
+    const entries    = [...(p.entries || [])].sort((a, b) => a.date.localeCompare(b.date));
+    const recentEntries = entries.slice(-3).map(e => ({
+      date:           e.date,
+      note:           e.note      || '',
+      next_steps:     e.nextSteps || '',
+      completion_pct: e.completion,
+      status:         statusLabel[e.status] || e.status,
+    }));
+
+    const out = {
+      name:           p.name,
+      status:         statusLabel[p.status] || p.status,
+      priority:       p.priority,
+      completion_pct: p.completion,
+    };
+    if (rock)              out.rock      = rock.name;
+    if (p.dueDate)         out.due_date  = p.dueDate;
+    if (p.tags?.length)    out.tags      = p.tags;
+    if (p.description)     out.description = p.description;
+    out.open_tasks         = openTasks;
+    if (doneTasks.length)  out.completed_tasks = doneTasks;
+    if (blockers.length)   out.active_blockers = blockers;
+    if (recentEntries.length) out.recent_log_entries = recentEntries;
+    return out;
+  });
+
+  const payload = {
+    exported_at: new Date().toISOString().slice(0, 10),
+    filters: { included_on_hold: includeOnHold, included_completed: includeCompleted },
+    project_count: exported.length,
+    projects: exported,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `projects-export-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeModal();
 }

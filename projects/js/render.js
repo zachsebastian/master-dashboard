@@ -299,6 +299,7 @@ function renderSummaryView() {
   return `<div class="page-header">
     <div><div class="page-title">Projects</div><div class="page-subtitle">${total} project${total !== 1 ? 's' : ''} · ${inProg} in progress</div></div>
     <div class="page-header-right">
+      <button class="btn" onclick="openExportModal()">Export</button>
       <button class="btn btn-primary" onclick="openAddProjectModal()">+ Add project</button>
     </div>
   </div>
