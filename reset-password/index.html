@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set Password — Dashboard Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
+<link rel="stylesheet" href="/shared/css/tokens.css">
+<link rel="stylesheet" href="/dashboard/css/dashboard.css">
+<style>
+  .reset-screen {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+  }
+  .reset-card {
+    background: var(--surface);
+    border: 1px solid var(--border-md);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 40px;
+    width: 380px;
+    max-width: 94vw;
+  }
+  .reset-spinner {
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px 0;
+  }
+  .reset-success {
+    text-align: center;
+    padding: 8px 0 4px;
+  }
+  .reset-success-icon {
+    font-size: 36px; margin-bottom: 12px;
+  }
+  .pw-requirements {
+    font-size: 11px;
+    color: var(--text-3);
+    margin: -8px 0 14px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="reset-screen">
+  <div class="reset-card">
+
+    <!-- Loading state -->
+    <div id="state-loading">
+      <div class="auth-title">Dashboard Suite</div>
+      <div class="auth-subtitle">Verifying your reset link…</div>
+      <div class="reset-spinner"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Set password form -->
+    <div id="state-form" style="display:none">
+      <div class="auth-title">Set your password</div>
+      <div class="auth-subtitle">Choose a password for your account.</div>
+      <div class="auth-error" id="reset-error"></div>
+      <label class="form-label">New password</label>
+      <input class="form-input" type="password" id="pw-new" placeholder="Min. 8 characters"
+        onkeydown="if(event.key==='Enter')document.getElementById('pw-confirm').focus()" autofocus>
+      <div class="pw-requirements">At least 8 characters.</div>
+      <label class="form-label">Confirm password</label>
+      <input class="form-input" type="password" id="pw-confirm" placeholder="Re-enter password"
+        onkeydown="if(event.key==='Enter')submitNewPassword()">
+      <button class="btn-primary btn-block" id="reset-submit-btn" onclick="submitNewPassword()">Set password</button>
+    </div>
+
+    <!-- Success state -->
+    <div id="state-success" style="display:none">
+      <div class="reset-success">
+        <div class="reset-success-icon">✓</div>
+        <div class="auth-title" style="margin-bottom:8px">Password set!</div>
+        <div class="auth-subtitle" style="margin-bottom:24px">You can now sign in with your new password.</div>
+        <button class="btn-primary btn-block" onclick="window.location.href='/'">Go to Dashboard</button>
+      </div>
+    </div>
+
+    <!-- Error state (bad/expired link) -->
+    <div id="state-error" style="display:none">
+      <div class="auth-title">Link expired</div>
+      <div class="auth-subtitle" style="margin-bottom:24px">This password reset link is invalid or has already been used. Request a new one from your profile settings.</div>
+      <button class="btn-primary btn-block" onclick="window.location.href='/'">Back to Dashboard</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="/shared/js/supabase-client.js"></script>
+<script>
+  function show(id) {
+    ['state-loading','state-form','state-success','state-error'].forEach(s => {
+      document.getElementById(s).style.display = s === id ? 'block' : 'none';
+    });
+  }
+
+  // Supabase fires PASSWORD_RECOVERY when the user arrives via the reset link.
+  // The token in the URL hash is processed automatically by the client.
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      show('state-form');
+    } else if (event === 'SIGNED_IN') {
+      // A plain SIGNED_IN (not recovery) means the link was a magic link,
+      // not a recovery link — or the token was already used. Show the form
+      // only if we were already in the recovery flow; otherwise ignore.
+    }
+  });
+
+  // Fallback: if the event never fires within 4 seconds, the link is bad.
+  const fallback = setTimeout(() => {
+    const current = document.getElementById('state-form').style.display;
+    if (current === 'none') show('state-error');
+  }, 4000);
+
+  async function submitNewPassword() {
+    clearTimeout(fallback);
+    const pw      = document.getElementById('pw-new').value;
+    const confirm = document.getElementById('pw-confirm').value;
+    const errEl   = document.getElementById('reset-error');
+    const btn     = document.getElementById('reset-submit-btn');
+
+    errEl.classList.remove('visible');
+
+    if (pw.length < 8) {
+      errEl.textContent = 'Password must be at least 8 characters.';
+      errEl.classList.add('visible');
+      return;
+    }
+    if (pw !== confirm) {
+      errEl.textContent = 'Passwords do not match.';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const { error } = await sb.auth.updateUser({ password: pw });
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Set password';
+      return;
+    }
+
+    await sb.auth.signOut();
+    show('state-success');
+  }
+</script>
+</body>
+</html>
