@@ -276,7 +276,7 @@ function renderLinkList(card, group) {
             ? `<span class="link-name-static">${esc(item.name)}</span>
                <button class="item-btn edit" onclick="openItemEdit('${item.id}')" title="Edit">✎</button>
                <button class="item-btn del"  onclick="deleteItem('${item.id}')"   title="Delete">×</button>`
-            : `<a class="link-anchor" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')">${esc(item.name)}</a>`}
+            : `<a class="link-anchor" href="${esc(safeUrl(item.url))}"  onclick="trackLinkClick('${item.id}')">${esc(item.name)}</a>`}
         </li>`).join('')}
       ${editMode ? `<li class="add-item-row"><button class="add-item-btn" onclick="addItem('${group.id}')">+ Add link</button></li>` : ''}
     </ul>`;
@@ -322,7 +322,7 @@ function renderIconGrid(card, group) {
                  <span class="icon-label">${esc(item.name)}</span>
                </div>
                <button class="icon-del-btn" onclick="event.stopPropagation();deleteItem('${item.id}')" title="Delete">×</button>`
-            : `<a class="icon-item" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')">
+            : `<a class="icon-item" href="${esc(safeUrl(item.url))}"  onclick="trackLinkClick('${item.id}')">
                  <div class="icon-img-wrap">
                    ${faviconEl(item, 'icon-img', 'icon-img-mono')}
                  </div>
@@ -382,7 +382,7 @@ function renderSearchView(app) {
       ${results.length
         ? results.map(({card, group, item}) => `
             <a class="search-result-item"
-               href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer" onclick="trackLinkClick('${item.id}')"
+               href="${esc(safeUrl(item.url))}"  onclick="trackLinkClick('${item.id}')"
               <img class="link-favicon"
                 src="${esc(item.iconUrl || faviconUrl(item.url) || '')}"
                 onerror="this.style.display='none'"
