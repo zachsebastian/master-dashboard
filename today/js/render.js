@@ -179,6 +179,7 @@ function _renderItem(item) {
           : ''}
       </div>
       <div class="today-item-right">
+        ${item.completed ? `<input type="date" class="today-done-date" value="${escHtml(item.item_date)}" max="${escHtml(getTodayDate())}" data-done-date-id="${escHtml(item.id)}" title="Completed on — click to change">` : ''}
         ${isDraggable ? `<span class="today-drag-handle" title="Drag to reorder">⠿</span>` : ''}
         ${holdToggle}
         <button class="today-edit-btn" data-edit-id="${escHtml(item.id)}" title="Edit">✎</button>
@@ -237,6 +238,7 @@ function _renderHistoryView() {
                 ? `<button class="today-item-source today-item-source-link" onclick="window.location.href='/projects/?project=${escHtml(item.source_ref_id)}'" title="Open project">${escHtml(item.source_ref_name)}</button>`
                 : ''}
             </div>
+            ${item.completed ? `<input type="date" class="today-done-date" value="${escHtml(item.item_date)}" max="${escHtml(getTodayDate())}" data-done-date-id="${escHtml(item.id)}" title="Completed on — click to change">` : ''}
           </div>`).join('')}
       </div>`;
   }).join('');
@@ -353,6 +355,15 @@ function bindEvents() {
       }
     });
   }
+
+  // Completed-date pickers
+  document.querySelectorAll('[data-done-date-id]').forEach(input => {
+    input.addEventListener('click', e => e.stopPropagation());
+    input.addEventListener('change', async () => {
+      await updateItemCompletedDate(input.dataset.doneDateId, input.value);
+      render();
+    });
+  });
 
   // Hold / resume buttons
   document.querySelectorAll('[data-hold-id]').forEach(el => {

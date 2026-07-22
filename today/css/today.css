@@ -438,6 +438,25 @@
   color: var(--text);
 }
 
+.today-done-date {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--text-3);
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.today-done-date:hover,
+.today-done-date:focus {
+  border-color: var(--blue);
+  color: var(--text);
+}
+
 /* ── Pull more row ── */
 .today-pull-more-row {
   margin-top: 10px;

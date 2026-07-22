@@ -622,6 +622,45 @@ function saveEditTask(pid, tid) {
   closeModal(); saveState(); render();
 }
 
+async function updateTaskCompletionDate(pid, tid, newDate) {
+  if (!newDate) return;
+  const p = state.projects.find(x => x.id === pid);
+  const task = p ? (p.tasks || []).find(t => t.id === tid) : null;
+  if (!p || !task || !task.completedInEntry) return;
+
+  const entry = (p.entries || []).find(e => e.id === task.completedInEntry);
+  if (!entry || entry.date === newDate) return;
+
+  // If the entry completed only this task, just move its date. Otherwise split
+  // this task into its own entry on the new date so the others keep theirs.
+  const tasksInEntry = (p.tasks || []).filter(t => t.completedInEntry === entry.id);
+  if (tasksInEntry.length === 1) {
+    entry.date = newDate;
+  } else {
+    const newEntry = {
+      id:         uid(),
+      date:       newDate,
+      note:       entry.note || '',
+      nextSteps:  '',
+      completion: entry.completion,
+      status:     entry.status,
+    };
+    p.entries.push(newEntry);
+    task.completedInEntry = newEntry.id;
+  }
+
+  saveState(); render();
+
+  // Keep the matching Today List item's date in sync so History/Digest agree
+  if (_currentUser) {
+    await sb.from('today_items')
+      .update({ item_date: newDate })
+      .eq('user_id', _currentUser.id)
+      .eq('source_task_id', tid)
+      .eq('completed', true);
+  }
+}
+
 function toggleMoveTaskSection(pid, tid) {
   const section = document.getElementById('move-task-section');
   const toggleBtn = document.getElementById('move-task-toggle-btn');

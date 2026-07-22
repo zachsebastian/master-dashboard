@@ -424,6 +424,76 @@ async function toggleItem(id) {
   }
 }
 
+// ── Edit the completion date of a completed item ──
+async function updateItemCompletedDate(id, newDate) {
+  const item = todayItems.find(i => i.id === id) || historyItems.find(i => i.id === id);
+  if (!item || !item.completed || !newDate || newDate === item.item_date) return;
+
+  item.item_date = newDate;
+  await sb.from('today_items').update({ item_date: newDate }).eq('id', id);
+
+  // Re-bucket between today's list and history
+  const today = getTodayDate();
+  todayItems   = todayItems.filter(i => i.id !== id);
+  historyItems = historyItems.filter(i => i.id !== id);
+  if (newDate < today) historyItems.push(item);
+  else todayItems.push(item);
+
+  // Project-linked: move the completing log entry's date in the dashboards blob
+  if (item.source === 'project' && item.source_ref_id) {
+    await _syncProjectTaskDate(item, newDate);
+  }
+}
+
+// ── Move the date of the log entry that completed a project task ──
+async function _syncProjectTaskDate(item, newDate) {
+  const uid = _currentUser.id;
+
+  const { data: dashRows } = await sb
+    .from('dashboards')
+    .select('data')
+    .eq('user_id', uid);
+
+  if (!dashRows?.length) return;
+
+  for (const row of dashRows) {
+    const project = (row.data?.projects || []).find(p => p.id === item.source_ref_id);
+    if (!project) continue;
+
+    const task = item.source_task_id
+      ? (project.tasks || []).find(t => t.id === item.source_task_id)
+      : (project.tasks || []).find(t => t.text.trim() === item.text.trim());
+    if (!task || !task.completedInEntry) continue;
+
+    const entry = (project.entries || []).find(e => e.id === task.completedInEntry);
+    if (!entry || entry.date === newDate) return;
+
+    // If the entry completed only this task, move it. Otherwise split the task
+    // out into its own entry on the new date so other tasks keep their date.
+    const tasksInEntry = (project.tasks || []).filter(t => t.completedInEntry === entry.id);
+    if (tasksInEntry.length === 1) {
+      entry.date = newDate;
+    } else {
+      const newEntry = {
+        id:         _uid(),
+        date:       newDate,
+        note:       'Completed via Today List',
+        nextSteps:  '',
+        completion: entry.completion,
+        status:     entry.status,
+      };
+      project.entries.push(newEntry);
+      task.completedInEntry = newEntry.id;
+    }
+
+    await sb
+      .from('dashboards')
+      .update({ data: row.data, updated_at: new Date().toISOString() })
+      .eq('user_id', uid);
+    break;
+  }
+}
+
 // ── Sync a project task when its today_item is checked/unchecked ──
 async function _syncProjectTask(item, completing) {
   const uid = _currentUser.id;

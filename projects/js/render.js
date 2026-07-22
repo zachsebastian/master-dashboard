@@ -371,7 +371,7 @@ function renderDetailView() {
     return `<div class="task-row" data-task-id="${esc(t.id)}" draggable="true">
       <span class="task-drag-handle" title="Drag to reorder">⠿</span>
       <div class="task-text${isDone ? ' done' : ''}">${esc(t.text)}${isBlocked ? ` <span class="task-blocked-chip">Blocked</span>` : ''}</div>
-      ${isDone && entry ? `<span class="task-meta">Done ${fmtDate(entry.date)}</span>` : ''}
+      ${isDone && entry ? `<span class="task-meta task-done-meta">Done <input type="date" class="task-done-date" value="${esc(entry.date)}" max="${new Date().toISOString().slice(0, 10)}" onchange="updateTaskCompletionDate('${p.id}','${t.id}',this.value)" title="Completed on — click to change"></span>` : ''}
       ${!isDone ? `<div style="display:flex;gap:4px">
         <button class="btn btn-sm" id="today-btn-${t.id}" onclick="addTaskToToday('${p.id}','${t.id}',this)">+ Today</button>
         <button class="btn btn-sm" onclick="openEditTaskModal('${p.id}','${t.id}')">Edit</button>
