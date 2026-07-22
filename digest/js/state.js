@@ -163,8 +163,10 @@ async function loadReflection() {
     ai_summary:       data?.ai_summary       || null,
     ai_generated_at:  data?.ai_generated_at  || null,
   };
-  // Restore any persisted AI summary for this week
-  if (_reflection.ai_summary) _aiSummary = _reflection.ai_summary;
+  // Restore the persisted AI summary for this range — or clear the display
+  // when this range has none, so a range change never shows a stale summary.
+  _aiSummary   = _reflection.ai_summary || null;
+  _aiQuestions = null;
   return _reflection;
 }
 
