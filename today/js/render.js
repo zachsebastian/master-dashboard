@@ -112,15 +112,38 @@ function _renderTodayView(active, onHold, completed, total, doneCount) {
         class="today-add-input"
         placeholder="Add a priority for today…"
         maxlength="500">
-      ${_projects.length > 0 ? `
-      <select class="today-add-project-select" id="today-add-project" title="Link to project (optional)">
-        <option value="">Link to project…</option>
-        ${_projects.map(p => `<option value="${escHtml(p.id)}">${escHtml(p.name)}</option>`).join('')}
-      </select>` : ''}
+      ${_renderProjectPicker('today-add-project')}
       <button class="btn btn-primary" id="today-add-btn">Add</button>
     </div>
     <div class="today-pull-more-row">
       <button class="today-pull-more-btn" id="today-pull-more-btn">↓ Pull more from projects</button>
+    </div>`;
+}
+
+// ── Project picker dropdown (custom — native selects can't do flyout submenus) ──
+function _renderProjectPicker(pickerId) {
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  const active = _projects.filter(p => p.status !== 'done' && p.status !== 'on-hold').sort(byName);
+  const onHold = _projects.filter(p => p.status === 'on-hold').sort(byName);
+  if (!active.length && !onHold.length) return '';
+
+  const option = p =>
+    `<button type="button" class="today-proj-option" data-picker="${escHtml(pickerId)}" data-project-id="${escHtml(p.id)}">${escHtml(p.name)}</button>`;
+
+  return `
+    <div class="today-proj-picker" id="${escHtml(pickerId)}" data-value="">
+      <button type="button" class="today-proj-picker-btn" data-picker-btn="${escHtml(pickerId)}" title="Link to project (optional)">Link to project…</button>
+      <div class="today-proj-menu" hidden>
+        <button type="button" class="today-proj-option today-proj-option--none" data-picker="${escHtml(pickerId)}" data-project-id="">No project</button>
+        ${active.map(option).join('')}
+        ${onHold.length ? `
+        <div class="today-proj-submenu-wrap">
+          <button type="button" class="today-proj-option today-proj-submenu-trigger">On-Hold Projects <span class="today-proj-arrow">›</span></button>
+          <div class="today-proj-submenu">
+            ${onHold.map(option).join('')}
+          </div>
+        </div>` : ''}
+      </div>
     </div>`;
 }
 
@@ -131,7 +154,7 @@ function _renderItem(item) {
 
   if (isEditing) {
     const id = item.id;
-    const showProjectPicker = item.source === 'manual' && _projects.length > 0;
+    const showProjectPicker = item.source === 'manual';
     return `
       <div class="today-item today-item--editing"
            data-id="${escHtml(id)}">
@@ -145,11 +168,7 @@ function _renderItem(item) {
                  value="${escHtml(item.text)}"
                  maxlength="500"
                  autocomplete="off">
-          ${showProjectPicker ? `
-          <select class="today-edit-project-select" id="edit-project-${escHtml(id)}" title="Link to project (optional)">
-            <option value="">Link to project…</option>
-            ${_projects.map(p => `<option value="${escHtml(p.id)}">${escHtml(p.name)}</option>`).join('')}
-          </select>` : ''}
+          ${showProjectPicker ? _renderProjectPicker(`edit-project-${id}`) : ''}
         </div>
         <div class="today-item-right today-item-right--editing">
           <button class="today-edit-save-btn" data-save-id="${escHtml(id)}" title="Save">✓</button>
@@ -356,6 +375,49 @@ function bindEvents() {
     });
   }
 
+  // Project picker dropdowns
+  document.querySelectorAll('[data-picker-btn]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const menu = document.getElementById(btn.dataset.pickerBtn)?.querySelector('.today-proj-menu');
+      if (!menu) return;
+      document.querySelectorAll('.today-proj-menu').forEach(m => { if (m !== menu) m.hidden = true; });
+      menu.hidden = !menu.hidden;
+    });
+  });
+
+  document.querySelectorAll('.today-proj-submenu-trigger').forEach(tr => {
+    tr.addEventListener('click', e => {
+      e.stopPropagation();
+      tr.closest('.today-proj-submenu-wrap')?.classList.toggle('open');
+    });
+  });
+
+  document.querySelectorAll('.today-proj-option[data-project-id]').forEach(opt => {
+    opt.addEventListener('click', e => {
+      e.stopPropagation();
+      const picker = document.getElementById(opt.dataset.picker);
+      if (!picker) return;
+      picker.dataset.value = opt.dataset.projectId;
+      const label = picker.querySelector('[data-picker-btn]');
+      if (label) {
+        label.textContent = opt.dataset.projectId ? opt.textContent.trim() : 'Link to project…';
+        label.classList.toggle('has-value', !!opt.dataset.projectId);
+      }
+      picker.querySelector('.today-proj-menu').hidden = true;
+      picker.querySelector('.today-proj-submenu-wrap')?.classList.remove('open');
+    });
+  });
+
+  // Close pickers on outside click (bind once — document listener survives re-renders)
+  if (!window._projPickerCloseBound) {
+    window._projPickerCloseBound = true;
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.today-proj-menu').forEach(m => { m.hidden = true; });
+      document.querySelectorAll('.today-proj-submenu-wrap.open').forEach(w => w.classList.remove('open'));
+    });
+  }
+
   // Completed-date pickers
   document.querySelectorAll('[data-done-date-id]').forEach(input => {
     input.addEventListener('click', e => e.stopPropagation());
@@ -397,8 +459,7 @@ function bindEvents() {
       const id    = el.dataset.saveId;
       const input = document.getElementById(`edit-input-${id}`);
       const newText = input ? input.value : '';
-      const projectSelect = document.getElementById(`edit-project-${id}`);
-      const projectId = projectSelect?.value || null;
+      const projectId = document.getElementById(`edit-project-${id}`)?.dataset.value || null;
       _editingItemId = null;
       await updateItemText(id, newText);
       if (projectId) await associateItemWithProject(id, projectId);
@@ -421,8 +482,7 @@ function bindEvents() {
         e.preventDefault();
         const id = input.dataset.editInputId;
         const newText = input.value;
-        const projectSelect = document.getElementById(`edit-project-${id}`);
-        const projectId = projectSelect?.value || null;
+        const projectId = document.getElementById(`edit-project-${id}`)?.dataset.value || null;
         _editingItemId = null;
         await updateItemText(id, newText);
         if (projectId) await associateItemWithProject(id, projectId);
@@ -442,8 +502,7 @@ function bindEvents() {
     addBtn.addEventListener('click', async () => {
       const text = addInput.value.trim();
       if (!text) return;
-      const projectSelect = document.getElementById('today-add-project');
-      const projectId = projectSelect?.value || null;
+      const projectId = document.getElementById('today-add-project')?.dataset.value || null;
       addBtn.disabled   = true;
       addInput.disabled = true;
       await addManualItem(text, projectId);
