@@ -42,9 +42,14 @@ async function initAuth() {
   initModuleHeader({
     name: 'Today',
     subtitle: 'Daily Priorities',
-    leftActions: userModules.has('projects')
-      ? `<button class="btn" onclick="window.location.href='/projects/'">Projects</button>`
-      : '',
+    leftActions: [
+      userModules.has('projects')
+        ? `<button class="btn" onclick="window.location.href='/projects/'">Projects</button>`
+        : '',
+      userModules.has('digest')
+        ? `<button class="btn" onclick="window.location.href='/digest/'">Weekly Digest</button>`
+        : '',
+    ].join(''),
   });
 
   await Promise.all([loadTodayState(), loadProjects()]);

@@ -267,7 +267,10 @@ function _openAiHistoryModal() {
     <div class="ai-hist-modal">
       <div class="ai-hist-header">
         <div class="ai-hist-title">AI Summary History</div>
-        <button class="ai-hist-close" onclick="_closeAiHistoryModal()">✕</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${_aiSummaryHistory.length ? `<button class="btn btn-sm" onclick="exportAiHistoryMd()" title="Download all summaries as Markdown">↓ Export .md</button>` : ''}
+          <button class="ai-hist-close" onclick="_closeAiHistoryModal()">✕</button>
+        </div>
       </div>
       <div class="ai-hist-body" id="ai-hist-body">
         ${_renderAiHistoryList()}
@@ -279,6 +282,35 @@ function _openAiHistoryModal() {
   });
 
   document.body.appendChild(modal);
+}
+
+// ── Export all AI summaries as a Markdown file ──
+function exportAiHistoryMd() {
+  if (!_aiSummaryHistory.length) return;
+
+  const lines = [
+    '# AI Summary History',
+    '',
+    `Exported ${new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })} · ${_aiSummaryHistory.length} summar${_aiSummaryHistory.length !== 1 ? 'ies' : 'y'}`,
+    '',
+  ];
+
+  let lastWeek = null;
+  for (const h of _aiSummaryHistory) {
+    if (h.week_start !== lastWeek) {
+      lastWeek = h.week_start;
+      lines.push('---', '', `## Week of ${_fmtWeekLabel(h.week_start)}`, '');
+    }
+    lines.push(`### Generated ${_fmtGenerated(h.generated_at)}`, '', (h.summary || '').trim(), '');
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `ai-summaries-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function _closeAiHistoryModal() {
