@@ -1,3 +1,4 @@
 .vercel
 backup_*.json
 .superpowers/
+.mcp.json

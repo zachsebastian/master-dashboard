@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "master-dashboard": {
+      "command": "node",
+      "args": ["/Users/zach/Documents/Claude Code Projects/Local Projects/master-dashboard/mcp-server/index.js"],
+      "env": {
+        "DASH_EMAIL": "you@example.com",
+        "DASH_PASSWORD": "your-password"
+      }
+    }
+  }
+}

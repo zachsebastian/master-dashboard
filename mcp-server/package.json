@@ -1,0 +1,22 @@
+{
+  "name": "master-dashboard-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Master Dashboard app",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/protocol.js && node test/smoke.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@supabase/supabase-js": "^2.112.0",
+    "zod": "^4.4.3"
+  }
+}
