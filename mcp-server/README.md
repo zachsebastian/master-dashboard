@@ -96,8 +96,33 @@ DASH_EMAIL=... DASH_PASSWORD=... npm test
 The smoke test only writes `[MCP-TEST]`-marked records it creates and deletes
 itself, and verifies the projects blob is otherwise untouched.
 
-## Future: hosted / claude.ai
+## Hosted custom connector (claude.ai, Desktop, mobile)
 
-The tool layer (`tools/*.js`) is transport-agnostic — to expose this on
-claude.ai, wrap the same tool modules in a Streamable HTTP transport behind
-auth and deploy (e.g. on Vercel). Not built yet.
+The same 37 tools are also served as a remote MCP server with OAuth, deployed
+with the dashboard on Vercel:
+
+- **Connector URL:** `https://master-dashboard-lyart.vercel.app/api/mcp`
+- Add it in Claude → Settings → Connectors → *Add custom connector*, then
+  click **Connect**: a browser page opens where you sign into your dashboard
+  account (password or magic link). No credentials are stored in any config.
+
+How it works (all code in `/api`):
+
+- `api/oauth/*` implements OAuth 2.1 for MCP: RFC 8414 metadata, dynamic
+  client registration (Claude/localhost redirect URIs only), PKCE-required
+  authorize + token endpoints. `vercel.json` rewrites the `/.well-known/*`
+  paths to these functions.
+- It is fully stateless: your Supabase session **is** the credential. The
+  access token Claude holds is your RLS-scoped Supabase JWT; the refresh
+  token is your Supabase refresh token sealed with AES-256-GCM under the
+  `MCP_SECRET` env var (set on Vercel). Nothing is stored server-side.
+- `api/mcp.js` is a stateless Streamable HTTP endpoint that builds the same
+  tool registry (`mcp-server/lib/registry.js`) per request with a Supabase
+  client bound to your JWT.
+
+**Magic-link note:** for the magic-link option to redirect back correctly, add
+`https://master-dashboard-lyart.vercel.app/api/oauth/authorize` to Supabase →
+Authentication → URL Configuration → Redirect URLs. Password sign-in works
+without any configuration.
+
+Connector endpoint tests: `node test/connector.js` (no credentials needed).

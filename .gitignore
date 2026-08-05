@@ -2,3 +2,4 @@
 backup_*.json
 .superpowers/
 .mcp.json
+node_modules/

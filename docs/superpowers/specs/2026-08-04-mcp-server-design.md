@@ -225,3 +225,27 @@ the tool and what it returns.
   and env block.
 - Future (not built now): wrap the same `tools/*` modules in an HTTP transport
   and deploy to Vercel for claude.ai — the tool layer is transport-agnostic.
+
+## Addendum (2026-08-04): Hosted custom connector
+
+Built and deployed the remote-connector option the same day, per user request:
+
+- Same 37 tools served over Streamable HTTP at
+  `https://master-dashboard-lyart.vercel.app/api/mcp` (stateless, one
+  transport per request), deployed as Vercel functions alongside the static
+  app. Tool wiring extracted to `mcp-server/lib/registry.js`, shared by the
+  stdio server and the HTTP endpoint.
+- OAuth 2.1 in `/api/oauth/*`: RFC 8414 + RFC 9728 metadata (via vercel.json
+  rewrites of `/.well-known/*`), stateless dynamic client registration
+  (redirect URIs restricted to claude.ai/claude.com/localhost and encoded
+  into the client_id), PKCE-required authorize and token endpoints.
+- Stateless credentials: the Supabase session is the OAuth token pair — the
+  access token is the user's RLS-scoped Supabase JWT; the refresh token and
+  authorization codes are AES-256-GCM-sealed under the `MCP_SECRET` env var
+  (set in Vercel, production + preview). No server-side storage.
+- Sign-in page supports password and magic link; magic link requires
+  allowlisting `/api/oauth/authorize` in Supabase Auth redirect URLs.
+- Tests: `mcp-server/test/connector.js` covers metadata, registration
+  allowlisting, authorize validation, PKCE success/failure/expiry, and the
+  401 auth gate. Verified on a protected preview deployment, then promoted
+  to production and re-verified on the live domain.

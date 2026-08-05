@@ -1,0 +1,8 @@
+node_modules
+mcp-server/node_modules
+mcp-server/test
+docs
+.claude
+.superpowers
+backup_*.json
+.DS_Store

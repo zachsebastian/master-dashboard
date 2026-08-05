@@ -1,0 +1,11 @@
+{
+  "name": "master-dashboard",
+  "private": true,
+  "type": "module",
+  "description": "Master Dashboard — static app + hosted MCP connector functions",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@supabase/supabase-js": "^2.112.0",
+    "zod": "^4.4.3"
+  }
+}
