@@ -16,6 +16,7 @@ const FAM_EVENT_STATS = ['idea', 'invited', 'deciding', 'confirmed', 'declined',
 const FAM_RENEW_CATS  = ['license', 'subscription', 'medication', 'pet', 'other'];
 const FAM_RENEW_FREQS = ['once', 'monthly', 'quarterly', 'annual'];
 const FAM_MEMBER_KINDS = ['adult', 'child', 'pet', 'other'];
+const FAM_TASK_REPEATS = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
 
 function famToday() {
   const d = new Date();
@@ -118,10 +119,35 @@ async function famAddLinkedMember(code) {
   return { member: data };
 }
 
+// Next occurrence for a repeating task: advance from the due date (or today)
+// by the interval until it lands strictly after today.
+function famNextRepeatDate(dueDate, repeat) {
+  const t = famToday();
+  const d = new Date((dueDate || t) + 'T00:00:00');
+  const todayD = new Date(t + 'T00:00:00');
+  do {
+    if (repeat === 'daily') d.setDate(d.getDate() + 1);
+    else if (repeat === 'weekly') d.setDate(d.getDate() + 7);
+    else if (repeat === 'biweekly') d.setDate(d.getDate() + 14);
+    else if (repeat === 'monthly') d.setMonth(d.getMonth() + 1);
+    else break;
+  } while (d <= todayD);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ── Section-specific actions ──
 async function famToggleTask(id) {
   const t = _tasks.find(x => x.id === id);
   if (!t) return;
+  // Repeating tasks never enter "completed" — checking one rolls its due
+  // date forward to the next occurrence.
+  if (!t.completed && t.repeat && t.repeat !== 'none') {
+    await famUpdate('fam_tasks', id, {
+      due_date: famNextRepeatDate(t.due_date, t.repeat),
+      completed_at: new Date().toISOString(),
+    });
+    return;
+  }
   const next = !t.completed;
   await famUpdate('fam_tasks', id, {
     completed: next,

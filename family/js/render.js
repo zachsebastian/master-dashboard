@@ -173,12 +173,12 @@ function _renderTasks() {
 
   const rows = open.map(t => `
     <div class="fam-tr">
-      <div class="fam-td"><div class="fam-check" data-fam-toggle="fam_tasks|${t.id}"></div></div>
+      <div class="fam-td"><div class="fam-check" data-fam-toggle="fam_tasks|${t.id}" title="${t.repeat && t.repeat !== 'none' ? `Done — rolls forward (${t.repeat})` : 'Mark complete'}"></div></div>
       <div class="fam-td fam-td-main">${famText('fam_tasks', t.id, 'text', t.text)}
         ${t.notes ? `<div class="fam-td-note">${escHtml(t.notes)}</div>` : ''}</div>
       <div class="fam-td"><span class="fam-cat-pill">${famCap(t.category)}</span></div>
       <div class="fam-td">${t.person ? escHtml(t.person) : '<span class="fam-td-muted">—</span>'}</div>
-      <div class="fam-td">${famDateBadge(t.due_date)}</div>
+      <div class="fam-td">${famDateBadge(t.due_date)}${t.repeat && t.repeat !== 'none' ? ` <span class="fam-repeat-pill" title="Repeats ${t.repeat === 'biweekly' ? 'every 2 weeks' : t.repeat}">↻</span>` : ''}</div>
       <div class="fam-td fam-td-actions">${famRowBtns('fam_tasks', t.id, 'text')}</div>
     </div>`).join('');
 
@@ -188,6 +188,13 @@ function _renderTasks() {
       <select class="fam-select" id="fam-task-cat">${famOpts(FAM_TASK_CATS, 'other')}</select>
       ${famMemberSelect('fam-task-person', '', '— Who? —')}
       <input class="fam-input" type="date" id="fam-task-due">
+      <select class="fam-select" id="fam-task-repeat" title="Repeat">
+        <option value="none">No repeat</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="biweekly">Every 2 weeks</option>
+        <option value="monthly">Monthly</option>
+      </select>
       <button class="btn btn-primary" id="fam-task-add">Add</button>
     </div>
     ${open.length
@@ -506,6 +513,7 @@ function bindFamEvents() {
       category: document.getElementById('fam-task-cat').value,
       person: document.getElementById('fam-task-person').value || null,
       due_date: document.getElementById('fam-task-due').value || null,
+      repeat: document.getElementById('fam-task-repeat').value,
     });
     return true;
   });

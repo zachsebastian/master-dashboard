@@ -303,7 +303,7 @@ async function loadFamilyDue() {
   if (error || !hid) { _famDueTasks = []; return; }
   const { data } = await sb
     .from('fam_tasks')
-    .select('id, text, category, person, due_date')
+    .select('id, text, category, person, due_date, repeat')
     .eq('household_id', hid)
     .eq('completed', false)
     .lte('due_date', getTodayDate())
@@ -312,7 +312,26 @@ async function loadFamilyDue() {
 }
 
 async function completeFamTask(id) {
+  const task = _famDueTasks.find(t => t.id === id);
   _famDueTasks = _famDueTasks.filter(t => t.id !== id);
+  // Repeating tasks roll forward to the next occurrence instead of completing
+  if (task && task.repeat && task.repeat !== 'none') {
+    const t = getTodayDate();
+    const d = new Date((task.due_date || t) + 'T00:00:00');
+    const todayD = new Date(t + 'T00:00:00');
+    do {
+      if (task.repeat === 'daily') d.setDate(d.getDate() + 1);
+      else if (task.repeat === 'weekly') d.setDate(d.getDate() + 7);
+      else if (task.repeat === 'biweekly') d.setDate(d.getDate() + 14);
+      else if (task.repeat === 'monthly') d.setMonth(d.getMonth() + 1);
+      else break;
+    } while (d <= todayD);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    await sb.from('fam_tasks')
+      .update({ due_date: next, completed_at: new Date().toISOString() })
+      .eq('id', id);
+    return;
+  }
   await sb.from('fam_tasks')
     .update({ completed: true, completed_at: new Date().toISOString() })
     .eq('id', id);

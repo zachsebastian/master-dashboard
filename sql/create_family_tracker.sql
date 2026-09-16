@@ -80,3 +80,7 @@ ALTER TABLE fam_renewals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "users manage own fam_renewals" ON fam_renewals
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 CREATE INDEX fam_renewals_user_idx ON fam_renewals (user_id);
+
+-- 2026-09-16 (migration `fam_tasks_repeat`): repeating to-dos.
+-- ALTER TABLE fam_tasks ADD COLUMN repeat text NOT NULL DEFAULT 'none'
+--   CHECK (repeat IN ('none','daily','weekly','biweekly','monthly'));

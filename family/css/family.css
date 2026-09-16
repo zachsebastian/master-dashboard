@@ -242,6 +242,21 @@
 .fam-date-badge.soon    { background: var(--amber-bg);  color: var(--amber); }
 .fam-date-badge.future  { background: var(--surface-3, rgba(0,0,0,0.06)); color: var(--text-2); }
 
+.fam-repeat-pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--teal);
+  background: var(--teal-bg);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: middle;
+  cursor: default;
+}
+
 /* ── Dividers / groups ── */
 .fam-divider {
   display: flex;

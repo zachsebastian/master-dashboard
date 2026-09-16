@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { unwrap } from '../lib/supabase.js';
 
 const SECTIONS = {
-  tasks:    { table: 'fam_tasks',    done: 'completed', fields: ['text', 'category', 'person', 'due_date', 'notes', 'completed'] },
+  tasks:    { table: 'fam_tasks',    done: 'completed', fields: ['text', 'category', 'person', 'due_date', 'notes', 'completed', 'repeat'] },
   topics:   { table: 'fam_topics',   done: 'resolved',  fields: ['text', 'with_whom', 'resolved', 'outcome'] },
   shopping: { table: 'fam_shopping', done: 'purchased', fields: ['item', 'store', 'category', 'note', 'purchased'] },
   events:   { table: 'fam_events',   done: null,        fields: ['title', 'event_date', 'event_time', 'logistics', 'cost', 'status', 'notes'] },
@@ -19,6 +19,19 @@ async function household(sb) {
   const { data, error } = await sb.rpc('fam_my_household');
   if (error) throw new Error(`Resolving family household: ${error.message}`);
   return data;
+}
+
+// Next occurrence for a repeating task: advance from the due date (or today)
+// until strictly after today.
+function nextRepeatDate(dueDate, repeat) {
+  const t = today();
+  const d = new Date((dueDate || t) + 'T00:00:00');
+  const todayD = new Date(t + 'T00:00:00');
+  const step = { daily: d2 => d2.setDate(d2.getDate() + 1), weekly: d2 => d2.setDate(d2.getDate() + 7),
+                 biweekly: d2 => d2.setDate(d2.getDate() + 14), monthly: d2 => d2.setMonth(d2.getMonth() + 1) }[repeat];
+  if (!step) return dueDate;
+  do { step(d); } while (d <= todayD);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export const tools = [
@@ -85,6 +98,7 @@ export const tools = [
       category: z.enum(['kids', 'pets', 'health', 'home', 'errands', 'admin', 'other']).optional(),
       person: z.string().optional().describe('Who it\'s about or who\'s handling it'),
       due_date: z.string().optional().describe('YYYY-MM-DD'),
+      repeat: z.enum(['none', 'daily', 'weekly', 'biweekly', 'monthly']).optional().describe('Repeating chores roll their due date forward when completed instead of finishing'),
       notes: z.string().optional(),
     },
     handler: async (args, { sb, uid }) =>
@@ -153,7 +167,7 @@ export const tools = [
   {
     name: 'family_update',
     description:
-      'Update a Family Tracker item by section + id. Pass only the fields to change — e.g. {completed: true} to check off a task, {resolved: true, outcome: "..."} for a topic, {purchased: true} for shopping, {status: "confirmed"} for an event, or edit text/dates/notes. Use family_renewal_done to complete renewals so recurring due dates advance.',
+      'Update a Family Tracker item by section + id. Pass only the fields to change — e.g. {completed: true} to check off a task, {resolved: true, outcome: "..."} for a topic, {purchased: true} for shopping, {status: "confirmed"} for an event, or edit text/dates/notes. Use family_renewal_done to complete renewals so recurring due dates advance. Completing a repeating task rolls its due date forward automatically.',
     schema: {
       section: z.enum(['tasks', 'topics', 'shopping', 'events', 'renewals']),
       id: z.string().uuid(),
@@ -166,10 +180,21 @@ export const tools = [
       if (!Object.keys(patch).length) {
         throw new Error(`Nothing to update. Allowed fields for ${args.section}: ${s.fields.join(', ')}.`);
       }
+      const hid = await household(sb);
       if (args.section === 'tasks' && patch.completed !== undefined) {
         patch.completed_at = patch.completed ? new Date().toISOString() : null;
+        if (patch.completed) {
+          // Repeating tasks roll forward instead of completing
+          const cur = unwrap(
+            await sb.from('fam_tasks').select('due_date, repeat').eq('household_id', hid).eq('id', args.id),
+            'Loading task'
+          )[0];
+          if (cur && cur.repeat && cur.repeat !== 'none') {
+            delete patch.completed;
+            patch.due_date = nextRepeatDate(cur.due_date, cur.repeat);
+          }
+        }
       }
-      const hid = await household(sb);
       const rows = unwrap(
         await sb.from(s.table).update(patch).eq('household_id', hid).eq('id', args.id).select(),
         'Updating item'
