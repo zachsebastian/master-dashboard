@@ -19,6 +19,7 @@ const APP_MODULES = [
   { id: 'data-inventory',  name: 'Data Inventory',     href: '/data-inventory/' },
   { id: 'case-writer',     name: 'Case Writer',        href: '/case-writer/' },
   { id: 'scratchpad',      name: 'Scratchpad',         href: '/scratchpad/' },
+  { id: 'family',          name: 'Family Tracker',     href: '/family/' },
 ];
 
 function appModuleById(id) {

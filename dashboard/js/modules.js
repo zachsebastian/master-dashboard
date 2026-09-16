@@ -467,6 +467,47 @@ const ALL_MODULES = [
       };
     },
   },
+  {
+    id: 'family',
+    name: 'Family Tracker',
+    type: 'dashboard',
+    iconBg: 'var(--teal-bg)',
+    iconColor: 'var(--teal)',
+    accentVar: '--teal',
+    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    desc: 'Family life admin: to-dos, discussion topics, shopping lists, events, and renewals.',
+    href: '/family/',
+
+    async fetchStats(sb, userId) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [tRes, dRes, sRes, eRes, rRes] = await Promise.all([
+        sb.from('fam_tasks').select('id, text, due_date').eq('user_id', userId).eq('completed', false),
+        sb.from('fam_topics').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('resolved', false),
+        sb.from('fam_shopping').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('purchased', false),
+        sb.from('fam_events').select('id, title, event_date').eq('user_id', userId).not('status', 'in', '("declined","done")'),
+        sb.from('fam_renewals').select('id, name, due_date').eq('user_id', userId).eq('completed', false),
+      ]);
+      const tasks    = tRes.data || [];
+      const events   = (eRes.data || []).filter(e => e.event_date && e.event_date >= todayStr);
+      const renewals = rRes.data || [];
+      const overdue  = tasks.filter(t => t.due_date && t.due_date < todayStr).length
+                     + renewals.filter(r => r.due_date < todayStr).length;
+      const openTotal = tasks.length + (dRes.count || 0) + (sRes.count || 0);
+      const upcoming = [...events.map(e => ({ when: e.event_date, target: e.title, note: 'event' })),
+                        ...renewals.map(r => ({ when: r.due_date, target: r.name, note: 'renewal due' }))]
+        .filter(x => x.when >= todayStr)
+        .sort((a, b) => a.when.localeCompare(b.when));
+      return {
+        primary:   { value: openTotal, label: 'Open items' },
+        secondary: { value: overdue, label: 'Overdue' },
+        spark:     null,
+        latestEntries: upcoming.slice(0, 6),
+        summaryFragment: openTotal === 0
+          ? 'Family list is clear'
+          : `${openTotal} open item${openTotal === 1 ? '' : 's'}${overdue ? ` · ${overdue} overdue` : ''}`,
+      };
+    },
+  },
 ];
 
 // ── Drag state ──

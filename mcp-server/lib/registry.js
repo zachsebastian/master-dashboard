@@ -13,10 +13,11 @@ import { tools as notes } from '../tools/notes.js';
 import { tools as caseWriter } from '../tools/case-writer.js';
 import { tools as feedback } from '../tools/feedback.js';
 import { tools as reference } from '../tools/reference.js';
+import { tools as family } from '../tools/family.js';
 
 export const ALL_TOOLS = [
   ...today, ...projects, ...digest, ...wins, ...rocks, ...links,
-  ...ideas, ...notes, ...caseWriter, ...feedback, ...reference,
+  ...ideas, ...notes, ...caseWriter, ...feedback, ...reference, ...family,
 ];
 
 // getCtx: async () => ({ sb, uid }) — called per tool invocation.
