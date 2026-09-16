@@ -1,6 +1,6 @@
 // ── UI state ──
 let _famView    = 'overview';   // overview | tasks | discuss | shopping | events | renewals | people
-let _famEditing = null;         // { table, id, field } — row text being edited inline
+let _famEdit    = null;         // { section, id } — row being edited in the expanded form
 let _famResolvingTopic = null;  // topic id showing the outcome prompt
 let _famSearchResult   = null;  // { code, result } | { code, error } — Dashboard ID search state
 
@@ -36,8 +36,13 @@ function famOpts(values, selected) {
   return values.map(v => `<option value="${v}"${v === selected ? ' selected' : ''}>${famCap(v)}</option>`).join('');
 }
 
-// Person picker fed by household members (falls back to the raw value if it
-// was entered before that person existed as a member).
+const FAM_REPEAT_LABELS = { none: 'No repeat', daily: 'Daily', weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' };
+function famRepeatOpts(selected) {
+  return FAM_TASK_REPEATS.map(v =>
+    `<option value="${v}"${v === (selected || 'none') ? ' selected' : ''}>${FAM_REPEAT_LABELS[v]}</option>`).join('');
+}
+
+// Person picker fed by household members (keeps a stale value selectable).
 function famMemberSelect(id, selected, blankLabel) {
   const names = famMemberNames();
   if (selected && !names.includes(selected)) names.push(selected);
@@ -48,19 +53,22 @@ function famMemberSelect(id, selected, blankLabel) {
     </select>`;
 }
 
-// Inline-editable text span (click ✎ elsewhere sets _famEditing)
-function famText(table, id, field, value, cls) {
-  const editing = _famEditing && _famEditing.table === table && _famEditing.id === id && _famEditing.field === field;
-  if (editing) {
-    return `<input class="fam-edit-input" id="fam-edit-input" data-table="${table}" data-id="${id}" data-field="${field}" value="${escHtml(value)}" maxlength="500">`;
-  }
-  return `<span class="${cls || 'fam-row-text'}">${escHtml(value)}</span>`;
+function famIsEditing(section, id) {
+  return _famEdit && _famEdit.section === section && _famEdit.id === id;
 }
 
-function famRowBtns(table, id, field) {
+function famRowBtns(section, table, id) {
   return `
-    <button class="fam-icon-btn" data-fam-edit="${table}|${id}|${field}" title="Edit">✎</button>
+    <button class="fam-icon-btn" data-fam-edit="${section}|${id}" title="Edit">✎</button>
     <button class="fam-icon-btn danger" data-fam-del="${table}|${id}" title="Delete">×</button>`;
+}
+
+function famEditActions() {
+  return `
+    <div class="fam-inline-actions">
+      <button class="btn btn-sm btn-primary" id="fam-edit-save">Save</button>
+      <button class="btn btn-sm" id="fam-edit-cancel">Cancel</button>
+    </div>`;
 }
 
 // ── Loading ──
@@ -171,15 +179,26 @@ function _renderTasks() {
     .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'));
   const done = _tasks.filter(t => t.completed);
 
-  const rows = open.map(t => `
+  const rows = open.map(t => famIsEditing('tasks', t.id) ? `
+    <div class="fam-tr-wide fam-edit-form">
+      <div class="fam-edit-grid">
+        <input class="fam-input fam-grow" id="fam-e-text" value="${escHtml(t.text)}" maxlength="500">
+        <select class="fam-select" id="fam-e-cat">${famOpts(FAM_TASK_CATS, t.category)}</select>
+        ${famMemberSelect('fam-e-person', t.person || '', '— Who? —')}
+        <input class="fam-input" type="date" id="fam-e-due" value="${escHtml(t.due_date || '')}">
+        <select class="fam-select" id="fam-e-repeat">${famRepeatOpts(t.repeat)}</select>
+        <input class="fam-input fam-grow" id="fam-e-notes" placeholder="Notes…" value="${escHtml(t.notes || '')}" maxlength="500">
+      </div>
+      ${famEditActions()}
+    </div>` : `
     <div class="fam-tr">
       <div class="fam-td"><div class="fam-check" data-fam-toggle="fam_tasks|${t.id}" title="${t.repeat && t.repeat !== 'none' ? `Done — rolls forward (${t.repeat})` : 'Mark complete'}"></div></div>
-      <div class="fam-td fam-td-main">${famText('fam_tasks', t.id, 'text', t.text)}
+      <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(t.text)}</span>
         ${t.notes ? `<div class="fam-td-note">${escHtml(t.notes)}</div>` : ''}</div>
       <div class="fam-td"><span class="fam-cat-pill">${famCap(t.category)}</span></div>
       <div class="fam-td">${t.person ? escHtml(t.person) : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td">${famDateBadge(t.due_date)}${t.repeat && t.repeat !== 'none' ? ` <span class="fam-repeat-pill" title="Repeats ${t.repeat === 'biweekly' ? 'every 2 weeks' : t.repeat}">↻</span>` : ''}</div>
-      <div class="fam-td fam-td-actions">${famRowBtns('fam_tasks', t.id, 'text')}</div>
+      <div class="fam-td fam-td-actions">${famRowBtns('tasks', 'fam_tasks', t.id)}</div>
     </div>`).join('');
 
   return `
@@ -188,13 +207,7 @@ function _renderTasks() {
       <select class="fam-select" id="fam-task-cat">${famOpts(FAM_TASK_CATS, 'other')}</select>
       ${famMemberSelect('fam-task-person', '', '— Who? —')}
       <input class="fam-input" type="date" id="fam-task-due">
-      <select class="fam-select" id="fam-task-repeat" title="Repeat">
-        <option value="none">No repeat</option>
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="biweekly">Every 2 weeks</option>
-        <option value="monthly">Monthly</option>
-      </select>
+      <select class="fam-select" id="fam-task-repeat" title="Repeat">${famRepeatOpts('none')}</select>
       <button class="btn btn-primary" id="fam-task-add">Add</button>
     </div>
     ${open.length
@@ -217,21 +230,32 @@ function _renderDiscuss() {
   const open = _topics.filter(t => !t.resolved);
   const resolved = _topics.filter(t => t.resolved);
 
-  const rows = open.map(t => _famResolvingTopic === t.id ? `
-    <div class="fam-tr-wide">
-      <span class="fam-row-text">${escHtml(t.text)}</span>
-      <input class="fam-input" id="fam-topic-outcome" placeholder="What was decided? (optional)" maxlength="500">
-      <div class="fam-inline-actions">
-        <button class="btn btn-sm btn-primary" data-fam-topic-confirm="${t.id}">Mark discussed</button>
-        <button class="btn btn-sm" data-fam-topic-cancel="1">Cancel</button>
-      </div>
-    </div>` : `
-    <div class="fam-tr">
-      <div class="fam-td"><div class="fam-check" data-fam-topic-resolve="${t.id}" title="Mark discussed"></div></div>
-      <div class="fam-td fam-td-main">${famText('fam_topics', t.id, 'text', t.text)}</div>
-      <div class="fam-td">${t.with_whom ? escHtml(t.with_whom) : '<span class="fam-td-muted">—</span>'}</div>
-      <div class="fam-td fam-td-actions">${famRowBtns('fam_topics', t.id, 'text')}</div>
-    </div>`).join('');
+  const rows = open.map(t => {
+    if (famIsEditing('discuss', t.id)) return `
+      <div class="fam-tr-wide fam-edit-form">
+        <div class="fam-edit-grid">
+          <input class="fam-input fam-grow" id="fam-e-text" value="${escHtml(t.text)}" maxlength="500">
+          ${famMemberSelect('fam-e-who', t.with_whom || '', '— With whom? —')}
+        </div>
+        ${famEditActions()}
+      </div>`;
+    if (_famResolvingTopic === t.id) return `
+      <div class="fam-tr-wide">
+        <span class="fam-row-text">${escHtml(t.text)}</span>
+        <input class="fam-input" id="fam-topic-outcome" placeholder="What was decided? (optional)" maxlength="500">
+        <div class="fam-inline-actions">
+          <button class="btn btn-sm btn-primary" data-fam-topic-confirm="${t.id}">Mark discussed</button>
+          <button class="btn btn-sm" data-fam-topic-cancel="1">Cancel</button>
+        </div>
+      </div>`;
+    return `
+      <div class="fam-tr">
+        <div class="fam-td"><div class="fam-check" data-fam-topic-resolve="${t.id}" title="Mark discussed"></div></div>
+        <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(t.text)}</span></div>
+        <div class="fam-td">${t.with_whom ? escHtml(t.with_whom) : '<span class="fam-td-muted">—</span>'}</div>
+        <div class="fam-td fam-td-actions">${famRowBtns('discuss', 'fam_topics', t.id)}</div>
+      </div>`;
+  }).join('');
 
   return `
     <div class="fam-add-card">
@@ -266,13 +290,22 @@ function _renderShopping() {
   open.forEach(s => { (byStore[s.store] = byStore[s.store] || []).push(s); });
   const storeOrder = FAM_STORES.filter(s => byStore[s]);
 
-  const rows = list => list.map(s => `
+  const rows = list => list.map(s => famIsEditing('shopping', s.id) ? `
+    <div class="fam-tr-wide fam-edit-form">
+      <div class="fam-edit-grid">
+        <input class="fam-input fam-grow" id="fam-e-item" value="${escHtml(s.item)}" maxlength="300">
+        <select class="fam-select" id="fam-e-store">${famOpts(FAM_STORES, s.store)}</select>
+        <select class="fam-select" id="fam-e-cat">${famOpts(FAM_SHOP_CATS, s.category)}</select>
+        <input class="fam-input fam-grow" id="fam-e-note" placeholder="Note…" value="${escHtml(s.note || '')}" maxlength="300">
+      </div>
+      ${famEditActions()}
+    </div>` : `
     <div class="fam-tr">
       <div class="fam-td"><div class="fam-check" data-fam-toggle="fam_shopping|${s.id}"></div></div>
-      <div class="fam-td fam-td-main">${famText('fam_shopping', s.id, 'item', s.item)}</div>
+      <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(s.item)}</span></div>
       <div class="fam-td"><span class="fam-cat-pill">${famCap(s.category)}</span></div>
       <div class="fam-td">${s.note ? escHtml(s.note) : '<span class="fam-td-muted">—</span>'}</div>
-      <div class="fam-td fam-td-actions">${famRowBtns('fam_shopping', s.id, 'item')}</div>
+      <div class="fam-td fam-td-actions">${famRowBtns('shopping', 'fam_shopping', s.id)}</div>
     </div>`).join('');
 
   return `
@@ -309,16 +342,27 @@ function _renderEvents() {
     .sort((a, b) => (a.event_date || '9999').localeCompare(b.event_date || '9999'));
   const past = _events.filter(e => ['declined', 'done'].includes(e.status) || (e.event_date && e.event_date < today));
 
-  const row = e => `
+  const row = e => famIsEditing('events', e.id) ? `
+    <div class="fam-tr-wide fam-edit-form">
+      <div class="fam-edit-grid">
+        <input class="fam-input fam-grow" id="fam-e-title" value="${escHtml(e.title)}" maxlength="300">
+        <input class="fam-input" type="date" id="fam-e-date" value="${escHtml(e.event_date || '')}">
+        <input class="fam-input fam-sm" id="fam-e-time" placeholder="Time" value="${escHtml(e.event_time || '')}" maxlength="30">
+        <input class="fam-input fam-md" id="fam-e-logistics" placeholder="Logistics" value="${escHtml(e.logistics || '')}" maxlength="300">
+        <input class="fam-input fam-sm" type="number" step="0.01" id="fam-e-cost" placeholder="Cost $" value="${e.cost != null ? escHtml(String(e.cost)) : ''}">
+        <input class="fam-input fam-grow" id="fam-e-notes" placeholder="Notes…" value="${escHtml(e.notes || '')}" maxlength="500">
+      </div>
+      ${famEditActions()}
+    </div>` : `
     <div class="fam-tr${['declined', 'done'].includes(e.status) ? ' done' : ''}">
-      <div class="fam-td fam-td-main">${famText('fam_events', e.id, 'title', e.title)}
+      <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(e.title)}</span>
         ${e.notes ? `<div class="fam-td-note">${escHtml(e.notes)}</div>` : ''}</div>
       <div class="fam-td">${famDateBadge(e.event_date)}</div>
       <div class="fam-td">${e.event_time ? escHtml(e.event_time) : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td">${e.logistics ? escHtml(e.logistics) : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td">${e.cost != null ? '$' + escHtml(String(e.cost)) : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td"><select class="fam-select fam-status-select ${e.status}" data-fam-event-status="${e.id}">${famOpts(FAM_EVENT_STATS, e.status)}</select></div>
-      <div class="fam-td fam-td-actions">${famRowBtns('fam_events', e.id, 'title')}</div>
+      <div class="fam-td fam-td-actions">${famRowBtns('events', 'fam_events', e.id)}</div>
     </div>`;
 
   const headers = ['Event', 'Date', 'Time', 'Logistics', 'Cost', 'Status', ''];
@@ -346,9 +390,19 @@ function _renderRenewals() {
   const active = _renewals.filter(r => !r.completed);
   const done = _renewals.filter(r => r.completed);
 
-  const rows = active.map(r => `
+  const rows = active.map(r => famIsEditing('renewals', r.id) ? `
+    <div class="fam-tr-wide fam-edit-form">
+      <div class="fam-edit-grid">
+        <input class="fam-input fam-grow" id="fam-e-name" value="${escHtml(r.name)}" maxlength="300">
+        <select class="fam-select" id="fam-e-cat">${famOpts(FAM_RENEW_CATS, r.category)}</select>
+        <input class="fam-input" type="date" id="fam-e-due" value="${escHtml(r.due_date)}">
+        <select class="fam-select" id="fam-e-freq">${famOpts(FAM_RENEW_FREQS, r.frequency)}</select>
+        <input class="fam-input fam-grow" id="fam-e-notes" placeholder="Notes…" value="${escHtml(r.notes || '')}" maxlength="500">
+      </div>
+      ${famEditActions()}
+    </div>` : `
     <div class="fam-tr">
-      <div class="fam-td fam-td-main">${famText('fam_renewals', r.id, 'name', r.name)}
+      <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(r.name)}</span>
         ${r.notes ? `<div class="fam-td-note">${escHtml(r.notes)}</div>` : ''}</div>
       <div class="fam-td"><span class="fam-cat-pill">${famCap(r.category)}</span></div>
       <div class="fam-td">${r.frequency === 'once' ? 'One-time' : famCap(r.frequency)}</div>
@@ -356,7 +410,7 @@ function _renderRenewals() {
       <div class="fam-td">${r.last_done ? escHtml(famFmtDate(r.last_done)) : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td fam-td-actions">
         <button class="btn btn-sm" data-fam-renew-done="${r.id}" title="${r.frequency === 'once' ? 'Mark complete' : 'Mark done — advances the due date'}">✓ Done</button>
-        ${famRowBtns('fam_renewals', r.id, 'name')}
+        ${famRowBtns('renewals', 'fam_renewals', r.id)}
       </div>
     </div>`).join('');
 
@@ -405,16 +459,23 @@ function _renderPeople() {
     }
   }
 
-  const memberRow = m => `
+  const memberRow = m => famIsEditing('people', m.id) ? `
+    <div class="fam-tr-wide fam-edit-form">
+      <div class="fam-edit-grid">
+        <input class="fam-input fam-grow" id="fam-e-name" value="${escHtml(m.name)}" maxlength="80">
+        <select class="fam-select" id="fam-e-kind">${famOpts(FAM_MEMBER_KINDS, m.kind)}</select>
+      </div>
+      ${famEditActions()}
+    </div>` : `
     <div class="fam-tr">
-      <div class="fam-td fam-td-main">${famText('fam_members', m.id, 'name', m.name)}</div>
+      <div class="fam-td fam-td-main"><span class="fam-row-text">${escHtml(m.name)}</span></div>
       <div class="fam-td"><span class="fam-cat-pill">${famCap(m.kind)}</span></div>
       <div class="fam-td">${m.linked_user_id
         ? `<span class="fam-linked-badge">🔗 Dashboard account${m.linked_user_id === _currentUser.id ? ' (you)' : ''}</span>`
         : '<span class="fam-td-muted">—</span>'}</div>
       <div class="fam-td fam-td-actions">
         ${m.linked_user_id === _currentUser.id ? '' : `
-        <button class="fam-icon-btn" data-fam-member-edit="${m.id}" title="Edit name">✎</button>
+        <button class="fam-icon-btn" data-fam-edit="people|${m.id}" title="Edit">✎</button>
         <button class="fam-icon-btn danger" data-fam-member-del="${m.id}" title="Remove">×</button>`}
       </div>
     </div>`;
@@ -442,12 +503,96 @@ function _renderPeople() {
       [...linked, ...others].map(memberRow).join(''))}`;
 }
 
+// ── Edit form save: per-section field readers ──
+const FAM_EDIT_READERS = {
+  tasks: () => ({
+    table: 'fam_tasks',
+    patch: {
+      text: document.getElementById('fam-e-text').value.trim(),
+      category: document.getElementById('fam-e-cat').value,
+      person: document.getElementById('fam-e-person').value || null,
+      due_date: document.getElementById('fam-e-due').value || null,
+      repeat: document.getElementById('fam-e-repeat').value,
+      notes: document.getElementById('fam-e-notes').value.trim() || null,
+    },
+    valid: p => !!p.text,
+  }),
+  discuss: () => ({
+    table: 'fam_topics',
+    patch: {
+      text: document.getElementById('fam-e-text').value.trim(),
+      with_whom: document.getElementById('fam-e-who').value || null,
+    },
+    valid: p => !!p.text,
+  }),
+  shopping: () => ({
+    table: 'fam_shopping',
+    patch: {
+      item: document.getElementById('fam-e-item').value.trim(),
+      store: document.getElementById('fam-e-store').value,
+      category: document.getElementById('fam-e-cat').value,
+      note: document.getElementById('fam-e-note').value.trim() || null,
+    },
+    valid: p => !!p.item,
+  }),
+  events: () => {
+    const cost = document.getElementById('fam-e-cost').value;
+    return {
+      table: 'fam_events',
+      patch: {
+        title: document.getElementById('fam-e-title').value.trim(),
+        event_date: document.getElementById('fam-e-date').value || null,
+        event_time: document.getElementById('fam-e-time').value.trim() || null,
+        logistics: document.getElementById('fam-e-logistics').value.trim() || null,
+        cost: cost === '' ? null : parseFloat(cost),
+        notes: document.getElementById('fam-e-notes').value.trim() || null,
+      },
+      valid: p => !!p.title,
+    };
+  },
+  renewals: () => ({
+    table: 'fam_renewals',
+    patch: {
+      name: document.getElementById('fam-e-name').value.trim(),
+      category: document.getElementById('fam-e-cat').value,
+      due_date: document.getElementById('fam-e-due').value,
+      frequency: document.getElementById('fam-e-freq').value,
+      notes: document.getElementById('fam-e-notes').value.trim() || null,
+    },
+    valid: p => !!p.name && !!p.due_date,
+  }),
+  people: () => ({
+    table: 'fam_members',
+    patch: {
+      name: document.getElementById('fam-e-name').value.trim(),
+      kind: document.getElementById('fam-e-kind').value,
+    },
+    valid: p => !!p.name,
+  }),
+};
+
+async function famSaveEdit() {
+  if (!_famEdit) return;
+  const { section, id } = _famEdit;
+  const { table, patch, valid } = FAM_EDIT_READERS[section]();
+  if (!valid(patch)) return;
+  _famEdit = null;
+  if (table === 'fam_members') {
+    const m = _members.find(x => x.id === id);
+    if (m) Object.assign(m, patch);
+    await sb.from('fam_members').update(patch).eq('id', id);
+  } else {
+    await famUpdate(table, id, patch);
+  }
+  render();
+}
+
 // ── Events binding ──
 function bindFamEvents() {
   // Tabs
   document.querySelectorAll('[data-fam-tab]').forEach(el => {
     el.addEventListener('click', () => {
-      _famView = el.dataset.famTab; _famEditing = null; _famResolvingTopic = null; _famSearchResult = null; render();
+      _famView = el.dataset.famTab; _famEdit = null; _famResolvingTopic = null; _famSearchResult = null; render();
     });
   });
 
@@ -471,38 +616,28 @@ function bindFamEvents() {
     });
   });
 
-  // Generic inline edit
+  // Open edit form
   document.querySelectorAll('[data-fam-edit]').forEach(el => {
     el.addEventListener('click', () => {
-      const [table, id, field] = el.dataset.famEdit.split('|');
-      _famEditing = { table, id, field };
+      const [section, id] = el.dataset.famEdit.split('|');
+      _famEdit = { section, id };
+      _famResolvingTopic = null;
       render();
-      const input = document.getElementById('fam-edit-input');
-      if (input) { input.focus(); input.select(); }
+      const form = document.querySelector('.fam-edit-form');
+      const first = form?.querySelector('input');
+      if (first) { first.focus(); first.select(); }
     });
   });
-  const editInput = document.getElementById('fam-edit-input');
-  if (editInput) {
-    const save = async () => {
-      const { table, id, field } = editInput.dataset;
-      const val = editInput.value.trim();
-      _famEditing = null;
-      if (val) {
-        if (table === 'fam_members') {
-          const m = _members.find(x => x.id === id);
-          if (m) { m.name = val; await sb.from('fam_members').update({ name: val }).eq('id', id); }
-        } else {
-          await famUpdate(table, id, { [field]: val });
-        }
-      }
-      render();
-    };
-    editInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); save(); }
-      else if (e.key === 'Escape') { _famEditing = null; render(); }
+
+  // Edit form save/cancel + keyboard
+  document.getElementById('fam-edit-save')?.addEventListener('click', famSaveEdit);
+  document.getElementById('fam-edit-cancel')?.addEventListener('click', () => { _famEdit = null; render(); });
+  document.querySelectorAll('.fam-edit-form input, .fam-edit-form select').forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); famSaveEdit(); }
+      else if (e.key === 'Escape') { _famEdit = null; render(); }
     });
-    editInput.addEventListener('blur', save);
-  }
+  });
 
   // Add: task
   _famBindAdd('fam-task-add', async () => {
@@ -579,20 +714,12 @@ function bindFamEvents() {
     return true;
   });
 
-  // Member remove / edit
+  // Member remove
   document.querySelectorAll('[data-fam-member-del]').forEach(el => {
     el.addEventListener('click', async () => {
       if (!confirm('Remove this person from your family? Their entries stay; a linked user loses access to this board.')) return;
       await famMemberRemove(el.dataset.famMemberDel);
       render();
-    });
-  });
-  document.querySelectorAll('[data-fam-member-edit]').forEach(el => {
-    el.addEventListener('click', () => {
-      _famEditing = { table: 'fam_members', id: el.dataset.famMemberEdit, field: 'name' };
-      render();
-      const input = document.getElementById('fam-edit-input');
-      if (input) { input.focus(); input.select(); }
     });
   });
 
@@ -626,7 +753,7 @@ function bindFamEvents() {
     el.addEventListener('click', async () => {
       const id = el.dataset.famTopicResolve;
       const topic = _topics.find(t => t.id === id);
-      if (topic && !topic.resolved) { _famResolvingTopic = id; render(); document.getElementById('fam-topic-outcome')?.focus(); }
+      if (topic && !topic.resolved) { _famResolvingTopic = id; _famEdit = null; render(); document.getElementById('fam-topic-outcome')?.focus(); }
       else { await famToggleTopic(id); render(); }
     });
   });

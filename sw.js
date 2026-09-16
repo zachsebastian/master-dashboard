@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v24';
+const CACHE = 'dashboard-suite-v25';
 
 const PRECACHE = [
   '/',

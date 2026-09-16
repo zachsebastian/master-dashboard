@@ -358,6 +358,10 @@
   padding: 10px 12px;
 }
 .fam-tr-wide .fam-input { margin-top: 8px; width: 100%; box-sizing: border-box; }
+.fam-edit-form { background: var(--teal-bg); }
+.fam-edit-grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fam-edit-grid .fam-input, .fam-edit-grid .fam-select { margin-top: 0; width: auto; }
+.fam-edit-grid .fam-grow { flex: 1 1 200px; min-width: 150px; }
 
 /* ── People ── */
 .fam-hint { font-size: 12.5px; color: var(--text-3); margin: 0 0 12px; line-height: 1.5; }
