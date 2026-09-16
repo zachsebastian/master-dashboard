@@ -96,6 +96,22 @@ function _renderTodayView(active, onHold, completed, total, doneCount) {
       <div class="today-list">
         ${onHold.map(item => _renderItem(item)).join('')}
       </div>` : ''}
+    ${_famDueTasks.length > 0 ? `
+      <div class="today-onhold-divider">
+        <div class="today-onhold-divider-line"></div>
+        <div class="today-onhold-divider-label">Family · due (${escHtml(String(_famDueTasks.length))})</div>
+        <div class="today-onhold-divider-line"></div>
+      </div>
+      <div class="today-list">
+        ${_famDueTasks.map(t => `
+          <div class="today-item">
+            <div class="today-item-check" data-fam-check-id="${escHtml(t.id)}" title="Mark complete"></div>
+            <div class="today-item-body">
+              <span class="today-item-text">${escHtml(t.text)}${t.person ? ` <span style="color:var(--text-3);font-size:12px">· ${escHtml(t.person)}</span>` : ''}</span>
+              <button class="today-item-source today-item-source-link" onclick="window.location.href='/family/'" title="Open Family Tracker">Family</button>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
     ${completed.length > 0 ? `
       <div class="today-completed-divider">
         <div class="today-completed-divider-line"></div>
@@ -417,6 +433,14 @@ function bindEvents() {
       document.querySelectorAll('.today-proj-submenu-wrap.open').forEach(w => w.classList.remove('open'));
     });
   }
+
+  // Family Tracker due items — completing writes back to fam_tasks
+  document.querySelectorAll('[data-fam-check-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      await completeFamTask(el.dataset.famCheckId);
+      render();
+    });
+  });
 
   // Completed-date pickers
   document.querySelectorAll('[data-done-date-id]').forEach(input => {

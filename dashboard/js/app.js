@@ -48,7 +48,7 @@ async function onSignedIn(user) {
 
   // Fetch profile
   const { data: profile } = await sb.from('profiles')
-    .select('first_name, last_name, email, anthropic_api_key')
+    .select('first_name, last_name, email, anthropic_api_key, friend_code')
     .eq('user_id', user.id)
     .maybeSingle();
   currentProfile = profile;
@@ -203,6 +203,7 @@ function showProfilePage() {
   document.getElementById('profpage-first').value = currentProfile?.first_name || '';
   document.getElementById('profpage-last').value  = currentProfile?.last_name  || '';
   document.getElementById('profpage-apikey').value = currentProfile?.anthropic_api_key || '';
+  document.getElementById('profpage-friend-code').textContent = currentProfile?.friend_code || '—';
   document.getElementById('profpage-name-status').textContent   = '';
   document.getElementById('profpage-apikey-status').textContent = '';
   document.getElementById('profpage-reset-status').textContent  = '';

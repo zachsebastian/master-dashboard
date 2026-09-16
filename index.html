@@ -151,6 +151,15 @@
       </div>
 
       <div class="profile-page-card">
+        <div class="section-title">Dashboard ID</div>
+        <div style="font-size:13px;color:var(--text-3);margin-bottom:10px;">Your unique identifier. Share it so other users can find you where cross-user features are supported (e.g. the Family Tracker).</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <code id="profpage-friend-code" style="font-size:16px;font-weight:700;letter-spacing:0.08em;background:var(--surface-3, rgba(0,0,0,0.06));padding:6px 14px;border-radius:8px;">—</code>
+          <button class="btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('profpage-friend-code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+        </div>
+      </div>
+
+      <div class="profile-page-card">
         <div class="section-title">Anthropic API Key</div>
         <div style="font-size:13px;color:var(--text-3);margin-bottom:12px;">Used by the Weekly Digest AI summary. Admins can also set this for you.</div>
         <input class="form-input" id="profpage-apikey" type="password" placeholder="sk-ant-…" style="font-family:monospace;font-size:12px;">

@@ -1,5 +1,7 @@
 // ── State ──
 let _currentUser = null;
+let _household = null;   // household id (shared with linked family members)
+let _members   = [];     // fam_members rows (linked users + kids/pets/etc.)
 let _tasks     = [];
 let _topics    = [];
 let _shopping  = [];
@@ -13,6 +15,7 @@ const FAM_SHOP_CATS   = ['grocery', 'pantry', 'baby', 'pet', 'household', 'other
 const FAM_EVENT_STATS = ['idea', 'invited', 'deciding', 'confirmed', 'declined', 'done'];
 const FAM_RENEW_CATS  = ['license', 'subscription', 'medication', 'pet', 'other'];
 const FAM_RENEW_FREQS = ['once', 'monthly', 'quarterly', 'annual'];
+const FAM_MEMBER_KINDS = ['adult', 'child', 'pet', 'other'];
 
 function famToday() {
   const d = new Date();
@@ -21,14 +24,20 @@ function famToday() {
 
 // ── Load everything ──
 async function loadFamilyState() {
-  const uid = _currentUser.id;
-  const [t, d, s, e, r] = await Promise.all([
-    sb.from('fam_tasks').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('fam_topics').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('fam_shopping').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('fam_events').select('*').eq('user_id', uid).order('event_date', { ascending: true, nullsFirst: false }),
-    sb.from('fam_renewals').select('*').eq('user_id', uid).order('due_date'),
+  // Bootstrap (or fetch) my household — creates one with a self member on first use
+  const { data: hid, error: hErr } = await sb.rpc('fam_my_household');
+  if (hErr) { console.error('fam_my_household:', hErr); return; }
+  _household = hid;
+
+  const [m, t, d, s, e, r] = await Promise.all([
+    sb.from('fam_members').select('*').eq('household_id', hid).order('created_at'),
+    sb.from('fam_tasks').select('*').eq('household_id', hid).order('created_at'),
+    sb.from('fam_topics').select('*').eq('household_id', hid).order('created_at'),
+    sb.from('fam_shopping').select('*').eq('household_id', hid).order('created_at'),
+    sb.from('fam_events').select('*').eq('household_id', hid).order('event_date', { ascending: true, nullsFirst: false }),
+    sb.from('fam_renewals').select('*').eq('household_id', hid).order('due_date'),
   ]);
+  _members  = m.data || [];
   _tasks    = t.data || [];
   _topics   = d.data || [];
   _shopping = s.data || [];
@@ -48,7 +57,7 @@ const _famTables = {
 async function famInsert(table, row) {
   const { data, error } = await sb
     .from(table)
-    .insert({ ...row, user_id: _currentUser.id })
+    .insert({ ...row, user_id: _currentUser.id, household_id: _household })
     .select()
     .single();
   if (error) { console.error(`insert ${table}:`, error); return null; }
@@ -70,6 +79,43 @@ async function famDelete(table, id) {
   const idx = list.findIndex(i => i.id === id);
   if (idx !== -1) list.splice(idx, 1);
   await sb.from(table).delete().eq('id', id);
+}
+
+// ── Members (People) ──
+function famMemberNames() {
+  return _members.map(m => m.name);
+}
+
+async function famMemberAdd(name, kind) {
+  const { data, error } = await sb
+    .from('fam_members')
+    .insert({ household_id: _household, name, kind })
+    .select()
+    .single();
+  if (error) { console.error('famMemberAdd:', error); return null; }
+  _members.push(data);
+  return data;
+}
+
+async function famMemberRemove(id) {
+  const idx = _members.findIndex(m => m.id === id);
+  if (idx !== -1) _members.splice(idx, 1);
+  await sb.from('fam_members').delete().eq('id', id);
+}
+
+// Search a dashboard user by Dashboard ID (only users with the family module)
+async function famSearchUser(code) {
+  const { data, error } = await sb.rpc('fam_search_user', { code });
+  if (error) { console.error('famSearchUser:', error); return { error: error.message }; }
+  return { result: (data && data[0]) || null };
+}
+
+// Link a dashboard user into my family by Dashboard ID
+async function famAddLinkedMember(code) {
+  const { data, error } = await sb.rpc('fam_add_linked_member', { code });
+  if (error) return { error: error.message };
+  _members.push(data);
+  return { member: data };
 }
 
 // ── Section-specific actions ──

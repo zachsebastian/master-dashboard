@@ -52,7 +52,8 @@ async function initAuth() {
     ].join(''),
   });
 
-  await Promise.all([loadTodayState(), loadProjects()]);
+  _hasFamilyModule = userModules.has('family');
+  await Promise.all([loadTodayState(), loadProjects(), loadFamilyDue()]);
 
   if (_resetNeeded) {
     // Render immediately — modal will be shown on top

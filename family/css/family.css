@@ -1,5 +1,6 @@
-/* ── Family Tracker ── */
-body { background: var(--bg); color: var(--text); font-family: var(--font, inherit); margin: 0; }
+/* ── Family Tracker ──
+   Fonts, background, and colors come from shared/css/tokens.css (body rule);
+   no body override here so the module matches the rest of the suite. */
 
 .loading-screen { min-height: 60vh; display: flex; align-items: center; justify-content: center; }
 
@@ -283,12 +284,108 @@ body { background: var(--bg); color: var(--text); font-family: var(--font, inher
   font-style: italic;
 }
 
-/* ── Mobile ── */
-@media (max-width: 640px) {
+/* ── Tables (headed lists) ── */
+.fam-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.fam-table--tasks    { --fam-cols: 36px minmax(0, 2.2fr) 110px 130px 130px 84px; }
+.fam-table--discuss  { --fam-cols: 36px minmax(0, 2.5fr) 160px 84px; }
+.fam-table--shopping { --fam-cols: 36px minmax(0, 2fr) 110px minmax(0, 1.2fr) 84px; }
+.fam-table--events   { --fam-cols: minmax(0, 1.8fr) 122px 88px minmax(0, 1.4fr) 76px 118px 84px; }
+.fam-table--renewals { --fam-cols: minmax(0, 2fr) 110px 100px 122px 110px 150px; }
+.fam-table--people   { --fam-cols: minmax(0, 1.6fr) 110px minmax(0, 1.4fr) 84px; }
+.fam-thead, .fam-tr {
+  display: grid;
+  grid-template-columns: var(--fam-cols);
+  align-items: center;
+  column-gap: 10px;
+  padding: 0 12px;
+}
+.fam-thead {
+  background: var(--surface-3, rgba(0,0,0,0.04));
+  border-bottom: 1px solid var(--border);
+}
+.fam-th {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding: 8px 0;
+  white-space: nowrap;
+}
+.fam-tr { border-top: 1px solid var(--border); }
+.fam-tr:first-of-type { border-top: none; }
+.fam-tr.done { opacity: 0.55; }
+.fam-tr.done .fam-row-text, .fam-tr.done .fam-td-main { text-decoration: line-through; }
+.fam-td {
+  padding: 9px 0;
+  font-size: 13px;
+  color: var(--text-2);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.fam-td-main { font-size: 14px; font-weight: 500; color: var(--text); }
+.fam-td-note { font-size: 12px; font-weight: 400; color: var(--text-3); margin-top: 2px; }
+.fam-td-muted { color: var(--text-3); }
+.fam-td-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+.fam-tr-wide {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+}
+.fam-tr-wide .fam-input { margin-top: 8px; width: 100%; box-sizing: border-box; }
+
+/* ── People ── */
+.fam-hint { font-size: 12.5px; color: var(--text-3); margin: 0 0 12px; line-height: 1.5; }
+.fam-add-card--flush { margin-bottom: 0; padding: 0; border: none; background: none; }
+.fam-search-result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: var(--teal-bg);
+  color: var(--teal);
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.fam-search-result.error { background: var(--red-bg); color: var(--red); }
+.fam-linked-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal);
+  background: var(--teal-bg);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* ── Mobile: tables collapse to stacked rows ── */
+@media (max-width: 700px) {
   .fam-wrap { padding: 16px 12px 80px; }
   .fam-tab { min-width: 0; flex: 1 1 30%; font-size: 12px; padding: 7px 6px; }
   .fam-add-card { flex-wrap: wrap; }
   .fam-sm, .fam-md { width: auto; flex: 1 1 45%; }
   .fam-row { flex-wrap: wrap; }
   .fam-row-actions { margin-left: auto; }
+  .fam-thead { display: none; }
+  .fam-tr { grid-template-columns: 36px minmax(0, 1fr); row-gap: 2px; padding: 8px 12px; }
+  .fam-table--events .fam-tr, .fam-table--renewals .fam-tr, .fam-table--people .fam-tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fam-td { padding: 2px 0; grid-column: 2; }
+  .fam-table--events .fam-td, .fam-table--renewals .fam-td, .fam-table--people .fam-td { grid-column: 1; }
+  .fam-td:first-child { grid-column: 1; grid-row: 1 / span 6; padding-top: 6px; }
+  .fam-table--events .fam-td:first-child, .fam-table--renewals .fam-td:first-child, .fam-table--people .fam-td:first-child { grid-row: auto; }
+  .fam-td-actions { justify-content: flex-start; }
 }

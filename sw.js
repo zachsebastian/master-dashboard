@@ -1,4 +1,4 @@
-const CACHE = 'dashboard-suite-v21';
+const CACHE = 'dashboard-suite-v23';
 
 const PRECACHE = [
   '/',
@@ -105,7 +105,11 @@ const PRECACHE = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      // cache: 'reload' bypasses the HTTP cache so a new SW version never
+      // precaches stale file bodies.
+      .then(cache => cache.addAll(PRECACHE.map(u => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 

@@ -9,6 +9,8 @@ let _view        = 'today';   // 'today' | 'history'
 let _resetNeeded = false;
 let _unfinishedCount = 0;
 let _projects    = [];   // non-archived projects for project picker
+let _famDueTasks = [];   // Family Tracker to-dos due today or overdue
+let _hasFamilyModule = false;
 
 // ── Date helpers ──
 function getTodayDate() {
@@ -292,6 +294,28 @@ async function pullMoreTasks() {
   }
 
   return added;
+}
+
+// ── Family Tracker: to-dos due today or overdue (shown read-through, not copied) ──
+async function loadFamilyDue() {
+  if (!_hasFamilyModule) { _famDueTasks = []; return; }
+  const { data: hid, error } = await sb.rpc('fam_my_household');
+  if (error || !hid) { _famDueTasks = []; return; }
+  const { data } = await sb
+    .from('fam_tasks')
+    .select('id, text, category, person, due_date')
+    .eq('household_id', hid)
+    .eq('completed', false)
+    .lte('due_date', getTodayDate())
+    .order('due_date');
+  _famDueTasks = data || [];
+}
+
+async function completeFamTask(id) {
+  _famDueTasks = _famDueTasks.filter(t => t.id !== id);
+  await sb.from('fam_tasks')
+    .update({ completed: true, completed_at: new Date().toISOString() })
+    .eq('id', id);
 }
 
 // ── Load projects for picker ──

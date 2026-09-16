@@ -13,6 +13,14 @@ const SECTIONS = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Family data is shared per household (you + linked family members).
+// Bootstraps a household on first use.
+async function household(sb) {
+  const { data, error } = await sb.rpc('fam_my_household');
+  if (error) throw new Error(`Resolving family household: ${error.message}`);
+  return data;
+}
+
 export const tools = [
   {
     name: 'family_overview',
@@ -24,12 +32,13 @@ export const tools = [
     handler: async (args, { sb, uid }) => {
       const horizon = new Date(Date.now() + (args.days_ahead ?? 14) * 86400000).toISOString().slice(0, 10);
       const t = today();
+      const hid = await household(sb);
       const [tasks, topics, shopping, events, renewals] = await Promise.all([
-        sb.from('fam_tasks').select('id, text, category, person, due_date').eq('user_id', uid).eq('completed', false),
-        sb.from('fam_topics').select('id, text, with_whom').eq('user_id', uid).eq('resolved', false),
-        sb.from('fam_shopping').select('id, item, store, category').eq('user_id', uid).eq('purchased', false),
-        sb.from('fam_events').select('id, title, event_date, event_time, logistics, cost, status').eq('user_id', uid).not('status', 'in', '("declined","done")'),
-        sb.from('fam_renewals').select('id, name, category, due_date, frequency').eq('user_id', uid).eq('completed', false),
+        sb.from('fam_tasks').select('id, text, category, person, due_date').eq('household_id', hid).eq('completed', false),
+        sb.from('fam_topics').select('id, text, with_whom').eq('household_id', hid).eq('resolved', false),
+        sb.from('fam_shopping').select('id, item, store, category').eq('household_id', hid).eq('purchased', false),
+        sb.from('fam_events').select('id, title, event_date, event_time, logistics, cost, status').eq('household_id', hid).not('status', 'in', '("declined","done")'),
+        sb.from('fam_renewals').select('id, name, category, due_date, frequency').eq('household_id', hid).eq('completed', false),
       ]).then(rs => rs.map((r, i) => unwrap(r, `Loading family section ${i}`)));
 
       const dated = [
@@ -61,7 +70,8 @@ export const tools = [
     },
     handler: async (args, { sb, uid }) => {
       const s = SECTIONS[args.section];
-      let q = sb.from(s.table).select('*').eq('user_id', uid).order('created_at');
+      const hid = await household(sb);
+      let q = sb.from(s.table).select('*').eq('household_id', hid).order('created_at');
       if (!args.include_done && s.done) q = q.eq(s.done, false);
       if (!args.include_done && args.section === 'events') q = q.not('status', 'in', '("declined","done")');
       return unwrap(await q, `Listing family ${args.section}`);
@@ -78,7 +88,7 @@ export const tools = [
       notes: z.string().optional(),
     },
     handler: async (args, { sb, uid }) =>
-      unwrap(await sb.from('fam_tasks').insert({ user_id: uid, ...args }).select().single(), 'Adding task'),
+      unwrap(await sb.from('fam_tasks').insert({ user_id: uid, household_id: await household(sb), ...args }).select().single(), 'Adding task'),
   },
   {
     name: 'family_topic_add',
@@ -88,7 +98,7 @@ export const tools = [
       with_whom: z.string().optional().describe('Who to discuss it with, e.g. "Bri"'),
     },
     handler: async (args, { sb, uid }) =>
-      unwrap(await sb.from('fam_topics').insert({ user_id: uid, ...args }).select().single(), 'Adding topic'),
+      unwrap(await sb.from('fam_topics').insert({ user_id: uid, household_id: await household(sb), ...args }).select().single(), 'Adding topic'),
   },
   {
     name: 'family_shopping_add',
@@ -102,11 +112,13 @@ export const tools = [
         note: z.string().optional(),
       })).min(1),
     },
-    handler: async (args, { sb, uid }) =>
-      unwrap(
-        await sb.from('fam_shopping').insert(args.items.map(i => ({ user_id: uid, ...i }))).select(),
+    handler: async (args, { sb, uid }) => {
+      const hid = await household(sb);
+      return unwrap(
+        await sb.from('fam_shopping').insert(args.items.map(i => ({ user_id: uid, household_id: hid, ...i }))).select(),
         'Adding shopping items'
-      ),
+      );
+    },
   },
   {
     name: 'family_event_add',
@@ -122,7 +134,7 @@ export const tools = [
       notes: z.string().optional(),
     },
     handler: async (args, { sb, uid }) =>
-      unwrap(await sb.from('fam_events').insert({ user_id: uid, ...args }).select().single(), 'Adding event'),
+      unwrap(await sb.from('fam_events').insert({ user_id: uid, household_id: await household(sb), ...args }).select().single(), 'Adding event'),
   },
   {
     name: 'family_renewal_add',
@@ -136,7 +148,7 @@ export const tools = [
       notes: z.string().optional(),
     },
     handler: async (args, { sb, uid }) =>
-      unwrap(await sb.from('fam_renewals').insert({ user_id: uid, ...args }).select().single(), 'Adding renewal'),
+      unwrap(await sb.from('fam_renewals').insert({ user_id: uid, household_id: await household(sb), ...args }).select().single(), 'Adding renewal'),
   },
   {
     name: 'family_update',
@@ -157,8 +169,9 @@ export const tools = [
       if (args.section === 'tasks' && patch.completed !== undefined) {
         patch.completed_at = patch.completed ? new Date().toISOString() : null;
       }
+      const hid = await household(sb);
       const rows = unwrap(
-        await sb.from(s.table).update(patch).eq('user_id', uid).eq('id', args.id).select(),
+        await sb.from(s.table).update(patch).eq('household_id', hid).eq('id', args.id).select(),
         'Updating item'
       );
       if (!rows.length) throw new Error(`No ${args.section} item with id '${args.id}'. Use family_list to see ids.`);
@@ -171,8 +184,9 @@ export const tools = [
       'Mark a renewal done. One-time renewals complete; recurring ones advance the due date by their frequency (monthly/quarterly/annual) and record last_done.',
     schema: { id: z.string().uuid() },
     handler: async (args, { sb, uid }) => {
+      const hid = await household(sb);
       const rows = unwrap(
-        await sb.from('fam_renewals').select('*').eq('user_id', uid).eq('id', args.id),
+        await sb.from('fam_renewals').select('*').eq('household_id', hid).eq('id', args.id),
         'Loading renewal'
       );
       if (!rows.length) throw new Error(`No renewal with id '${args.id}'.`);
@@ -189,7 +203,7 @@ export const tools = [
         };
       }
       return unwrap(
-        await sb.from('fam_renewals').update(patch).eq('user_id', uid).eq('id', args.id).select().single(),
+        await sb.from('fam_renewals').update(patch).eq('household_id', hid).eq('id', args.id).select().single(),
         'Completing renewal'
       );
     },
@@ -203,8 +217,38 @@ export const tools = [
     },
     handler: async (args, { sb, uid }) => {
       const s = SECTIONS[args.section];
-      unwrap(await sb.from(s.table).delete().eq('user_id', uid).eq('id', args.id), 'Deleting item');
+      const hid = await household(sb);
+      unwrap(await sb.from(s.table).delete().eq('household_id', hid).eq('id', args.id), 'Deleting item');
       return { deleted: args.id };
+    },
+  },
+  {
+    name: 'family_members_list',
+    description:
+      'List household family members (people + pets). Members with linked_user_id are dashboard users who share and can edit this family board; others are kids/pets/etc. added by name. Member names are the valid values for person/with_whom fields.',
+    schema: {},
+    handler: async (_args, { sb }) => {
+      const hid = await household(sb);
+      return unwrap(
+        await sb.from('fam_members').select('id, name, kind, linked_user_id, created_at').eq('household_id', hid).order('created_at'),
+        'Listing family members'
+      );
+    },
+  },
+  {
+    name: 'family_member_add',
+    description:
+      'Add a family member without a dashboard account (kid, pet, relative) so they can be assigned in person fields. Kinds: adult, child, pet, other. Linking actual dashboard users by Dashboard ID must be done in the app\'s People tab.',
+    schema: {
+      name: z.string().min(1),
+      kind: z.enum(['adult', 'child', 'pet', 'other']).optional(),
+    },
+    handler: async (args, { sb }) => {
+      const hid = await household(sb);
+      return unwrap(
+        await sb.from('fam_members').insert({ household_id: hid, name: args.name, kind: args.kind ?? 'other' }).select().single(),
+        'Adding family member'
+      );
     },
   },
 ];

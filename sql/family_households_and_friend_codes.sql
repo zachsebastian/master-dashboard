@@ -1,0 +1,13 @@
+-- See MCP migration `family_households_and_friend_codes` (applied 2026-09-16).
+-- Summary:
+--  * profiles.friend_code — unique "Dashboard ID" per user (XXXX-XXXX), with
+--    backfill + BEFORE INSERT trigger for new profiles.
+--  * fam_households + fam_members — family data is shared per household.
+--    fam_members holds both linked dashboard users (linked_user_id, unique:
+--    a user belongs to at most one household) and account-less people/pets.
+--  * household_id added to fam_tasks/topics/shopping/events/renewals; RLS
+--    replaced with household membership via SECURITY DEFINER fam_is_member().
+--  * RPCs: fam_my_household() (lazy bootstrap w/ self member),
+--    fam_search_user(code) (only users with the family module are findable),
+--    fam_add_linked_member(code) (dissolves the target's empty auto-household,
+--    refuses if theirs has data/members).
